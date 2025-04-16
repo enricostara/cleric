@@ -1,2 +1,2 @@
 # cleric
-A C compiLER Implemented in C for educational purposes.
+A C compiler implemented in C for educational purposes.
