@@ -11,11 +11,6 @@ endif()
 # Set output directory for executables
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_SOURCE_DIR}/build)
 
-add_executable(cleric
-        src/main.c
-        src/library.c
-)
-
 # Add include directory
 include_directories(include)
 
@@ -25,10 +20,14 @@ enable_testing()
 # Add Unity framework
 add_library(unity tests/unity/unity.c)
 
-# Add test executable
-add_executable(test_library tests/test_library.c src/library.c)
-target_link_libraries(test_library unity)
-target_include_directories(test_library PRIVATE include tests/unity)
+
+# Add driver executable
+add_executable(driver src/driver.c)
+
+# Add test_driver target
+add_executable(test_driver tests/test_driver.c src/driver.c)
+target_link_libraries(test_driver unity)
+target_include_directories(test_driver PRIVATE include tests/unity)
 
 # Register test with CTest
-add_test(NAME library_test COMMAND test_library)
+add_test(NAME driver_test COMMAND test_driver)
