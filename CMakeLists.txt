@@ -3,6 +3,11 @@ project(cleric C)
 
 set(CMAKE_C_STANDARD 99)
 
+# Force x86_64 architecture on macOS
+if(APPLE)
+    set(CMAKE_OSX_ARCHITECTURES x86_64 CACHE STRING "Build architectures for Mac OS X" FORCE)
+endif()
+
 # Set output directory for executables
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_SOURCE_DIR}/build)
 
