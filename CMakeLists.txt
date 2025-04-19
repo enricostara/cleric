@@ -1,33 +1,48 @@
 cmake_minimum_required(VERSION 3.31)
 project(cleric C)
 
+# Set the C language standard to C99 for all targets
 set(CMAKE_C_STANDARD 99)
 
-# Force x86_64 architecture on macOS
+# On macOS, force all builds to target the x86_64 architecture (Intel 64-bit)
 if(APPLE)
     set(CMAKE_OSX_ARCHITECTURES x86_64 CACHE STRING "Build architectures for Mac OS X" FORCE)
 endif()
 
-# Set output directory for executables
+# Set the output directory for all executables and libraries
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_SOURCE_DIR}/build)
 
-# Add include directory
-include_directories(include)
 
-# Enable testing
+# Enable CTest-based testing support (allows you to run tests with `ctest`)
 enable_testing()
 
-# Add Unity framework
+# ------------------------
+# Add Unity test framework
+# ------------------------
+# Unity is a unit testing framework for C (https://www.throwtheswitch.org/unity)
 add_library(unity tests/unity/unity.c)
 
+# --------------------------------------
+# Main application executable: 'cleric'
+# --------------------------------------
+# This is the main compiler driver, combining the CLI and driver logic
+add_executable(cleric
+        src/cleric.c
+        src/driver/driver.c
+)
 
-# Add driver executable
-add_executable(driver src/driver.c)
+# --------------------------------------
+# Test executable: 'test_cleric'
+# --------------------------------------
+# This executable runs all unit tests for the project.
+# It includes multiple test files and the driver logic.
+add_executable(test_cleric
+        tests/test_driver.c
+        tests/test_cleric.c
+        src/driver/driver.c
+)
+target_link_libraries(test_cleric unity)
+target_include_directories(test_cleric PRIVATE include tests/unity)
 
-# Add test_driver target
-add_executable(test_driver tests/test_driver.c src/driver.c)
-target_link_libraries(test_driver unity)
-target_include_directories(test_driver PRIVATE include tests/unity)
-
-# Register test with CTest
-add_test(NAME driver_test COMMAND test_driver)
+# Register the test executable with CTest, so `ctest` will run it
+add_test(test_cleric test_cleric)

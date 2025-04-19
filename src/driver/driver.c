@@ -19,7 +19,7 @@ int run_preprocessor(const char *input_file) {
     strcat(output_file, ".i");
     char command[2048];
     snprintf(command, sizeof(command), "gcc -E -P %s -o %s", input_file, output_file);
-    int ret = system(command);
+    const int ret = system(command);
     if (ret != 0) {
         fprintf(stderr, "Failed to preprocess %s\n", input_file);
         return 1;
