@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <sys/stat.h>
 
 void test_run_preprocessor_creates_i_file(void) {
     // Create a temporary C file
@@ -60,4 +60,35 @@ void test_run_compiler_creates_s_file_and_removes_i(void) {
 
     // Clean up
     remove(s_file);
+}
+
+void test_run_assembler_linker_creates_executable_and_removes_s(void) {
+    // Create a temporary .s file
+    const char *test_s_file = "test_temp.s";
+    FILE *f = fopen(test_s_file, "w");
+    TEST_ASSERT_NOT_NULL(f);
+    // Minimal valid x86-64 assembly for main returning 2
+    fprintf(f, ".globl\t_main\n_main:\n\tmovl\t$2, %%eax\n\tretq\n");
+    fclose(f);
+
+    // Run the assembler/linker function
+    int result = run_assembler_linker(test_s_file);
+    TEST_ASSERT_EQUAL_INT(0, result);
+
+    // Check that the executable exists
+    char test_exe_file[256];
+    strcpy(test_exe_file, test_s_file);
+    size_t len = strlen(test_exe_file);
+    test_exe_file[len-2] = '\0'; // remove .s
+    struct stat st;
+    int stat_result = stat(test_exe_file, &st);
+    TEST_ASSERT_EQUAL_INT(0, stat_result);
+    TEST_ASSERT_TRUE(st.st_mode & S_IXUSR); // Has user execute permission
+
+    // Check that the .s file is removed
+    f = fopen(test_s_file, "r");
+    TEST_ASSERT_NULL(f);
+
+    // Clean up
+    remove(test_exe_file);
 }
