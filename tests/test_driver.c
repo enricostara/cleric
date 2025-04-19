@@ -31,3 +31,33 @@ void test_run_preprocessor_creates_i_file(void) {
     remove(test_c_file);
     remove(test_i_file);
 }
+
+void test_run_compiler_creates_s_file_and_removes_i(void) {
+    // Create a temporary .i file
+    const char *test_i_file = "test_temp.i";
+    FILE *f = fopen(test_i_file, "w");
+    TEST_ASSERT_NOT_NULL(f);
+    fprintf(f, "int main() { return 2; }\n");
+    fclose(f);
+
+    // Run the compile function
+    int result = run_compiler(test_i_file);
+    TEST_ASSERT_EQUAL_INT(0, result);
+
+    // Check that the .s file exists
+    char s_file[256];
+    strcpy(s_file, test_i_file);
+    size_t len = strlen(s_file);
+    s_file[len-2] = '\0';
+    strcat(s_file, ".s");
+    FILE *sf = fopen(s_file, "r");
+    TEST_ASSERT_NOT_NULL(sf);
+    fclose(sf);
+
+    // Check that the .i file is removed
+    sf = fopen(test_i_file, "r");
+    TEST_ASSERT_NULL(sf);
+
+    // Clean up
+    remove(s_file);
+}
