@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "driver.h"
 #include "../lexer/lexer.h"
 
@@ -50,7 +51,7 @@ static char *read_entire_file(const char *filename, long *out_file_size) {
 }
 
 // New function: mock compilation from .i to .s
-int run_compiler(const char *input_file) {
+int run_compiler(const char *input_file, bool lex_only) {
     const size_t len = strlen(input_file);
     if (len < 3 || strcmp(input_file + len - 2, ".i") != 0) {
         fprintf(stderr, "Input file should have a .i extension\n");
@@ -79,12 +80,19 @@ int run_compiler(const char *input_file) {
             error = 1;
             break;
         }
+        if (lex_only) {
+            printf("Token: type=%d", tok.type);
+            if (tok.lexeme) printf(", lexeme='%s'", tok.lexeme);
+            printf(", pos=%zu\n", tok.position);
+        }
         token_free(&tok);
     }
     free(src);
     if (error) {
-        // Do not produce .s file or remove .i file
         return 1;
+    }
+    if (lex_only) {
+        return 0;
     }
     // Write the mock assembly output
     FILE *f = fopen(output_file, "w");

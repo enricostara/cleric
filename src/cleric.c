@@ -1,5 +1,6 @@
 #include <stdio.h>
-
+#include <string.h>
+#include <stdbool.h>
 #include "driver/driver.h"
 
 
@@ -16,16 +17,30 @@
  * @return 0 on success, 1 on failure.
  */
 int main(int argc, char *argv[]) {
-    // Check for correct number of arguments
-    if (argc != 2) {
-        // Print usage message if incorrect number of arguments
-        fprintf(stderr, "Usage: %s <input_file.c>\n", argv[0]);
+    bool lex_only = false;
+    char *input_file = NULL;
+    if (argc == 3 && strcmp(argv[1], "--lex") == 0) {
+        lex_only = true;
+        input_file = argv[2];
+    } else if (argc == 2) {
+        input_file = argv[1];
+    } else {
+        fprintf(stderr, "Usage: %s [--lex] <input_file.c>\n", argv[0]);
         return 1;
     }
-
-    // Get the input file name from the command-line argument
-    char *input_file = argv[1];
-
-    // Call the preprocessor logic
-    return run_preprocessor(input_file);
+    if (run_preprocessor(input_file) != 0) return 1;
+    size_t len = strlen(input_file);
+    char i_file[1024];
+    strncpy(i_file, input_file, len - 2);
+    i_file[len - 2] = '\0';
+    strcat(i_file, ".i");
+    if (run_compiler(i_file, lex_only) != 0) return 1;
+    if (!lex_only) {
+        char s_file[1024];
+        strncpy(s_file, input_file, len - 2);
+        s_file[len - 2] = '\0';
+        strcat(s_file, ".s");
+        return run_assembler_linker(s_file);
+    }
+    return 0;
 }

@@ -41,7 +41,7 @@ void test_run_compiler_creates_s_file_and_removes_i(void) {
     fclose(f);
 
     // Run the compile function
-    int result = run_compiler(test_i_file);
+    const int result = run_compiler(test_i_file, false);
     TEST_ASSERT_EQUAL_INT(0, result);
 
     // Check that the .s file exists
@@ -60,6 +60,30 @@ void test_run_compiler_creates_s_file_and_removes_i(void) {
 
     // Clean up
     remove(s_file);
+}
+
+void test_run_compiler_lex_only(void) {
+    // Prepare a minimal .i file
+    const char* test_i_file = "test_lex_only.i";
+    FILE* f = fopen(test_i_file, "w");
+    fprintf(f, "int main(void) { return 2; }\n");
+    fclose(f);
+    // Run the compiler in lex_only mode
+    const int result = run_compiler(test_i_file, true);
+    TEST_ASSERT_EQUAL_INT(0, result);
+    // Should NOT produce a .s file
+    char s_file[64];
+    strncpy(s_file, test_i_file, strlen(test_i_file) - 2);
+    s_file[strlen(test_i_file) - 2] = '\0';
+    strcat(s_file, ".s");
+    const FILE* sf = fopen(s_file, "r");
+    TEST_ASSERT_NULL(sf);
+    // Should NOT remove the .i file
+    FILE* ifile = fopen(test_i_file, "r");
+    TEST_ASSERT_NOT_NULL(ifile);
+    fclose(ifile);
+    // Cleanup
+    remove(test_i_file);
 }
 
 void test_run_assembler_linker_creates_executable_and_removes_s(void) {
