@@ -58,8 +58,8 @@ Token lexer_next_token(Lexer* lexer) {
         const size_t id_len = lexer->pos - id_start;
         TokenType type;
         if (is_keyword(lexer->src + id_start, id_len, &type)) {
-            char* lexeme = strndup(lexer->src + id_start, id_len);
-            return (Token){type, lexeme, id_start};
+            // For keywords, do not allocate a lexeme (set to NULL)
+            return (Token){type, NULL, id_start};
         }
         char* lexeme = strndup(lexer->src + id_start, id_len);
         return (Token){TOKEN_IDENTIFIER, lexeme, id_start};
@@ -86,8 +86,8 @@ Token lexer_next_token(Lexer* lexer) {
     }
     if (sym_type != TOKEN_UNKNOWN) {
         lexer->pos++;
-        char* lexeme = strndup(&c, 1);
-        return (Token){sym_type, lexeme, start};
+        // No need to allocate lexeme for symbols; type is sufficient
+        return (Token){sym_type, NULL, start};
     }
     // Unknown/unrecognized character: return as TOKEN_UNKNOWN
     lexer->pos++;
@@ -100,5 +100,14 @@ Token lexer_next_token(Lexer* lexer) {
  * @param token Pointer to Token
  */
 void token_free(const Token* token) {
-    if (token->lexeme) free(token->lexeme);
+    if (!token) return;
+    switch (token->type) {
+        case TOKEN_IDENTIFIER:
+        case TOKEN_CONSTANT:
+            if (token->lexeme) free(token->lexeme);
+            break;
+        default:
+            // Keyword and symbol tokens: lexeme is NULL/static, do not free
+            break;
+    }
 }
