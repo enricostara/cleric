@@ -37,7 +37,7 @@ void test_run_compiler_creates_s_file_and_removes_i(void) {
     const char *test_i_file = "test_temp.i";
     FILE *f = fopen(test_i_file, "w");
     TEST_ASSERT_NOT_NULL(f);
-    fprintf(f, "int main() { return 2; }\n");
+    fprintf(f, "int main(void) { return 2; }\n");
     fclose(f);
 
     // Run the compile function

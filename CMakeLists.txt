@@ -38,8 +38,10 @@ add_executable(cleric
 # It includes multiple test files and the driver logic.
 add_executable(test_cleric
         tests/test_driver.c
+        tests/test_lexer.c
         tests/test_cleric.c
         src/driver/driver.c
+        src/lexer/lexer.c
 )
 target_link_libraries(test_cleric unity)
 target_include_directories(test_cleric PRIVATE include tests/unity)
