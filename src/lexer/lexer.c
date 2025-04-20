@@ -66,13 +66,20 @@ Token lexer_next_token(Lexer* lexer) {
     }
     // Integer constants: [0-9]+
     if (isdigit(c)) {
-        const size_t num_start = lexer->pos;
+        const size_t const_start = lexer->pos;
         lexer->pos++;
         while (lexer->pos < lexer->len && isdigit(lexer->src[lexer->pos]))
             lexer->pos++;
-        const size_t num_len = lexer->pos - num_start;
-        char* lexeme = strndup(lexer->src + num_start, num_len);
-        return (Token){TOKEN_CONSTANT, lexeme, num_start};
+        // Check for invalid trailing identifier part (e.g., 1foo)
+        if (lexer->pos < lexer->len && (isalpha(lexer->src[lexer->pos]) || lexer->src[lexer->pos] == '_')) {
+            // Emit TOKEN_UNKNOWN for the first invalid character
+            char bad_char = lexer->src[lexer->pos];
+            lexer->pos++;
+            char* lexeme = strndup(&bad_char, 1);
+            return (Token){TOKEN_UNKNOWN, lexeme, lexer->pos - 1};
+        }
+        char* lexeme = strndup(lexer->src + const_start, lexer->pos - const_start);
+        return (Token){TOKEN_CONSTANT, lexeme, const_start};
     }
     // Single-character symbols
     TokenType sym_type = TOKEN_UNKNOWN;

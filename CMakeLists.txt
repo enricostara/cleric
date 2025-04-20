@@ -29,6 +29,7 @@ add_library(unity tests/unity/unity.c)
 add_executable(cleric
         src/cleric.c
         src/driver/driver.c
+        src/lexer/lexer.c
 )
 
 # --------------------------------------

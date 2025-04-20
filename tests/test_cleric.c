@@ -9,6 +9,7 @@ void test_run_compiler_lex_only(void);
 void test_run_assembler_linker_creates_executable_and_removes_s(void);
 void test_tokenize_minimal_c(void);
 void test_tokenize_unknown_token(void);
+void test_tokenize_invalid_identifier(void);
 
 int main(void) {
     UNITY_BEGIN();
@@ -18,5 +19,6 @@ int main(void) {
     RUN_TEST(test_run_assembler_linker_creates_executable_and_removes_s);
     RUN_TEST(test_tokenize_minimal_c);
     RUN_TEST(test_tokenize_unknown_token);
+    RUN_TEST(test_tokenize_invalid_identifier);
     return UNITY_END();
 }

@@ -103,3 +103,24 @@ void test_tokenize_unknown_token(void) {
     TEST_ASSERT_EQUAL(TOKEN_EOF, tok.type);
     token_free(&tok);
 }
+
+void test_tokenize_invalid_identifier(void) {
+    // Input: constant immediately followed by identifier (invalid in C): 1foo
+    const char* src = "int main() { return 1foo; }";
+    Lexer lexer;
+    lexer_init(&lexer, src);
+    Token tok;
+    int found_invalid = 0;
+    while ((tok = lexer_next_token(&lexer)).type != TOKEN_EOF) {
+        if (tok.type == TOKEN_UNKNOWN) {
+            found_invalid = 1;
+            TEST_ASSERT_NOT_NULL(tok.lexeme);
+            // Should catch the 'f' as invalid after '1'
+            TEST_ASSERT_EQUAL_CHAR('f', tok.lexeme[0]);
+            token_free(&tok);
+            break;
+        }
+        token_free(&tok);
+    }
+    TEST_ASSERT_TRUE_MESSAGE(found_invalid, "Lexer did not catch invalid identifier after constant");
+}
