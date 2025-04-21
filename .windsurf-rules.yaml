@@ -1,0 +1,7 @@
+# Windsurf Coding Style Rules
+
+c:
+  pointer_declaration_style: identifier
+  # This enforces 'char *foo' instead of 'char* foo' or 'char * foo'
+  # Applies to all pointer types in declarations and definitions.
+  # Other style rules can be added here as needed.

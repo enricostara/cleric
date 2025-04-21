@@ -1,9 +1,8 @@
 #include "../src/lexer/lexer.h"
 #include "unity/unity.h"
-#include <string.h>
 
 void test_tokenize_minimal_c(void) {
-    const char* src = "int main(void) { return 2; }\n";
+    const char *src = "int main(void) { return 2; }\n";
     Lexer lexer;
     lexer_init(&lexer, src);
     Token tok;
@@ -78,7 +77,7 @@ void test_tokenize_minimal_c(void) {
 
 void test_tokenize_unknown_token(void) {
     // The input contains an unrecognized character: '@'
-    const char* src = "int main() { @ }";
+    const char *src = "int main() { @ }";
     Lexer lexer;
     lexer_init(&lexer, src);
     Token tok;
@@ -106,7 +105,7 @@ void test_tokenize_unknown_token(void) {
 
 void test_tokenize_invalid_identifier(void) {
     // Input: constant immediately followed by identifier (invalid in C): 1foo
-    const char* src = "int main() { return 1foo; }";
+    const char *src = "int main() { return 1foo; }";
     Lexer lexer;
     lexer_init(&lexer, src);
     Token tok;

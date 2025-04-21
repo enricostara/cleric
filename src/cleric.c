@@ -19,7 +19,7 @@
  */
 
 // Parses CLI arguments. Sets *lex_only and returns input_file or NULL on error.
-static const char* parse_args(int argc, char *argv[], bool *lex_only) {
+static const char *parse_args(int argc, char *argv[], bool *lex_only) {
     *lex_only = false;
     if (argc == 3 && strcmp(argv[1], "--lex") == 0) {
         *lex_only = true;

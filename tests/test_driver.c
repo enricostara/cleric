@@ -64,7 +64,7 @@ void test_run_compiler_creates_s_file_and_removes_i(void) {
 
 void test_run_compiler_lex_only(void) {
     // Prepare a minimal .i file
-    const char* test_i_file = "test_lex_only.i";
+    const char *test_i_file = "test_lex_only.i";
     FILE* f = fopen(test_i_file, "w");
     fprintf(f, "int main(void) { return 2; }\n");
     fclose(f);

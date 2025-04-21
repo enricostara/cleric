@@ -30,8 +30,8 @@ typedef enum {
  */
 typedef struct {
     TokenType type;
-    char*     lexeme;
-    size_t    position;
+    char *lexeme;
+    size_t position;
 } Token;
 
 /**
@@ -41,7 +41,7 @@ typedef struct {
  * - len: total length of the input source string
  */
 typedef struct {
-    const char* src;
+    const char *src;
     size_t pos;
     size_t len;
 } Lexer;
@@ -51,7 +51,7 @@ typedef struct {
  * @param lexer Pointer to a Lexer struct
  * @param src   Null-terminated source string to tokenize
  */
-void lexer_init(Lexer* lexer, const char* src);
+void lexer_init(Lexer *lexer, const char *src);
 
 /**
  * Returns the next token from the input stream.
@@ -60,12 +60,12 @@ void lexer_init(Lexer* lexer, const char* src);
  * @param lexer Pointer to initialized Lexer
  * @return      Next Token in the input stream
  */
-Token lexer_next_token(Lexer* lexer);
+Token lexer_next_token(Lexer *lexer);
 
 /**
  * Frees resources held by a token (specifically, the lexeme string).
  * @param token Pointer to Token
  */
-void token_free(const Token* token);
+void token_free(const Token *token);
 
 #endif // LEXER_H

@@ -34,7 +34,6 @@ int run_preprocessor(const char *input_file) {
 // Mock assembly payload from return2.s
 static const char *mock_asm_payload = ".globl\t_main\n_main:\n\tmovl\t$2, %eax\n\tretq\n";
 
-
 // New function: mock compilation from .i to .s
 int run_compiler(const char *input_file, bool lex_only) {
     const size_t len = strlen(input_file);

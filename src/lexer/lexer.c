@@ -11,7 +11,7 @@
  * @param out_type Pointer to TokenType to set if matched
  * @return 1 if keyword, 0 otherwise
  */
-static int is_keyword(const char* str, size_t len, TokenType* out_type) {
+static int is_keyword(const char *str, const size_t len, TokenType *out_type) {
     if (len == 3 && strncmp(str, "int", 3) == 0) { *out_type = TOKEN_KEYWORD_INT; return 1; }
     if (len == 4 && strncmp(str, "void", 4) == 0) { *out_type = TOKEN_KEYWORD_VOID; return 1; }
     if (len == 6 && strncmp(str, "return", 6) == 0) { *out_type = TOKEN_KEYWORD_RETURN; return 1; }
@@ -21,7 +21,7 @@ static int is_keyword(const char* str, size_t len, TokenType* out_type) {
 /**
  * Initializes the lexer state for a given input string.
  */
-void lexer_init(Lexer* lexer, const char* src) {
+void lexer_init(Lexer *lexer, const char *src) {
     lexer->src = src;
     lexer->pos = 0;
     lexer->len = strlen(src);
@@ -31,7 +31,7 @@ void lexer_init(Lexer* lexer, const char* src) {
  * Advances the lexer position past any whitespace characters.
  * @param lexer Pointer to Lexer
  */
-static void skip_whitespace(Lexer* lexer) {
+static void skip_whitespace(Lexer *lexer) {
     while (lexer->pos < lexer->len && isspace(lexer->src[lexer->pos])) {
         lexer->pos++;
     }
@@ -42,7 +42,7 @@ static void skip_whitespace(Lexer* lexer) {
  * The returned token's lexeme must be freed by the caller.
  * If the end of input is reached, returns TOKEN_EOF.
  */
-Token lexer_next_token(Lexer* lexer) {
+Token lexer_next_token(Lexer *lexer) {
     skip_whitespace(lexer);
     size_t start = lexer->pos;
     if (lexer->pos >= lexer->len) {
@@ -61,7 +61,7 @@ Token lexer_next_token(Lexer* lexer) {
             // For keywords, do not allocate a lexeme (set to NULL)
             return (Token){type, NULL, id_start};
         }
-        char* lexeme = strndup(lexer->src + id_start, id_len);
+        char *lexeme = strndup(lexer->src + id_start, id_len);
         return (Token){TOKEN_IDENTIFIER, lexeme, id_start};
     }
     // Integer constants: [0-9]+
@@ -75,10 +75,10 @@ Token lexer_next_token(Lexer* lexer) {
             // Emit TOKEN_UNKNOWN for the first invalid character
             char bad_char = lexer->src[lexer->pos];
             lexer->pos++;
-            char* lexeme = strndup(&bad_char, 1);
+            char *lexeme = strndup(&bad_char, 1);
             return (Token){TOKEN_UNKNOWN, lexeme, lexer->pos - 1};
         }
-        char* lexeme = strndup(lexer->src + const_start, lexer->pos - const_start);
+        char *lexeme = strndup(lexer->src + const_start, lexer->pos - const_start);
         return (Token){TOKEN_CONSTANT, lexeme, const_start};
     }
     // Single-character symbols
@@ -98,7 +98,7 @@ Token lexer_next_token(Lexer* lexer) {
     }
     // Unknown/unrecognized character: return as TOKEN_UNKNOWN
     lexer->pos++;
-    char* lexeme = strndup(&c, 1);
+    char *lexeme = strndup(&c, 1);
     return (Token){TOKEN_UNKNOWN, lexeme, start};
 }
 
@@ -106,7 +106,7 @@ Token lexer_next_token(Lexer* lexer) {
  * Frees memory allocated for a token's lexeme.
  * @param token Pointer to Token
  */
-void token_free(const Token* token) {
+void token_free(const Token *token) {
     if (!token) return;
     switch (token->type) {
         case TOKEN_IDENTIFIER:

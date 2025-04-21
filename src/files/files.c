@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-char* filename_replace_ext(const char* input_file, const char* new_ext, char* dest, size_t dest_size) {
+char *filename_replace_ext(const char *input_file, const char *new_ext, char *dest, size_t dest_size) {
     if (!input_file || !new_ext || !dest || dest_size == 0) return NULL;
     size_t len = strlen(input_file);
     // Find last '.' in input_file
-    const char* dot = strrchr(input_file, '.');
+    const char *dot = strrchr(input_file, '.');
     size_t base_len = dot ? (size_t)(dot - input_file) : len;
     size_t ext_len = strlen(new_ext);
     if (base_len + ext_len + 1 > dest_size) return NULL; // +1 for null terminator
