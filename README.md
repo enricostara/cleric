@@ -33,13 +33,8 @@ make
 Unit tests are provided for all major modules:
 - Run all tests:
   ```sh
-  ctest
-  ```
-- Or run the test executable directly:
-  ```sh
   ./test_cleric
   ```
-
 
 ## License
 MIT (or specify your license here)
