@@ -1,22 +1,29 @@
+/*
+ * cleric.c - Main entry point for the Cleric C compiler
+ *
+ * This file handles command-line argument parsing, orchestrates the build pipeline, and manages
+ * the integration of the preprocessor, compiler, and assembler/linker stages.
+ *
+ * Pipeline:
+ *   1. Preprocess: Converts <input>.c to <input>.i using the system's C preprocessor (gcc -E).
+ *   2. Compile:    Converts <input>.i to <input>.s (mocked, with optional lex-only mode).
+ *   3. Assemble & Link: Converts <input>.s to an executable (unless in lex-only mode).
+ *
+ * Usage:
+ *   cleric [--lex] <input_file.c>
+ *     --lex  : Only lex the input and print tokens (no codegen or linking)
+ *
+ * This main file delegates file manipulation to src/files/files.c and uses driver logic in src/driver/driver.c.
+ *
+ * Test suites are provided in tests/ for each module.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include "driver/driver.h"
 #include "files/files.h"
 
-
-/**
- * The main entry point of the program.
- * 
- * This program takes a single command-line argument, the input C file.
- * It checks if the input file has a .c extension, and if so, it runs the
- * gcc preprocessor on the file and writes the output to a file with the
- * same name but with a .i extension.
- * 
- * @param argc The number of command-line arguments.
- * @param argv An array of command-line arguments.
- * @return 0 on success, 1 on failure.
- */
 
 // Parses CLI arguments. Sets *lex_only and returns input_file or NULL on error.
 static const char *parse_args(int argc, char *argv[], bool *lex_only) {
