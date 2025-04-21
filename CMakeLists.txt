@@ -30,6 +30,7 @@ add_executable(cleric
         src/cleric.c
         src/driver/driver.c
         src/lexer/lexer.c
+        src/files/files.c
 )
 
 # --------------------------------------
@@ -43,6 +44,7 @@ add_executable(test_cleric
         tests/test_cleric.c
         src/driver/driver.c
         src/lexer/lexer.c
+        src/files/files.c
 )
 target_link_libraries(test_cleric unity)
 target_include_directories(test_cleric PRIVATE include tests/unity)

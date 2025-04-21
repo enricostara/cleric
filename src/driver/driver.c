@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "driver.h"
 #include "../lexer/lexer.h"
+#include "../files/files.h"
 
 /**
  * Runs the gcc preprocessor on the input file and writes output to .i file.
@@ -33,22 +34,6 @@ int run_preprocessor(const char *input_file) {
 // Mock assembly payload from return2.s
 static const char *mock_asm_payload = ".globl\t_main\n_main:\n\tmovl\t$2, %eax\n\tretq\n";
 
-// Utility: read an entire file into a malloc'd buffer, null-terminated.
-// Returns NULL on error. Sets *out_size to file size if not NULL.
-static char *read_entire_file(const char *filename, long *out_file_size) {
-    FILE *in = fopen(filename, "r");
-    if (!in) return NULL;
-    fseek(in, 0, SEEK_END);
-    const long f_size = ftell(in);
-    fseek(in, 0, SEEK_SET);
-    char *buf = malloc(f_size + 1);
-    if (!buf) { fclose(in); return NULL; }
-    fread(buf, 1, f_size, in);
-    buf[f_size] = '\0';
-    fclose(in);
-    *out_file_size = f_size;
-    return buf;
-}
 
 // New function: mock compilation from .i to .s
 int run_compiler(const char *input_file, bool lex_only) {
