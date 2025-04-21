@@ -22,23 +22,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include "driver/driver.h"
+#include "lexer/lexer.h"
 #include "files/files.h"
+#include "args/args.h"
 
-
-// Parses CLI arguments. Sets *lex_only and returns input_file or NULL on error.
-static const char *parse_args(int argc, char *argv[], bool *lex_only) {
-    *lex_only = false;
-    if (argc == 3 && strcmp(argv[1], "--lex") == 0) {
-        *lex_only = true;
-        fprintf(stdout, "Lex-only mode enabled\n");
-        return argv[2];
-    }
-    if (argc == 2) {
-        return argv[1];
-    }
-    fprintf(stderr, "Usage: %s [--lex] <input_file.c>\n", argv[0]);
-    return NULL;
-}
 
 int main(int argc, char *argv[]) {
     bool lex_only = false;

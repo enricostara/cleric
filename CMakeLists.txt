@@ -31,6 +31,7 @@ add_executable(cleric
         src/driver/driver.c
         src/lexer/lexer.c
         src/files/files.c
+        src/args/args.c
 )
 
 # --------------------------------------
@@ -43,12 +44,14 @@ add_executable(test_cleric
         tests/test_driver.c
         tests/test_lexer.c
         tests/test_files.c
+        tests/test_args.c
         src/driver/driver.c
         src/lexer/lexer.c
         src/files/files.c
+        src/args/args.c
 )
 target_link_libraries(test_cleric unity)
-target_include_directories(test_cleric PRIVATE include tests/unity)
+target_include_directories(test_cleric PRIVATE include tests/unity src)
 
 # Register the test executable with CTest, so `ctest` will run it
 add_test(test_cleric test_cleric)
