@@ -82,11 +82,16 @@ void test_tokenize_unknown_token(void) {
     lexer_init(&lexer, src);
     Token tok;
     // Skip to the unknown token
-    tok = lexer_next_token(&lexer); token_free(&tok); // int
-    tok = lexer_next_token(&lexer); token_free(&tok); // main
-    tok = lexer_next_token(&lexer); token_free(&tok); // (
-    tok = lexer_next_token(&lexer); token_free(&tok); // )
-    tok = lexer_next_token(&lexer); token_free(&tok); // {
+    tok = lexer_next_token(&lexer);
+    token_free(&tok); // int
+    tok = lexer_next_token(&lexer);
+    token_free(&tok); // main
+    tok = lexer_next_token(&lexer);
+    token_free(&tok); // (
+    tok = lexer_next_token(&lexer);
+    token_free(&tok); // )
+    tok = lexer_next_token(&lexer);
+    token_free(&tok); // {
     // Now should get TOKEN_UNKNOWN for '@'
     tok = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL(TOKEN_UNKNOWN, tok.type);
@@ -122,4 +127,10 @@ void test_tokenize_invalid_identifier(void) {
         token_free(&tok);
     }
     TEST_ASSERT_TRUE_MESSAGE(found_invalid, "Lexer did not catch invalid identifier after constant");
+}
+
+void run_lexer_tests(void) {
+    RUN_TEST(test_tokenize_minimal_c);
+    RUN_TEST(test_tokenize_unknown_token);
+    RUN_TEST(test_tokenize_invalid_identifier);
 }

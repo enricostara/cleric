@@ -1,24 +1,21 @@
 #include "unity/unity.h"
 
-void setUp(void) {}
-void tearDown(void) {}
+void setUp(void) {
+}
 
-void test_run_preprocessor_creates_i_file(void);
-void test_run_compiler_creates_s_file_and_removes_i(void);
-void test_run_compiler_lex_only(void);
-void test_run_assembler_linker_creates_executable_and_removes_s(void);
-void test_tokenize_minimal_c(void);
-void test_tokenize_unknown_token(void);
-void test_tokenize_invalid_identifier(void);
+void tearDown(void) {
+}
+
+void run_driver_tests(void);
+
+void run_files_tests(void);
+
+void run_lexer_tests(void);
 
 int main(void) {
     UNITY_BEGIN();
-    RUN_TEST(test_run_preprocessor_creates_i_file);
-    RUN_TEST(test_run_compiler_creates_s_file_and_removes_i);
-    RUN_TEST(test_run_compiler_lex_only);
-    RUN_TEST(test_run_assembler_linker_creates_executable_and_removes_s);
-    RUN_TEST(test_tokenize_minimal_c);
-    RUN_TEST(test_tokenize_unknown_token);
-    RUN_TEST(test_tokenize_invalid_identifier);
+    run_driver_tests();
+    run_files_tests();
+    run_lexer_tests();
     return UNITY_END();
 }

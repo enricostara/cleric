@@ -39,9 +39,10 @@ add_executable(cleric
 # This executable runs all unit tests for the project.
 # It includes multiple test files and the driver logic.
 add_executable(test_cleric
+        tests/test_cleric.c
         tests/test_driver.c
         tests/test_lexer.c
-        tests/test_cleric.c
+        tests/test_files.c
         src/driver/driver.c
         src/lexer/lexer.c
         src/files/files.c
