@@ -16,10 +16,13 @@ int run_preprocessor(const char *input_file) {
         fprintf(stderr, "Input file should have a .c extension\n");
         return 1;
     }
+
     char output_file[1024];
-    strncpy(output_file, input_file, len - 2);
-    output_file[len - 2] = '\0';
-    strcat(output_file, ".i");
+    if (!filename_replace_ext(input_file, ".i", output_file, sizeof(output_file))) {
+        fprintf(stderr, "Failed to construct .i filename for %s\n", input_file);
+        return 1;
+    }
+
     char command[2048];
     snprintf(command, sizeof(command), "gcc -E -P %s -o %s", input_file, output_file);
     const int ret = system(command);
@@ -41,10 +44,13 @@ int run_compiler(const char *input_file, bool lex_only) {
         fprintf(stderr, "Input file should have a .i extension\n");
         return 1;
     }
+
     char output_file[1024];
-    strncpy(output_file, input_file, len - 2);
-    output_file[len - 2] = '\0';
-    strcat(output_file, ".s");
+    if (!filename_replace_ext(input_file, ".s", output_file, sizeof(output_file))) {
+        fprintf(stderr, "Failed to construct .s filename for %s\n", input_file);
+        return 1;
+    }
+
     // Use utility to read input file
     long fsize = 0;
     char *src = read_entire_file(input_file, &fsize);
@@ -105,11 +111,14 @@ int run_assembler_linker(const char *input_file) {
         fprintf(stderr, "Input file should have a .s extension\n");
         return 1;
     }
-    // Output file: remove .s extension
+
     char output_file[1024];
-    strncpy(output_file, input_file, len - 2);
-    output_file[len - 2] = '\0';
-    // Command: gcc <file.s> -o <file>
+    // Use empty string to remove the extension
+    if (!filename_replace_ext(input_file, "", output_file, sizeof(output_file))) {
+        fprintf(stderr, "Failed to construct output executable filename for %s\n", input_file);
+        return 1;
+    }
+
     char command[2048];
     snprintf(command, sizeof(command), "gcc %s -o %s", input_file, output_file);
     const int ret = system(command);

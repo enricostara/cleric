@@ -35,12 +35,12 @@ add_executable(cleric
 )
 
 # --------------------------------------
-# Test executable: 'test_cleric'
+# Test executable: 'test_all'
 # --------------------------------------
 # This executable runs all unit tests for the project.
 # It includes multiple test files and the driver logic.
-add_executable(test_cleric
-        tests/test_cleric.c
+add_executable(test_all
+        tests/test_all.c
         tests/test_driver.c
         tests/test_lexer.c
         tests/test_files.c
@@ -50,8 +50,8 @@ add_executable(test_cleric
         src/files/files.c
         src/args/args.c
 )
-target_link_libraries(test_cleric unity)
-target_include_directories(test_cleric PRIVATE include tests/unity src)
+target_link_libraries(test_all unity)
+target_include_directories(test_all PRIVATE include tests/unity src)
 
 # Register the test executable with CTest, so `ctest` will run it
-add_test(test_cleric test_cleric)
+add_test(test_all test_all)
