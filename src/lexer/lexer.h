@@ -8,18 +8,18 @@
  * Extend this enum as you add more C language features.
  */
 typedef enum {
-    TOKEN_IDENTIFIER,        // e.g., main, variable names
-    TOKEN_CONSTANT,          // e.g., 2, 42
-    TOKEN_KEYWORD_INT,       // 'int'
-    TOKEN_KEYWORD_VOID,      // 'void'
-    TOKEN_KEYWORD_RETURN,    // 'return'
-    TOKEN_SYMBOL_LPAREN,     // '('
-    TOKEN_SYMBOL_RPAREN,     // ')'
-    TOKEN_SYMBOL_LBRACE,     // '{'
-    TOKEN_SYMBOL_RBRACE,     // '}'
-    TOKEN_SYMBOL_SEMICOLON,  // ';'
-    TOKEN_EOF,               // End of input
-    TOKEN_UNKNOWN            // Unrecognized character/token
+    TOKEN_IDENTIFIER, // e.g., main, variable names
+    TOKEN_CONSTANT, // e.g., 2, 42
+    TOKEN_KEYWORD_INT, // 'int'
+    TOKEN_KEYWORD_VOID, // 'void'
+    TOKEN_KEYWORD_RETURN, // 'return'
+    TOKEN_SYMBOL_LPAREN, // '('
+    TOKEN_SYMBOL_RPAREN, // ')'
+    TOKEN_SYMBOL_LBRACE, // '{'
+    TOKEN_SYMBOL_RBRACE, // '}'
+    TOKEN_SYMBOL_SEMICOLON, // ';'
+    TOKEN_EOF, // End of input
+    TOKEN_UNKNOWN // Unrecognized character/token
 } TokenType;
 
 /**

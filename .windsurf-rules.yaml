@@ -5,3 +5,5 @@ c:
   # This enforces 'char *foo' instead of 'char* foo' or 'char * foo'
   # Applies to all pointer types in declarations and definitions.
   # Other style rules can be added here as needed.
+  clang_tidy_checks:
+    - readability-prefer-const-declarations

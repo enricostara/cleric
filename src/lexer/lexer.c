@@ -12,9 +12,18 @@
  * @return 1 if keyword, 0 otherwise
  */
 static int is_keyword(const char *str, const size_t len, TokenType *out_type) {
-    if (len == 3 && strncmp(str, "int", 3) == 0) { *out_type = TOKEN_KEYWORD_INT; return 1; }
-    if (len == 4 && strncmp(str, "void", 4) == 0) { *out_type = TOKEN_KEYWORD_VOID; return 1; }
-    if (len == 6 && strncmp(str, "return", 6) == 0) { *out_type = TOKEN_KEYWORD_RETURN; return 1; }
+    if (len == 3 && strncmp(str, "int", 3) == 0) {
+        *out_type = TOKEN_KEYWORD_INT;
+        return 1;
+    }
+    if (len == 4 && strncmp(str, "void", 4) == 0) {
+        *out_type = TOKEN_KEYWORD_VOID;
+        return 1;
+    }
+    if (len == 6 && strncmp(str, "return", 6) == 0) {
+        *out_type = TOKEN_KEYWORD_RETURN;
+        return 1;
+    }
     return 0;
 }
 
@@ -84,11 +93,16 @@ Token lexer_next_token(Lexer *lexer) {
     // Single-character symbols
     TokenType sym_type = TOKEN_UNKNOWN;
     switch (c) {
-        case '(': sym_type = TOKEN_SYMBOL_LPAREN; break;
-        case ')': sym_type = TOKEN_SYMBOL_RPAREN; break;
-        case '{': sym_type = TOKEN_SYMBOL_LBRACE; break;
-        case '}': sym_type = TOKEN_SYMBOL_RBRACE; break;
-        case ';': sym_type = TOKEN_SYMBOL_SEMICOLON; break;
+        case '(': sym_type = TOKEN_SYMBOL_LPAREN;
+            break;
+        case ')': sym_type = TOKEN_SYMBOL_RPAREN;
+            break;
+        case '{': sym_type = TOKEN_SYMBOL_LBRACE;
+            break;
+        case '}': sym_type = TOKEN_SYMBOL_RBRACE;
+            break;
+        case ';': sym_type = TOKEN_SYMBOL_SEMICOLON;
+            break;
         default: break;
     }
     if (sym_type != TOKEN_UNKNOWN) {

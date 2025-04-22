@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include "driver.h"
@@ -11,8 +10,8 @@
  * Returns 0 on success, 1 on failure.
  */
 int run_preprocessor(const char *input_file) {
-    const size_t len = strlen(input_file);
-    if (len < 3 || strcmp(input_file + len - 2, ".c") != 0) {
+    // Use utility to check extension
+    if (!filename_has_ext(input_file, ".c")) {
         fprintf(stderr, "Input file should have a .c extension\n");
         return 1;
     }
@@ -39,8 +38,8 @@ static const char *mock_asm_payload = ".globl\t_main\n_main:\n\tmovl\t$2, %eax\n
 
 // New function: mock compilation from .i to .s
 int run_compiler(const char *input_file, bool lex_only) {
-    const size_t len = strlen(input_file);
-    if (len < 3 || strcmp(input_file + len - 2, ".i") != 0) {
+    // Use utility to check extension
+    if (!filename_has_ext(input_file, ".i")) {
         fprintf(stderr, "Input file should have a .i extension\n");
         return 1;
     }
@@ -65,7 +64,8 @@ int run_compiler(const char *input_file, bool lex_only) {
     int error = 0;
     while ((tok = lexer_next_token(&lexer)).type != TOKEN_EOF) {
         if (tok.type == TOKEN_UNKNOWN) {
-            fprintf(stderr, "Lexical error: unknown token '%s' at position %zu\n", tok.lexeme ? tok.lexeme : "?", tok.position);
+            fprintf(stderr, "Lexical error: unknown token '%s' at position %zu\n", tok.lexeme ? tok.lexeme : "?",
+                    tok.position);
             token_free(&tok);
             error = 1;
             break;
@@ -85,17 +85,13 @@ int run_compiler(const char *input_file, bool lex_only) {
         return 0;
     }
     // Write the mock assembly output
-    FILE *f = fopen(output_file, "w");
-    if (!f) {
-        fprintf(stderr, "Failed to write to %s\n", output_file);
+    // Use utility to write file
+    if (!write_string_to_file(output_file, mock_asm_payload)) {
+        fprintf(stderr, "Failed to write assembly to %s\n", output_file);
+        // Attempt to remove the potentially incomplete output file
+        remove(output_file);
         return 1;
     }
-    if (fputs(mock_asm_payload, f) == EOF) {
-        fclose(f);
-        fprintf(stderr, "Failed to write payload to %s\n", output_file);
-        return 1;
-    }
-    fclose(f);
     // Remove the .i file if all is fine
     if (remove(input_file) != 0) {
         fprintf(stderr, "Warning: could not remove %s\n", input_file);
@@ -106,8 +102,8 @@ int run_compiler(const char *input_file, bool lex_only) {
 
 // Final step: assemble and link .s to executable, then remove .s if successful
 int run_assembler_linker(const char *input_file) {
-    const size_t len = strlen(input_file);
-    if (len < 3 || strcmp(input_file + len - 2, ".s") != 0) {
+    // Use utility to check extension
+    if (!filename_has_ext(input_file, ".s")) {
         fprintf(stderr, "Input file should have a .s extension\n");
         return 1;
     }
