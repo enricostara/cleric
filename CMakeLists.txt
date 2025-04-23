@@ -45,10 +45,12 @@ add_executable(test_all
         tests/test_lexer.c
         tests/test_files.c
         tests/test_args.c
+        tests/test_ast.c
         src/driver/driver.c
         src/lexer/lexer.c
         src/files/files.c
         src/args/args.c
+        src/parser/ast.c
 )
 target_link_libraries(test_all unity)
 target_include_directories(test_all PRIVATE include tests/unity src)

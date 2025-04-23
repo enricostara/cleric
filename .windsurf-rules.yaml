@@ -1,5 +1,8 @@
 # Windsurf Coding Style Rules
 
+testing_framework: Unity
+build_system: CMake
+
 c:
   pointer_declaration_style: identifier
   # This enforces 'char *foo' instead of 'char* foo' or 'char * foo'
