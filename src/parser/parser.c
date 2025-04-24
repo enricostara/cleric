@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h> // For va_list in parser_error
+#include <errno.h> // For errno and ERANGE
 
 // Forward declarations for static helper functions (parsing rules)
 static AstNode *parse_function_definition(Parser *parser);
@@ -25,19 +26,19 @@ static void parser_advance(Parser *parser);
 void parser_init(Parser *parser, Lexer *lexer) {
     parser->lexer = lexer;
     parser->error_flag = false;
-    parser->current_token = (Token){TOKEN_UNKNOWN, NULL, 0};
-    parser->peek_token = (Token){TOKEN_UNKNOWN, NULL, 0};
     parser_advance(parser);
     parser_advance(parser);
 }
 
 ProgramNode *parse_program(Parser *parser) {
+    // Parse the function definition
     AstNode *func_def_node = parse_function_definition(parser);
     if (parser->error_flag || !func_def_node) {
         free_ast(func_def_node); // Clean up partial AST if error
         return NULL;
     }
 
+    // Expect end of file
     if (parser->current_token.type != TOKEN_EOF) {
         char current_token_str[128];
         token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
@@ -46,6 +47,7 @@ ProgramNode *parse_program(Parser *parser) {
         return NULL;
     }
 
+    // Create a ProgramNode from the FuncDefNode
     ProgramNode *program_node = create_program_node((FuncDefNode *)func_def_node);
     return program_node;
 }
@@ -209,16 +211,34 @@ static AstNode *parse_expression(Parser *parser) {
 
 // PrimaryExpression: IntegerConstant | Identifier | '(' Expression ')'
 static AstNode *parse_primary_expression(Parser *parser) {
+    // ReSharper disable once CppDFAConstantConditions
     if (parser->error_flag) return NULL;
 
     switch (parser->current_token.type) {
         case TOKEN_CONSTANT: {
-            // Need error checking for atoi? Maybe later. Consider strtol for robustness.
-            long value = atol(parser->current_token.lexeme); // Use atol for potential future larger ints
-            // TODO: Add error handling for conversion (e.g., using strtol)
+            // Use strtol for robust integer conversion and error checking
+            char *end_ptr;
+            errno = 0; // Reset errno before calling strtol
+            long value = strtol(parser->current_token.lexeme, &end_ptr, 10);
+
+            // Error handling for strtol
+            if (errno == ERANGE) {
+                parser_error(parser, "Integer constant '%s' out of range for long.", parser->current_token.lexeme);
+                return NULL;
+            }
+            if (end_ptr == parser->current_token.lexeme) {
+                // No digits were found
+                parser_error(parser, "Invalid integer constant format '%s'.", parser->current_token.lexeme);
+                return NULL;
+            }
+            if (*end_ptr != '\0') {
+                // Extra characters after number
+                parser_error(parser, "Invalid characters after integer constant '%s'.", parser->current_token.lexeme);
+                return NULL;
+            }
+
             parser_advance(parser); // Consume the constant token
-            // Use the creation function from ast.h
-            return create_int_literal_node(value); // Aligned with ast.h
+            return create_int_literal_node(value); // Create the AST node
         }
         // Add cases for identifiers, parentheses, etc. later
         default: {
