@@ -73,9 +73,10 @@ int run_compiler(const char *input_file, bool lex_only) {
             break;
         }
         if (lex_only) {
-            printf("Token: type=%d", tok.type);
-            if (tok.lexeme) printf(", lexeme='%s'", tok.lexeme);
-            printf(", pos=%zu\n", tok.position);
+            // Use token_to_string for consistent output
+            char token_str[128];
+            token_to_string(tok, token_str, sizeof(token_str));
+            printf("%s, pos=%zu\n", token_str, tok.position);
         }
         token_free(&tok);
     }
