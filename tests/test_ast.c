@@ -73,12 +73,36 @@ static void test_create_program(void) {
     free_ast((AstNode *)program_node);
 }
 
+// Test case that calls ast_pretty_print (visual inspection needed)
+static void test_ast_pretty_print_output(void) {
+    // Build the same AST as in test_create_program
+    AstNode *expr = create_int_literal_node(2);
+    AstNode *ret_stmt = create_return_stmt_node(expr);
+    AstNode *func_body = ret_stmt;
+    AstNode *func_def = create_func_def_node(func_body);
+    ProgramNode *program_node = create_program_node((FuncDefNode *)func_def);
+    TEST_ASSERT_NOT_NULL(program_node);
+
+    // Print the AST - user should visually check the output
+    printf("\n--- AST Pretty Print Output Start ---\n");
+    ast_pretty_print((AstNode *)program_node, 0);
+    printf("--- AST Pretty Print Output End ---\n");
+
+    // Free the AST
+    free_ast((AstNode *)program_node);
+
+    // This test mainly checks that pretty_print runs without errors.
+    // Pass if no crash occurs. Output verification is manual.
+    TEST_PASS();
+}
+
 // Runner function for AST tests
 void run_ast_tests(void) {
     RUN_TEST(test_create_int_literal);
     RUN_TEST(test_create_return_stmt);
     RUN_TEST(test_create_func_def);
     RUN_TEST(test_create_program);
+    RUN_TEST(test_ast_pretty_print_output); 
     // Note: Testing free_ast thoroughly requires tools like valgrind.
     // These tests implicitly check that free_ast doesn't crash on valid trees.
 }

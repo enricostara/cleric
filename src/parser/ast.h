@@ -58,5 +58,8 @@ ProgramNode *create_program_node(FuncDefNode *function);
 // Function to free the entire AST (important for memory management)
 void free_ast(AstNode *node);
 
+// Function to pretty-print the AST starting from a given node
+void ast_pretty_print(AstNode *node, int initial_indent);
+
 
 #endif // AST_H

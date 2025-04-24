@@ -54,7 +54,7 @@ ProgramNode *create_program_node(FuncDefNode *function) {
 
 
 // Recursive function to free the AST
-void free_ast(AstNode *node) {
+void free_ast(AstNode *node) { // NOLINT(*-no-recursion)
     if (!node) {
         return;
     }
@@ -90,4 +90,61 @@ void free_ast(AstNode *node) {
 
     // Free the node itself after handling its children
     free(node);
+}
+
+// Helper function to print indentation
+static void print_indent(int level) {
+    for (int i = 0; i < level; ++i) {
+        printf("  "); // Print two spaces per indentation level
+    }
+}
+
+// Recursive function to pretty-print the AST
+void ast_pretty_print(AstNode *node, int indent_level) { // NOLINT(*-no-recursion)
+    if (!node) {
+        print_indent(indent_level);
+        printf("NULL_NODE\n");
+        return;
+    }
+
+    print_indent(indent_level);
+
+    switch (node->type) {
+        case NODE_PROGRAM: {
+            ProgramNode *prog_node = (ProgramNode *)node;
+            printf("Program(\n");
+            ast_pretty_print((AstNode *)prog_node->function, indent_level + 1);
+            print_indent(indent_level);
+            printf(")\n");
+            break;
+        }
+        case NODE_FUNC_DEF: {
+            FuncDefNode *func_node = (FuncDefNode *)node;
+            // In a real scenario, you'd print function name, return type, params here.
+            // For "int main(void)", we simplify:
+            printf("Function(name=\"main\",\n");
+            print_indent(indent_level + 1);
+            printf("body=\n");
+            ast_pretty_print(func_node->body, indent_level + 2); // Indent body further
+            print_indent(indent_level);
+            printf(")\n");
+            break;
+        }
+        case NODE_RETURN_STMT: {
+            ReturnStmtNode *ret_node = (ReturnStmtNode *)node;
+            printf("Return(\n");
+            ast_pretty_print(ret_node->expression, indent_level + 1);
+            print_indent(indent_level);
+            printf(")\n");
+            break;
+        }
+        case NODE_INT_LITERAL: {
+            IntLiteralNode *int_node = (IntLiteralNode *)node;
+            printf("Constant(%ld)\n", int_node->value);
+            break;
+        }
+        default:
+            printf("UnknownNode(type=%d)\n", node->type);
+            break;
+    }
 }
