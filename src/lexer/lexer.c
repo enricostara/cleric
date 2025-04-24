@@ -39,6 +39,13 @@ void lexer_init(Lexer *lexer, const char *src) {
 }
 
 /**
+ * Resets the lexer's position to the beginning of the source string.
+ */
+void lexer_reset(Lexer *lexer) {
+    lexer->pos = 0;
+}
+
+/**
  * Advances the lexer position past any whitespace characters.
  * @param lexer Pointer to Lexer
  */

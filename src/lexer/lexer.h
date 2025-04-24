@@ -63,6 +63,12 @@ void lexer_init(Lexer *lexer, const char *src);
 Token lexer_next_token(Lexer *lexer);
 
 /**
+ * Resets the lexer's position to the beginning of the source string.
+ * @param lexer Pointer to initialized Lexer
+ */
+void lexer_reset(Lexer *lexer);
+
+/**
  * Function to create a string representation of a token (for debugging/printing)
  * Writes the representation into the provided buffer.
  */

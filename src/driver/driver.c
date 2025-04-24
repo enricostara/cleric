@@ -60,12 +60,12 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
         return 1;
     }
 
-    // --- Lexing Phase --- Always lex to check for errors
-    Lexer lexer_check; // Use a separate lexer instance for the initial check
-    lexer_init(&lexer_check, src);
+    // --- Lexing Phase --- Use a single lexer instance
+    Lexer lexer;
+    lexer_init(&lexer, src);
     Token tok;
     int error = 0;
-    while ((tok = lexer_next_token(&lexer_check)).type != TOKEN_EOF) {
+    while ((tok = lexer_next_token(&lexer)).type != TOKEN_EOF) {
         if (tok.type == TOKEN_UNKNOWN) {
             // Use token_to_string for better error message
             char token_str[128];
@@ -95,13 +95,12 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
         return 0;
     }
 
-    // --- Parsing Phase --- (Only if not lex_only)
-    // We need a new lexer instance because the previous one consumed the tokens
-    Lexer lexer_parse;
-    lexer_init(&lexer_parse, src); // Initialize with the same source
+    // --- Reset Lexer for Parsing --- (Only if not lex_only)
+    lexer_reset(&lexer); // Reset position to the beginning
 
+    // --- Parsing Phase --- (Only if not lex_only)
     Parser parser;
-    parser_init(&parser, &lexer_parse);
+    parser_init(&parser, &lexer);
 
     printf("Parsing...\n");
     ProgramNode *ast_root = parse_program(&parser); // Parse the program
