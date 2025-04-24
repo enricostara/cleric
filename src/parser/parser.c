@@ -39,7 +39,9 @@ ProgramNode *parse_program(Parser *parser) {
     }
 
     if (parser->current_token.type != TOKEN_EOF) {
-        parser_error(parser, "Expected end of file after function definition, but got token type %d", parser->current_token.type);
+        char current_token_str[128];
+        token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
+        parser_error(parser, "Expected end of file after function definition, but got %s", current_token_str);
         free_ast(func_def_node);
         return NULL;
     }
@@ -64,8 +66,9 @@ static void parser_advance(Parser *parser) {
 
     // Check if the lexer encountered an unknown token
     if (parser->peek_token.type == TOKEN_UNKNOWN && !parser->error_flag) {
-        parser_error(parser, "Syntax Error: Unrecognized token '%s'",
-                     parser->peek_token.lexeme ? parser->peek_token.lexeme : "?");
+        char peek_token_str[128];
+        token_to_string(parser->peek_token, peek_token_str, sizeof(peek_token_str));
+        parser_error(parser, "Syntax Error: Unrecognized token %s", peek_token_str);
     }
 }
 
@@ -73,8 +76,7 @@ static void parser_consume(Parser *parser, TokenType expected_type) {
     if (parser->current_token.type == expected_type) {
         parser_advance(parser);
     } else {
-        // Prepare token string for error message
-        char current_token_str[128]; // Use a reasonable buffer size
+        char current_token_str[128];
         token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
 
         char expected_token_str[128];
@@ -107,7 +109,9 @@ static AstNode *parse_function_definition(Parser *parser) {
     if (parser->error_flag) return NULL;
 
     if (parser->current_token.type != TOKEN_IDENTIFIER) {
-        parser_error(parser, "Expected function name (identifier) after 'int'");
+        char current_token_str[128];
+        token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
+        parser_error(parser, "Expected function name (identifier) after 'int', but got %s", current_token_str);
         return NULL;
     }
     // Ignore the function name for now, as the simple AST doesn't store it.

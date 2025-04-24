@@ -64,8 +64,10 @@ int run_compiler(const char *input_file, bool lex_only) {
     int error = 0;
     while ((tok = lexer_next_token(&lexer)).type != TOKEN_EOF) {
         if (tok.type == TOKEN_UNKNOWN) {
-            fprintf(stderr, "Lexical error: unknown token '%s' at position %zu\n", tok.lexeme ? tok.lexeme : "?",
-                    tok.position);
+            // Use token_to_string for better error message
+            char token_str[128];
+            token_to_string(tok, token_str, sizeof(token_str));
+            fprintf(stderr, "Lexical error: unknown token %s at position %zu\n", token_str, tok.position);
             token_free(&tok);
             error = 1;
             break;
