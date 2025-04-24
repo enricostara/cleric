@@ -28,10 +28,13 @@ add_library(unity tests/unity/unity.c)
 # This is the main compiler driver, combining the CLI and driver logic
 add_executable(cleric
         src/cleric.c
+
         src/driver/driver.c
         src/lexer/lexer.c
         src/files/files.c
         src/args/args.c
+        src/parser/ast.c
+        src/parser/parser.c
 )
 
 # --------------------------------------
