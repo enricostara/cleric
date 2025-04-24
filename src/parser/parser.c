@@ -12,7 +12,7 @@ static AstNode *parse_expression(Parser *parser);
 static AstNode *parse_primary_expression(Parser *parser);
 
 // Helper function to consume a token and advance
-static void parser_consume(Parser *parser, TokenType expected_type);
+static bool parser_consume(Parser *parser, TokenType expected_type);
 
 // Helper function to report errors
 static void parser_error(Parser *parser, const char *format, ...);
@@ -50,7 +50,7 @@ ProgramNode *parse_program(Parser *parser) {
     return program_node;
 }
 
-void parser_destroy(Parser *parser) {
+void parser_destroy(const Parser *parser) {
     // Free any remaining tokens if necessary (e.g., if parsing stopped mid-way)
     token_free(&parser->current_token);
     token_free(&parser->peek_token);
@@ -72,20 +72,22 @@ static void parser_advance(Parser *parser) {
     }
 }
 
-static void parser_consume(Parser *parser, TokenType expected_type) {
+static bool parser_consume(Parser *parser, const TokenType expected_type) {
     if (parser->current_token.type == expected_type) {
         parser_advance(parser);
-    } else {
-        char current_token_str[128];
-        token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
-
-        char expected_token_str[128];
-        token_to_string((Token){expected_type, NULL, 0}, expected_token_str, sizeof(expected_token_str)); // Get string for expected type
-
-        parser_error(parser, "Expected token %s, but got %s", expected_token_str, current_token_str);
+        // Check if parser_advance itself encountered an error (like TOKEN_UNKNOWN)
+        return !parser->error_flag; // Return true if no error occurred during advance
     }
-}
+    char current_token_str[128];
+    token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
 
+    char expected_token_str[128];
+    // Create a dummy token just for getting the string representation
+    token_to_string((Token){expected_type, "expected", 0}, expected_token_str, sizeof(expected_token_str));
+
+    parser_error(parser, "Expected token %s, but got %s", expected_token_str, current_token_str);
+    return false; // Indicate failure
+}
 
 static void parser_error(Parser *parser, const char *format, ...) {
     if (!parser->error_flag) { // Report only the first error
@@ -105,9 +107,12 @@ static void parser_error(Parser *parser, const char *format, ...) {
 static AstNode *parse_function_definition(Parser *parser) {
     if (parser->error_flag) return NULL; // Don't proceed if an error already occurred
 
-    parser_consume(parser, TOKEN_KEYWORD_INT);
-    if (parser->error_flag) return NULL;
+    // Expect 'int' keyword
+    if (!parser_consume(parser, TOKEN_KEYWORD_INT)) {
+        return NULL; // Error handled and flag set inside parser_consume
+    }
 
+    // Expect function name (identifier)
     if (parser->current_token.type != TOKEN_IDENTIFIER) {
         char current_token_str[128];
         token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
@@ -115,31 +120,40 @@ static AstNode *parse_function_definition(Parser *parser) {
         return NULL;
     }
     // Ignore the function name for now, as the simple AST doesn't store it.
-    parser_advance(parser); // Consume identifier
+    parser_advance(parser); // Consume identifier - Note: parser_advance doesn't return status
+    // ReSharper disable once CppDFAConstantConditions
+    if (parser->error_flag) return NULL; // Check error after explicit advance
 
-    parser_consume(parser, TOKEN_SYMBOL_LPAREN);
-    if (parser->error_flag) return NULL;
+    // Expect '('
+    if (!parser_consume(parser, TOKEN_SYMBOL_LPAREN)) {
+        return NULL; // Error handled and flag set inside parser_consume
+    }
 
     // Simplified: Assume 'void' parameter for now
-    parser_consume(parser, TOKEN_KEYWORD_VOID);
-    if (parser->error_flag) return NULL;
+    if (!parser_consume(parser, TOKEN_KEYWORD_VOID)) {
+        return NULL; // Error handled and flag set inside parser_consume
+    }
 
-    parser_consume(parser, TOKEN_SYMBOL_RPAREN);
-    if (parser->error_flag) return NULL;
+    // Expect ')'
+    if (!parser_consume(parser, TOKEN_SYMBOL_RPAREN)) {
+        return NULL; // Error handled and flag set inside parser_consume
+    }
 
-    parser_consume(parser, TOKEN_SYMBOL_LBRACE);
-    if (parser->error_flag) return NULL;
+    // Expect '{'
+    if (!parser_consume(parser, TOKEN_SYMBOL_LBRACE)) {
+        return NULL; // Error handled and flag set inside parser_consume
+    }
 
+    // Parse the statement block (simplified to one statement)
     AstNode *body_statement = parse_statement(parser);
-    if (parser->error_flag || !body_statement) {
-        free_ast(body_statement); // Clean up potentially partial statement
+    if (!body_statement) { // Check if statement parsing failed (error flag should be set)
         return NULL;
     }
 
-    parser_consume(parser, TOKEN_SYMBOL_RBRACE);
-    if (parser->error_flag) {
-        free_ast(body_statement);
-        return NULL;
+    // Expect '}'
+    if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
+        free_ast(body_statement); // Clean up allocated statement node on error
+        return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Use the creation function from ast.h, which only takes the body
@@ -168,7 +182,6 @@ static AstNode *parse_return_statement(Parser *parser) {
     if (parser->error_flag) return NULL;
 
     parser_consume(parser, TOKEN_KEYWORD_RETURN); // Consume 'return'
-    if (parser->error_flag) return NULL;
 
     AstNode *expression = parse_expression(parser);
     if (parser->error_flag || !expression) {
@@ -178,7 +191,7 @@ static AstNode *parse_return_statement(Parser *parser) {
 
     parser_consume(parser, TOKEN_SYMBOL_SEMICOLON);
     if (parser->error_flag) {
-        free_ast(expression);
+        free_ast(expression); // Clean up expression if semicolon is missing
         return NULL;
     }
 
