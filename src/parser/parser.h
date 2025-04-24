@@ -43,6 +43,19 @@ void parser_init(Parser *parser, Lexer *lexer);
  */
 ProgramNode *parse_program(Parser *parser);
 
+/**
+ * @brief Cleans up resources used by the parser.
+ *
+ * Currently, this function doesn't have specific resources to free
+ * within the Parser struct itself (like dynamically allocated buffers),
+ * but it's good practice to have a destroy function paired with init.
+ * It does NOT free the associated Lexer or the returned AST; that's the
+ * responsibility of the caller.
+ *
+ * @param parser Pointer to the Parser struct to destroy.
+ */
+void parser_destroy(const Parser *parser);
+
 // Note: We don't declare parser_advance, parser_consume, or the specific
 // parse_* grammar rule functions here because they are internal implementation
 // details managed within parser.c.

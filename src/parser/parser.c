@@ -181,6 +181,7 @@ static AstNode *parse_statement(Parser *parser) {
 
 // ReturnStatement: 'return' Expression ';'
 static AstNode *parse_return_statement(Parser *parser) {
+    // ReSharper disable once CppDFAConstantConditions
     if (parser->error_flag) return NULL;
 
     parser_consume(parser, TOKEN_KEYWORD_RETURN); // Consume 'return'
