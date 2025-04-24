@@ -29,7 +29,8 @@
 
 int main(int argc, char *argv[]) {
     bool lex_only = false;
-    const char *input_file = parse_args(argc, argv, &lex_only);
+    bool parse_only = false;
+    const char *input_file = parse_args(argc, argv, &lex_only, &parse_only);
     if (!input_file) return 1;
     if (run_preprocessor(input_file) != 0) return 1;
     char i_file[1024];
@@ -37,8 +38,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Failed to construct .i filename\n");
         return 1;
     }
-    if (run_compiler(i_file, lex_only) != 0) return 1;
-    if (!lex_only) {
+    // Pass both flags to the compiler driver
+    if (run_compiler(i_file, lex_only, parse_only) != 0) return 1;
+
+    // Skip assembly/linking if either lex-only or parse-only mode is active
+    if (!lex_only && !parse_only) {
         char s_file[1024];
         if (!filename_replace_ext(input_file, ".s", s_file, sizeof(s_file))) {
             fprintf(stderr, "Failed to construct .s filename\n");
