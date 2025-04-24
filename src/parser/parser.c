@@ -7,9 +7,13 @@
 
 // Forward declarations for static helper functions (parsing rules)
 static AstNode *parse_function_definition(Parser *parser);
+
 static AstNode *parse_statement(Parser *parser);
+
 static AstNode *parse_return_statement(Parser *parser);
+
 static AstNode *parse_expression(Parser *parser);
+
 static AstNode *parse_primary_expression(Parser *parser);
 
 // Helper function to consume a token and advance
@@ -48,7 +52,7 @@ ProgramNode *parse_program(Parser *parser) {
     }
 
     // Create a ProgramNode from the FuncDefNode
-    ProgramNode *program_node = create_program_node((FuncDefNode *)func_def_node);
+    ProgramNode *program_node = create_program_node((FuncDefNode *) func_def_node);
     return program_node;
 }
 
@@ -92,7 +96,8 @@ static bool parser_consume(Parser *parser, const TokenType expected_type) {
 }
 
 static void parser_error(Parser *parser, const char *format, ...) {
-    if (!parser->error_flag) { // Report only the first error
+    if (!parser->error_flag) {
+        // Report only the first error
         parser->error_flag = true;
         fprintf(stderr, "Parse Error (near pos %zu): ", parser->current_token.position);
         va_list args;
@@ -148,7 +153,8 @@ static AstNode *parse_function_definition(Parser *parser) {
 
     // Parse the statement block (simplified to one statement)
     AstNode *body_statement = parse_statement(parser);
-    if (!body_statement) { // Check if statement parsing failed (error flag should be set)
+    if (!body_statement) {
+        // Check if statement parsing failed (error flag should be set)
         return NULL;
     }
 
@@ -187,13 +193,13 @@ static AstNode *parse_return_statement(Parser *parser) {
     parser_consume(parser, TOKEN_KEYWORD_RETURN); // Consume 'return'
 
     AstNode *expression = parse_expression(parser);
+    // ReSharper disable once CppDFAConstantConditions
     if (parser->error_flag || !expression) {
         free_ast(expression); // Clean up potentially partial expression
         return NULL;
     }
 
-    parser_consume(parser, TOKEN_SYMBOL_SEMICOLON);
-    if (parser->error_flag) {
+    if (!parser_consume(parser, TOKEN_SYMBOL_SEMICOLON)) {
         free_ast(expression); // Clean up expression if semicolon is missing
         return NULL;
     }
@@ -220,7 +226,7 @@ static AstNode *parse_primary_expression(Parser *parser) {
             // Use strtol for robust integer conversion and error checking
             char *end_ptr;
             errno = 0; // Reset errno before calling strtol
-            long value = strtol(parser->current_token.lexeme, &end_ptr, 10);
+            const long value = strtol(parser->current_token.lexeme, &end_ptr, 10);
 
             // Error handling for strtol
             if (errno == ERANGE) {
