@@ -63,6 +63,12 @@ void lexer_init(Lexer *lexer, const char *src);
 Token lexer_next_token(Lexer *lexer);
 
 /**
+ * Function to create a string representation of a token (for debugging/printing)
+ * Writes the representation into the provided buffer.
+ */
+void token_to_string(Token token, char *buffer, size_t buffer_size);
+
+/**
  * Frees resources held by a token (specifically, the lexeme string).
  * @param token Pointer to Token
  */

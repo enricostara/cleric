@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 /**
  * Checks if the given string matches a reserved keyword.
@@ -131,4 +133,63 @@ void token_free(const Token *token) {
             // Keyword and symbol tokens: lexeme is NULL/static, do not free
             break;
     }
+}
+
+
+// Function to create a string representation of a token
+void token_to_string(Token token, char *buffer, size_t buffer_size) {
+    if (!buffer || buffer_size == 0) return; // Safety check
+
+    const char *type_str;
+    bool has_lexeme = false;
+
+    switch (token.type) {
+        // Keywords
+        case TOKEN_KEYWORD_INT: type_str = "INT";
+            break;
+        case TOKEN_KEYWORD_VOID: type_str = "VOID";
+            break;
+        case TOKEN_KEYWORD_RETURN: type_str = "RETURN";
+            break;
+        // Add other keywords here...
+
+        // Identifiers and Literals
+        case TOKEN_IDENTIFIER: type_str = "IDENTIFIER";
+            has_lexeme = true;
+            break;
+        case TOKEN_CONSTANT: type_str = "CONSTANT";
+            has_lexeme = true;
+            break;
+
+        // Symbols
+        case TOKEN_SYMBOL_LPAREN: type_str = "'('";
+            break;
+        case TOKEN_SYMBOL_RPAREN: type_str = "')'";
+            break;
+        case TOKEN_SYMBOL_LBRACE: type_str = "'{'";
+            break;
+        case TOKEN_SYMBOL_RBRACE: type_str = "'}'";
+            break;
+        case TOKEN_SYMBOL_SEMICOLON: type_str = "';'";
+            break;
+        // Add other symbols here...
+
+        // Special Tokens
+        case TOKEN_EOF: type_str = "EOF";
+            break;
+        case TOKEN_UNKNOWN: type_str = "UNKNOWN";
+            has_lexeme = true;
+            break; // Show unknown lexeme
+
+        default: type_str = "INVALID_TYPE";
+            break;
+    }
+
+    if (has_lexeme && token.lexeme) {
+        snprintf(buffer, buffer_size, "%s('%s')", type_str, token.lexeme);
+    } else {
+        snprintf(buffer, buffer_size, "%s", type_str);
+    }
+    // Ensure null termination even if snprintf truncates
+    buffer[buffer_size - 1] = '\0';
 }

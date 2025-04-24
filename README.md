@@ -36,8 +36,8 @@ Unit tests are provided for all major modules:
   ./test_cleric
   ```
 
-## License
-MIT (or specify your license here)
+## License 
+Permissive BSD 2-Clause License
 
 ---
 For educational reference. Contributions and suggestions welcome!
