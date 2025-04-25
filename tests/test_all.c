@@ -8,6 +8,7 @@ void run_lexer_tests(void);
 void run_main_args_tests(void);
 void run_ast_tests(void);
 void run_parser_tests(void);
+void run_strings_tests(void); // Forward declaration for string tests
 
 // Global setUp and tearDown for all tests run by this main runner
 void setUp(void) {
@@ -38,6 +39,9 @@ int main(void) {
 
     printf("\n--- Running Parser Tests --- \n");
     run_parser_tests();
+
+    printf("\n--- Running Strings Tests --- \n");
+    run_strings_tests();
 
     return UNITY_END(); // Use UNITY_END() in the main runner
 }
