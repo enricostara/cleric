@@ -52,7 +52,7 @@ char *string_buffer_get_content(StringBuffer *sb);
  * Resets the struct members.
  * @param sb Pointer to the StringBuffer.
  */
-void string_buffer_free_data(StringBuffer *sb);
+void string_buffer_clear(StringBuffer *sb);
 
 
 #endif // STRINGS_H

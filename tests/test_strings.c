@@ -13,7 +13,7 @@ static void test_string_buffer_init_basic(void) {
     TEST_ASSERT_EQUAL_size_t(64, sb.capacity);
     TEST_ASSERT_EQUAL_size_t(0, sb.length);
     TEST_ASSERT_EQUAL_STRING("", sb.buffer);
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
 }
 
 // Test initialization with zero capacity (should use a default)
@@ -24,7 +24,7 @@ static void test_string_buffer_init_zero_capacity(void) {
     TEST_ASSERT_GREATER_THAN_size_t(0, sb.capacity);
     TEST_ASSERT_EQUAL_size_t(0, sb.length);
     TEST_ASSERT_EQUAL_STRING("", sb.buffer);
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
 }
 
 // Test simple appends without reallocation
@@ -37,7 +37,7 @@ static void test_string_buffer_append_simple(void) {
     string_buffer_append(&sb, ", World!");
     TEST_ASSERT_EQUAL_size_t(13, sb.length);
     TEST_ASSERT_EQUAL_STRING("Hello, World!", sb.buffer);
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
 }
 
 // Test appending formatted strings
@@ -49,7 +49,7 @@ static void test_string_buffer_append_formatted(void) {
     string_buffer_append(&sb, "Event: %s, Year: %d", event, year);
     TEST_ASSERT_EQUAL_size_t(strlen("Event: Test, Year: 2024"), sb.length);
     TEST_ASSERT_EQUAL_STRING("Event: Test, Year: 2024", sb.buffer);
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
 }
 
 // Test appending single characters
@@ -61,7 +61,7 @@ static void test_string_buffer_append_char_simple(void) {
     string_buffer_append_char(&sb, 'C');
     TEST_ASSERT_EQUAL_size_t(3, sb.length);
     TEST_ASSERT_EQUAL_STRING("ABC", sb.buffer);
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
 }
 
 // Test forcing reallocation with append
@@ -76,7 +76,7 @@ static void test_string_buffer_append_realloc(void) {
     TEST_ASSERT_EQUAL_size_t(7, sb.length);
     TEST_ASSERT_GREATER_THAN_size_t(7, sb.capacity); // Capacity should have increased
     TEST_ASSERT_EQUAL_STRING("1234567", sb.buffer);
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
 }
 
 // Test forcing reallocation with append_char
@@ -93,7 +93,7 @@ static void test_string_buffer_append_char_realloc(void) {
     TEST_ASSERT_EQUAL_size_t(3, sb.length);
     TEST_ASSERT_GREATER_THAN_size_t(3, sb.capacity);
     TEST_ASSERT_EQUAL_STRING("XYZ", sb.buffer);
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
 }
 
 // Test appending empty string
@@ -107,7 +107,7 @@ static void test_string_buffer_append_empty(void) {
     string_buffer_append(&sb, "");
     TEST_ASSERT_EQUAL_size_t(4, sb.length);
     TEST_ASSERT_EQUAL_STRING("Data", sb.buffer);
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
 }
 
 // Test getting content (transfers ownership)
@@ -137,7 +137,7 @@ static void test_string_buffer_free_data_simple(void) {
     string_buffer_append(&sb, "Some content");
     TEST_ASSERT_NOT_NULL(sb.buffer);
 
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
     TEST_ASSERT_NULL(sb.buffer);
     TEST_ASSERT_EQUAL_size_t(0, sb.capacity);
     TEST_ASSERT_EQUAL_size_t(0, sb.length);
@@ -147,9 +147,9 @@ static void test_string_buffer_free_data_simple(void) {
 static void test_string_buffer_free_data_empty(void) {
     StringBuffer sb;
     string_buffer_init(&sb, 1);
-    string_buffer_free_data(&sb);
+    string_buffer_clear(&sb);
     TEST_ASSERT_NULL(sb.buffer);
-    string_buffer_free_data(&sb); // Free again - should not crash
+    string_buffer_clear(&sb); // Free again - should not crash
     TEST_PASS(); // If we didn't crash
 }
 

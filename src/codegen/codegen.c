@@ -1,101 +1,118 @@
 #include "codegen.h"
 #include "../strings/strings.h" // Use the new string buffer
-
 #include <stdio.h>
+#include <stdbool.h> // Needed for bool
 
 // --- Forward declarations for static helper functions (AST visitors) ---
-static void generate_program(const ProgramNode *node, StringBuffer *sb);
-static void generate_function(const FuncDefNode *node, StringBuffer *sb);
-static void generate_statement(AstNode *node, StringBuffer *sb);
-static int generate_expression(AstNode *node); // Returns the value for literals for now
+static bool generate_program(const ProgramNode *node, StringBuffer *sb);
+static bool generate_function(const FuncDefNode *node, StringBuffer *sb);
+static bool generate_statement(AstNode *node, StringBuffer *sb); // Use base AstNode type
+static bool generate_expression(AstNode *node, int *out_value); // Modified to return value via out-param
 
 // --- Main function ---
-char *codegen_generate_assembly(ProgramNode *program) {
+
+bool codegen_generate_program(StringBuffer *sb, ProgramNode *program) {
     if (!program) {
         fprintf(stderr, "Codegen Error: Cannot generate assembly from NULL program AST\n");
-        return NULL;
+        return false; // Return false on error
     }
 
-    StringBuffer sb;
-    string_buffer_init(&sb, 1024);
+    string_buffer_clear(sb); // Ensure buffer is empty before generation
 
-    generate_program(program, &sb);
-
-    return string_buffer_get_content(&sb); // Transfers ownership
+    // Start the generation process
+    return generate_program(program, sb);
 }
 
 // --- Static helper function implementations ---
 
 // AST Visitors
-static void generate_program(const ProgramNode *node, StringBuffer *sb) {
+static bool generate_program(const ProgramNode *node, StringBuffer *sb) {
     // For now, assume program has exactly one function definition
     if (node->function) {
-        generate_function(node->function, sb);
+        if (!generate_function(node->function, sb)) { // Check return value
+            return false; // Propagate error
+        }
     } else {
         fprintf(stderr, "Codegen Error: Program node has no function definitions.\n");
-        // Handle error appropriately, maybe append nothing or an error comment
+        return false; // Error: no function
     }
+    return true; // Success
 }
 
-static void generate_function(const FuncDefNode *node, StringBuffer *sb) {
+static bool generate_function(const FuncDefNode *node, StringBuffer *sb) {
     // Basic structure for macOS x86-64
     string_buffer_append(sb, ".section .text\n");
     string_buffer_append(sb, ".globl _%s\n", node->name);
     string_buffer_append(sb, "_%s:\n", node->name);
 
-    // TODO: Function Prologue (stack setup, etc.) - Minimal for now
+    // Function Prologue (Minimal example)
+    // string_buffer_append(sb, "    pushq %%rbp\n");
+    // string_buffer_append(sb, "    movq %%rsp, %%rbp\n");
 
     // Generate code for the function body (statements)
     if (node->body) {
-        generate_statement(node->body, sb);
+        if (!generate_statement(node->body, sb)) { // Check return value
+            return false; // Propagate error
+        }
     }
 
-    // Function Epilogue
-    // For simple return, the return statement handles moving value to %eax
-    string_buffer_append(sb, "    retq\n");
+    // Function Epilogue (Minimal example - often handled by return)
+    // string_buffer_append(sb, "    popq %%rbp\n");
+    // Implicit 'retq' might be added by generate_statement for return, or needed here.
+    // For now, the return statement adds `retq`.
+    // string_buffer_append(sb, "    retq\n");
+    return true; // Success
 }
 
-static void generate_statement(AstNode *node, StringBuffer *sb) {
-    // ReSharper disable once CppDFAConstantConditions
-    if (!node) return;
+static bool generate_statement(AstNode *node, StringBuffer *sb) { // Use base AstNode type
+    if (!node) return true; // Or false? Decide if NULL statement is error.
+                           // Let's assume true for now (empty statement is ok).
 
-    switch (node->type) {
+    switch (node->type) { // Check type from the base node
         case NODE_RETURN_STMT:
         {
             ReturnStmtNode *ret_node = (ReturnStmtNode *)node;
             if (ret_node->expression) {
-                // Generate code for the expression to get value (into %eax)
-                const int return_value = generate_expression(ret_node->expression);
+                int value;
+                if (!generate_expression(ret_node->expression, &value)) { // Check return value
+                    return false; // Propagate error
+                }
                 // Move immediate value into return register (%eax)
-                string_buffer_append(sb, "    movl    $%d, %%eax\n", return_value);
+                string_buffer_append(sb, "    movl    $%d, %%eax\n", value);
             } else {
-                // Handle void return (e.g., `return;`) - maybe move 0 to eax?
+                // Handle void return (e.g., `return;`) - move 0 to eax
                 string_buffer_append(sb, "    movl    $0, %%eax\n");
             }
+            // Add the return instruction (important!)
+            string_buffer_append(sb, "    retq\n");
             break;
         }
-        // Add cases for other statement types later (e.g., STMT_EXPRESSION)
+        // Add cases for other statement types later
         default:
-            fprintf(stderr, "Codegen Warning: Unsupported statement type %d\n", node->type);
-            break;
+            fprintf(stderr, "Codegen Error: Unsupported statement type %d\n", node->type);
+            return false; // Error: unsupported statement
     }
+    return true; // Success
 }
 
-static int generate_expression(AstNode *node) {
+// Modified: Returns bool for success, value via out parameter
+static bool generate_expression(AstNode *node, int *out_value) {
     if (!node) {
         fprintf(stderr, "Codegen Error: Cannot generate code for NULL expression.\n");
-        return 0; // Or some error indicator
+        return false; // Error: null expression
     }
 
-    switch (node->type) {
+    switch (node->base.type) {
         case NODE_INT_LITERAL:
         {
-            const IntLiteralNode *int_node = (IntLiteralNode *)node;
-            return int_node->value;
+            IntLiteralNode *int_node = (IntLiteralNode *)node;
+            *out_value = int_node->value;
+            break;
         }
-        // Add cases for other expression types later (variables, operators, etc.)
+        // Add cases for other expression types later
         default:
-            fprintf(stderr, "Codegen Warning: Unsupported expression type %d\n", node->type);
-            return 0; // Default/error value
+            fprintf(stderr, "Codegen Error: Unsupported expression type %d\n", node->base.type);
+            return false; // Error: unsupported expression
     }
+    return true; // Success
 }

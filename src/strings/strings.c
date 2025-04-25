@@ -150,7 +150,7 @@ char *string_buffer_get_content(StringBuffer *sb) {
     return content;
 }
 
-void string_buffer_free_data(StringBuffer *sb) {
+void string_buffer_clear(StringBuffer *sb) {
     if (sb && sb->buffer) {
         free(sb->buffer);
         sb->buffer = NULL;
