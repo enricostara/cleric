@@ -5,7 +5,9 @@
 
 // --- Forward declarations for static helper functions (AST visitors) ---
 static bool generate_program(const ProgramNode *node, StringBuffer *sb);
+
 static bool generate_function(const FuncDefNode *node, StringBuffer *sb);
+
 static bool generate_statement(AstNode *node, StringBuffer *sb); // Use base AstNode type
 static bool generate_expression(AstNode *node, int *out_value); // Modified to return value via out-param
 
@@ -16,9 +18,8 @@ bool codegen_generate_program(StringBuffer *sb, ProgramNode *program) {
         fprintf(stderr, "Codegen Error: Cannot generate assembly from NULL program AST\n");
         return false; // Return false on error
     }
-
-    string_buffer_clear(sb); // Ensure buffer is empty before generation
-
+    // Ensure buffer is empty before generation
+    string_buffer_clear(sb);
     // Start the generation process
     return generate_program(program, sb);
 }
@@ -29,7 +30,8 @@ bool codegen_generate_program(StringBuffer *sb, ProgramNode *program) {
 static bool generate_program(const ProgramNode *node, StringBuffer *sb) {
     // For now, assume program has exactly one function definition
     if (node->function) {
-        if (!generate_function(node->function, sb)) { // Check return value
+        if (!generate_function(node->function, sb)) {
+            // Check return value
             return false; // Propagate error
         }
     } else {
@@ -51,7 +53,8 @@ static bool generate_function(const FuncDefNode *node, StringBuffer *sb) {
 
     // Generate code for the function body (statements)
     if (node->body) {
-        if (!generate_statement(node->body, sb)) { // Check return value
+        if (!generate_statement(node->body, sb)) {
+            // Check return value
             return false; // Propagate error
         }
     }
@@ -64,17 +67,19 @@ static bool generate_function(const FuncDefNode *node, StringBuffer *sb) {
     return true; // Success
 }
 
-static bool generate_statement(AstNode *node, StringBuffer *sb) { // Use base AstNode type
+static bool generate_statement(AstNode *node, StringBuffer *sb) {
+    // Use base AstNode type
     if (!node) return true; // Or false? Decide if NULL statement is error.
-                           // Let's assume true for now (empty statement is ok).
+    // Let's assume true for now (empty statement is ok).
 
-    switch (node->type) { // Check type from the base node
-        case NODE_RETURN_STMT:
-        {
-            ReturnStmtNode *ret_node = (ReturnStmtNode *)node;
+    switch (node->type) {
+        // Check type from the base node
+        case NODE_RETURN_STMT: {
+            ReturnStmtNode *ret_node = (ReturnStmtNode *) node;
             if (ret_node->expression) {
                 int value;
-                if (!generate_expression(ret_node->expression, &value)) { // Check return value
+                if (!generate_expression(ret_node->expression, &value)) {
+                    // Check return value
                     return false; // Propagate error
                 }
                 // Move immediate value into return register (%eax)
@@ -103,9 +108,8 @@ static bool generate_expression(AstNode *node, int *out_value) {
     }
 
     switch (node->base.type) {
-        case NODE_INT_LITERAL:
-        {
-            IntLiteralNode *int_node = (IntLiteralNode *)node;
+        case NODE_INT_LITERAL: {
+            const IntLiteralNode *int_node = (IntLiteralNode *) node;
             *out_value = int_node->value;
             break;
         }
