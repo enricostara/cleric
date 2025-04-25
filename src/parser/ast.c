@@ -1,6 +1,7 @@
 #include "ast.h"
 #include <stdlib.h> // For malloc, free
 #include <stdio.h>  // For error messages (optional)
+#include <string.h> // For strdup
 
 // Function to create an integer literal node
 AstNode *create_int_literal_node(const long value) {
@@ -29,13 +30,19 @@ AstNode *create_return_stmt_node(AstNode *expression) {
 }
 
 // Function to create a function definition node
-AstNode *create_func_def_node(AstNode *body) {
+AstNode *create_func_def_node(const char *name, AstNode *body) {
     FuncDefNode *node = malloc(sizeof(FuncDefNode));
     if (!node) {
         perror("Failed to allocate memory for FuncDefNode");
         return NULL;
     }
     node->base.type = NODE_FUNC_DEF;
+    node->func_name = name ? strdup(name) : NULL; // Duplicate the name string
+    if (name && !node->func_name) { // Check if strdup failed
+        perror("Failed to duplicate function name");
+        free(node);
+        return NULL;
+    }
     node->body = body; // Takes ownership of the body node
     return (AstNode *)node;
 }
@@ -70,6 +77,7 @@ void free_ast(AstNode *node) { // NOLINT(*-no-recursion)
             const FuncDefNode *func_node = (FuncDefNode *)node;
             // Assume func def owns its body
             free_ast(func_node->body); // Free children first
+            free(func_node->func_name); // Free the duplicated function name
             break;
         }
         case NODE_RETURN_STMT: {
@@ -121,8 +129,7 @@ void ast_pretty_print(AstNode *node, int indent_level) { // NOLINT(*-no-recursio
         case NODE_FUNC_DEF: {
             FuncDefNode *func_node = (FuncDefNode *)node;
             // In a real scenario, you'd print function name, return type, params here.
-            // For "int main(void)", we simplify:
-            printf("Function(name=\"main\",\n");
+            printf("Function(name=\"%s\",\n", func_node->func_name ? func_node->func_name : "<null>"); // Print actual name
             print_indent(indent_level + 1);
             printf("body=\n");
             ast_pretty_print(func_node->body, indent_level + 2); // Indent body further

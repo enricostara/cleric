@@ -43,7 +43,7 @@ static void test_create_func_def(void) {
     TEST_ASSERT_NOT_NULL(ret_stmt);
 
     // Create function definition node, passing ownership of the body
-    AstNode *func_def_node = create_func_def_node(ret_stmt);
+    AstNode *func_def_node = create_func_def_node("main", ret_stmt);
     TEST_ASSERT_NOT_NULL(func_def_node);
     TEST_ASSERT_EQUAL(NODE_FUNC_DEF, func_def_node->type);
 
@@ -60,7 +60,7 @@ static void test_create_program(void) {
     AstNode *expr = create_int_literal_node(2);
     AstNode *ret_stmt = create_return_stmt_node(expr);
     AstNode *func_body = ret_stmt; // Body is just the return statement
-    AstNode *func_def = create_func_def_node(func_body);
+    AstNode *func_def = create_func_def_node("main", func_body);
     TEST_ASSERT_NOT_NULL(func_def);
 
     // Create the program node, passing ownership of the function definition
@@ -79,7 +79,7 @@ static void test_ast_pretty_print_output(void) {
     AstNode *expr = create_int_literal_node(2);
     AstNode *ret_stmt = create_return_stmt_node(expr);
     AstNode *func_body = ret_stmt;
-    AstNode *func_def = create_func_def_node(func_body);
+    AstNode *func_def = create_func_def_node("main", func_body);
     ProgramNode *program_node = create_program_node((FuncDefNode *)func_def);
     TEST_ASSERT_NOT_NULL(program_node);
 

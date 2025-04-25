@@ -30,8 +30,7 @@ typedef struct {
 // Simplified for "int main(void) { return 2; }"
 typedef struct {
     AstNode base;       // type = NODE_FUNC_DEF
-    // For this simple case, we know the return type is 'int', name is 'main', params are 'void'
-    // We only need to store the body.
+    char *func_name;    // Name of the function (e.g., "main")
     AstNode *body;      // The statement inside the function (e.g., a ReturnStmtNode)
 } FuncDefNode;
 
@@ -49,8 +48,8 @@ AstNode *create_int_literal_node(long value);
 AstNode *create_return_stmt_node(AstNode *expression);
 
 // Function to create a function definition node (convenience constructor)
-// Takes the body statement as input
-AstNode *create_func_def_node(AstNode *body);
+// Takes the function name and body statement as input
+AstNode *create_func_def_node(const char *name, AstNode *body);
 
 // Function to create the program node (convenience constructor)
 ProgramNode *create_program_node(FuncDefNode *function);

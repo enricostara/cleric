@@ -126,7 +126,7 @@ static AstNode *parse_function_definition(Parser *parser) {
         parser_error(parser, "Expected function name (identifier) after 'int', but got %s", current_token_str);
         return NULL;
     }
-    // Ignore the function name for now, as the simple AST doesn't store it.
+    Token name_token = parser->current_token;
     parser_advance(parser); // Consume identifier - Note: parser_advance doesn't return status
     // ReSharper disable once CppDFAConstantConditions
     if (parser->error_flag) return NULL; // Check error after explicit advance
@@ -158,14 +158,14 @@ static AstNode *parse_function_definition(Parser *parser) {
         return NULL;
     }
 
-    // Expect '}'
+    // Expect '}' after the statement
     if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
         free_ast(body_statement); // Clean up allocated statement node on error
         return NULL; // Error handled and flag set inside parser_consume
     }
 
-    // Use the creation function from ast.h, which only takes the body
-    return create_func_def_node(body_statement); // Aligned with ast.h
+    // Create the function definition node using the parsed identifier name
+    return create_func_def_node(name_token.lexeme, body_statement); // Use parsed name
 }
 
 
