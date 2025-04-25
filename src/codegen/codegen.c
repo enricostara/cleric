@@ -4,10 +4,10 @@
 #include <stdio.h>
 
 // --- Forward declarations for static helper functions (AST visitors) ---
-static void generate_program(ProgramNode *node, StringBuffer *sb);
-static void generate_function(FuncDefNode *node, StringBuffer *sb);
-static void generate_statement(StmtNode *node, StringBuffer *sb);
-static int generate_expression(ExprNode *node); // Returns the value for literals for now
+static void generate_program(const ProgramNode *node, StringBuffer *sb);
+static void generate_function(const FuncDefNode *node, StringBuffer *sb);
+static void generate_statement(AstNode *node, StringBuffer *sb);
+static int generate_expression(AstNode *node); // Returns the value for literals for now
 
 // --- Main function ---
 char *codegen_generate_assembly(ProgramNode *program) {
@@ -27,17 +27,17 @@ char *codegen_generate_assembly(ProgramNode *program) {
 // --- Static helper function implementations ---
 
 // AST Visitors
-static void generate_program(ProgramNode *node, StringBuffer *sb) {
+static void generate_program(const ProgramNode *node, StringBuffer *sb) {
     // For now, assume program has exactly one function definition
-    if (node->functions && node->functions[0]) {
-        generate_function(node->functions[0], sb);
+    if (node->function) {
+        generate_function(node->function, sb);
     } else {
         fprintf(stderr, "Codegen Error: Program node has no function definitions.\n");
         // Handle error appropriately, maybe append nothing or an error comment
     }
 }
 
-static void generate_function(FuncDefNode *node, StringBuffer *sb) {
+static void generate_function(const FuncDefNode *node, StringBuffer *sb) {
     // Basic structure for macOS x86-64
     string_buffer_append(sb, ".section .text\n");
     string_buffer_append(sb, ".globl _%s\n", node->name);
@@ -55,16 +55,17 @@ static void generate_function(FuncDefNode *node, StringBuffer *sb) {
     string_buffer_append(sb, "    retq\n");
 }
 
-static void generate_statement(StmtNode *node, StringBuffer *sb) {
+static void generate_statement(AstNode *node, StringBuffer *sb) {
+    // ReSharper disable once CppDFAConstantConditions
     if (!node) return;
 
     switch (node->type) {
-        case STMT_RETURN:
+        case NODE_RETURN_STMT:
         {
             ReturnStmtNode *ret_node = (ReturnStmtNode *)node;
             if (ret_node->expression) {
                 // Generate code for the expression to get value (into %eax)
-                int return_value = generate_expression(ret_node->expression);
+                const int return_value = generate_expression(ret_node->expression);
                 // Move immediate value into return register (%eax)
                 string_buffer_append(sb, "    movl    $%d, %%eax\n", return_value);
             } else {
@@ -80,16 +81,16 @@ static void generate_statement(StmtNode *node, StringBuffer *sb) {
     }
 }
 
-static int generate_expression(ExprNode *node) {
+static int generate_expression(AstNode *node) {
     if (!node) {
         fprintf(stderr, "Codegen Error: Cannot generate code for NULL expression.\n");
         return 0; // Or some error indicator
     }
 
     switch (node->type) {
-        case EXPR_INT_LITERAL:
+        case NODE_INT_LITERAL:
         {
-            IntLiteralNode *int_node = (IntLiteralNode *)node;
+            const IntLiteralNode *int_node = (IntLiteralNode *)node;
             return int_node->value;
         }
         // Add cases for other expression types later (variables, operators, etc.)

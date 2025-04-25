@@ -30,7 +30,7 @@ typedef struct {
 // Simplified for "int main(void) { return 2; }"
 typedef struct {
     AstNode base;       // type = NODE_FUNC_DEF
-    char *func_name;    // Name of the function (e.g., "main")
+    char *name;    // Name of the function (e.g., "main")
     AstNode *body;      // The statement inside the function (e.g., a ReturnStmtNode)
 } FuncDefNode;
 
