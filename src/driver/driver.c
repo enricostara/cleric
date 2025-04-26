@@ -5,6 +5,8 @@
 #include "../lexer/lexer.h"
 #include "../parser/parser.h" // Include parser header
 #include "../parser/ast.h"    // Include AST header (for printing/freeing)
+#include "../codegen/codegen.h" // Include Codegen header
+#include "../strings/strings.h" // Include StringBuffer header
 #include "../files/files.h"
 
 /**
@@ -35,10 +37,7 @@ int run_preprocessor(const char *input_file) {
     return 0;
 }
 
-// Mock assembly payload from return2.s
-static const char *mock_asm_payload = ".globl\t_main\n_main:\n\tmovl\t$2, %eax\n\tretq\n";
-
-// New function: mock compilation from .i to .s
+// New function: compilation from .i to .s
 int run_compiler(const char *input_file, const bool lex_only, const bool parse_only) {
     // Use utility to check extension
     if (!filename_has_ext(input_file, ".i")) {
@@ -90,9 +89,12 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
         free(src); // Free source code on error
         return 1;
     }
+
+    int result = 1; // Default to error
+
     if (lex_only) {
-        free(src); // Free source code when done
-        return 0;
+        result = 0; // Lexing succeeded
+        goto cleanup_source; // Skip parsing and codegen if lex_only
     }
 
     // --- Reset Lexer for Parsing --- (Only if not lex_only)
@@ -105,42 +107,64 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
     printf("Parsing...\n");
     ProgramNode *ast_root = parse_program(&parser); // Parse the program
 
-    free(src); // Free source code
-
     if (parser.error_flag || !ast_root) {
         fprintf(stderr, "Parsing failed.\n");
-        free_ast((AstNode *) ast_root); // Attempt to free potentially partial tree
-        parser_destroy(&parser);
-        return 1;
+        result = 1;
+        goto cleanup_parser; // Go to cleanup
     }
 
     printf("Parsing successful. AST:\n");
     ast_pretty_print((AstNode *) ast_root, 0); // Pretty print the AST
 
-    free_ast((AstNode *) ast_root); // Free the AST
-    parser_destroy(&parser); // Clean up parser resources (if any)
-
     if (parse_only) {
-        // If parse_only, we stop here successfully.
-        return 0;
+        result = 0; // Success
+        goto cleanup_parser; // Skip codegen
     }
 
     // --- Code Generation Phase --- (Only if not lex_only and not parse_only)
-    printf("Proceeding to mock code generation...\n");
-    // Write the mock assembly output
-    // Use utility to write file
-    if (!write_string_to_file(output_file, mock_asm_payload)) {
+    printf("Generating code...\n");
+
+    StringBuffer sb;
+    string_buffer_init(&sb, 1024); // Initialize string buffer
+
+    // Call the actual code generator
+    if (!codegen_generate_program(&sb, ast_root)) {
+        fprintf(stderr, "Code generation failed.\n");
+        string_buffer_destroy(&sb); // Clean up buffer
+        result = 1;
+        goto cleanup_parser; // Go to cleanup
+    }
+
+    // Write the generated assembly output
+    const char *assembly_code = string_buffer_get_content(&sb);
+    if (!write_string_to_file(output_file, assembly_code)) {
         fprintf(stderr, "Failed to write assembly to %s\n", output_file);
         // Attempt to remove the potentially incomplete output file
         remove(output_file);
-        return 1;
+        string_buffer_destroy(&sb); // Clean up buffer
+        result = 1;
+        goto cleanup_parser; // Go to cleanup
     }
-    // Remove the .i file if all is fine
+
+    printf("Assembly code written to %s\n", output_file);
+    string_buffer_destroy(&sb); // Clean up buffer
+
+    // Remove the intermediate .i file if code generation was successful
     if (remove(input_file) != 0) {
-        fprintf(stderr, "Warning: could not remove %s\n", input_file);
+        fprintf(stderr, "Warning: could not remove intermediate file %s\n", input_file);
     }
-    printf("Mock compilation output written to %s\n", output_file);
-    return 0;
+
+    result = 0; // Success!
+
+cleanup_parser:
+    // Free the AST *after* code generation is done or if skipping codegen
+    free_ast((AstNode *) ast_root);
+    parser_destroy(&parser); // Clean up parser resources
+
+cleanup_source:
+    free(src); // Free source code buffer
+
+    return result;
 }
 
 // Final step: assemble and link .s to executable, then remove .s if successful
