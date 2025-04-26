@@ -38,7 +38,7 @@ int run_preprocessor(const char *input_file) {
 }
 
 // New function: compilation from .i to .s
-int run_compiler(const char *input_file, const bool lex_only, const bool parse_only) {
+int run_compiler(const char *input_file, const bool lex_only, const bool parse_only, const bool codegen_only) {
     // Use utility to check extension
     if (!filename_has_ext(input_file, ".i")) {
         fprintf(stderr, "Input file should have a .i extension\n");
@@ -135,21 +135,29 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
         goto cleanup_parser; // Go to cleanup
     }
 
-    // Write the generated assembly output
+    // If codegen_only, we stop here successfully after generating code internally.
+    if (codegen_only) {
+        printf("Codegen successful (skipped writing .s file).\n");
+        string_buffer_destroy(&sb); // Clean up buffer
+        result = 0; // Success
+        goto cleanup_parser;
+    }
+
+    // --- Write Assembly to File --- (Only if not any "_only" mode)
+    printf("Writing assembly code to %s...\n", output_file);
     const char *assembly_code = string_buffer_get_content(&sb);
     if (!write_string_to_file(output_file, assembly_code)) {
         fprintf(stderr, "Failed to write assembly to %s\n", output_file);
-        // Attempt to remove the potentially incomplete output file
-        remove(output_file);
-        string_buffer_destroy(&sb); // Clean up buffer
+        remove(output_file); // Attempt removal
+        string_buffer_destroy(&sb);
         result = 1;
-        goto cleanup_parser; // Go to cleanup
+        goto cleanup_parser;
     }
-
     printf("Assembly code written to %s\n", output_file);
     string_buffer_destroy(&sb); // Clean up buffer
 
     // Remove the intermediate .i file if code generation was successful
+    // and we actually wrote the .s file (i.e., not codegen_only)
     if (remove(input_file) != 0) {
         fprintf(stderr, "Warning: could not remove intermediate file %s\n", input_file);
     }

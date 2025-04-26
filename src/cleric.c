@@ -38,8 +38,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Failed to construct .i filename\n");
         return 1;
     }
-    // Pass both flags to the compiler driver
-    if (run_compiler(i_file, lex_only, parse_only) != 0) return 1;
+    // Pass all flags to the compiler driver
+    if (run_compiler(i_file, lex_only, parse_only, codegen_only) != 0) return 1;
 
     // Skip assembly/linking if any "only" mode is active
     if (!lex_only && !parse_only && !codegen_only) {
