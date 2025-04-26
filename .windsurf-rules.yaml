@@ -10,3 +10,9 @@ c:
   # Other style rules can be added here as needed.
   clang_tidy_checks:
     - readability-prefer-const-declarations
+
+# Git / Version Control Rules
+git:
+  avoid_amend_commits: true
+  # Prefer creating new commits over amending existing ones, especially
+  # once commits have been shared or are part of a merge history.
