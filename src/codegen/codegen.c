@@ -43,7 +43,7 @@ static bool generate_program(const ProgramNode *node, StringBuffer *sb) {
 
 static bool generate_function(const FuncDefNode *node, StringBuffer *sb) {
     // Basic structure for macOS x86-64
-    string_buffer_append(sb, ".section .text\n");
+    //string_buffer_append(sb, ".section .text\n");
     string_buffer_append(sb, ".globl _%s\n", node->name);
     string_buffer_append(sb, "_%s:\n", node->name);
 

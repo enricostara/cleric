@@ -25,7 +25,6 @@ static void test_codegen_simple_return(void) {
 
     // Expected assembly for: return 42;
     const char *expected_asm =
-            ".section .text\n"
             ".globl _main\n"
             "_main:\n"
             "    movl    $42, %eax\n"
