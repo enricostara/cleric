@@ -4,13 +4,14 @@
 #include <stdlib.h>
 #include <stdarg.h> // For va_list in parser_error
 #include <errno.h> // For errno and ERANGE
+#include <_string.h>
 
 // Forward declarations for static helper functions (parsing rules)
-static AstNode *parse_function_definition(Parser *parser);
+static FuncDefNode *parse_function_definition(Parser *parser);
 
 static AstNode *parse_statement(Parser *parser);
 
-static AstNode *parse_return_statement(Parser *parser);
+static ReturnStmtNode *parse_return_statement(Parser *parser);
 
 static AstNode *parse_expression(Parser *parser);
 
@@ -36,9 +37,9 @@ void parser_init(Parser *parser, Lexer *lexer) {
 
 ProgramNode *parse_program(Parser *parser) {
     // Parse the function definition
-    AstNode *func_def_node = parse_function_definition(parser);
+    FuncDefNode *func_def_node = parse_function_definition(parser);
     if (parser->error_flag || !func_def_node) {
-        free_ast(func_def_node); // Clean up partial AST if error
+        free_ast((AstNode *) func_def_node); // Clean up partial AST if error
         return NULL;
     }
 
@@ -47,7 +48,7 @@ ProgramNode *parse_program(Parser *parser) {
         char current_token_str[128];
         token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
         parser_error(parser, "Expected end of file after function definition, but got %s", current_token_str);
-        free_ast(func_def_node);
+        free_ast((AstNode *) func_def_node);
         return NULL;
     }
 
@@ -111,7 +112,7 @@ static void parser_error(Parser *parser, const char *format, ...) {
 // --- Recursive Descent Parsing Functions ---
 
 // FunctionDefinition: 'int' Identifier '(' 'void' ')' '{' Statement '}'
-static AstNode *parse_function_definition(Parser *parser) {
+static FuncDefNode *parse_function_definition(Parser *parser) {
     if (parser->error_flag) return NULL; // Don't proceed if an error already occurred
 
     // Expect 'int' keyword
@@ -126,9 +127,16 @@ static AstNode *parse_function_definition(Parser *parser) {
         parser_error(parser, "Expected function name (identifier) after 'int', but got %s", current_token_str);
         return NULL;
     }
-    Token name_token = parser->current_token;
+    // Copy the lexeme immediately, as the lexer's buffer might be overwritten by parser_advance
+    char *func_name = strdup(parser->current_token.lexeme);
+    if (!func_name) {
+        parser_error(parser, "Memory allocation failed for function name");
+        return NULL;
+    }
+
     parser_advance(parser); // Consume identifier - Note: parser_advance doesn't return status
     // ReSharper disable once CppDFAConstantConditions
+    // ReSharper disable once CppDFAUnreachableCode
     if (parser->error_flag) return NULL; // Check error after explicit advance
 
     // Expect '('
@@ -155,17 +163,21 @@ static AstNode *parse_function_definition(Parser *parser) {
     AstNode *body_statement = parse_statement(parser);
     if (!body_statement) {
         // Check if statement parsing failed (error flag should be set)
+        free(func_name); // Free the copied name if body parsing fails
         return NULL;
     }
 
     // Expect '}' after the statement
     if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
         free_ast(body_statement); // Clean up allocated statement node on error
+        free(func_name); // Clean up the copied name
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Create the function definition node using the parsed identifier name
-    return create_func_def_node(name_token.lexeme, body_statement); // Use parsed name
+    FuncDefNode *func_node = create_func_def_node(func_name, body_statement); // Use copied name
+    free(func_name); // create_func_def_node takes ownership via strdup, so free the parser's copy
+    return func_node;
 }
 
 
@@ -175,7 +187,7 @@ static AstNode *parse_statement(Parser *parser) {
 
     switch (parser->current_token.type) {
         case TOKEN_KEYWORD_RETURN:
-            return parse_return_statement(parser);
+            return (AstNode *) parse_return_statement(parser);
         default: {
             char current_token_str[128];
             token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
@@ -186,8 +198,9 @@ static AstNode *parse_statement(Parser *parser) {
 }
 
 // ReturnStatement: 'return' Expression ';'
-static AstNode *parse_return_statement(Parser *parser) {
+static ReturnStmtNode *parse_return_statement(Parser *parser) {
     // ReSharper disable once CppDFAConstantConditions
+    // ReSharper disable once CppDFAUnreachableCode
     if (parser->error_flag) return NULL;
 
     parser_consume(parser, TOKEN_KEYWORD_RETURN); // Consume 'return'
@@ -219,6 +232,7 @@ static AstNode *parse_expression(Parser *parser) {
 // PrimaryExpression: IntegerConstant | Identifier | '(' Expression ')'
 static AstNode *parse_primary_expression(Parser *parser) {
     // ReSharper disable once CppDFAConstantConditions
+    // ReSharper disable once CppDFAUnreachableCode
     if (parser->error_flag) return NULL;
 
     switch (parser->current_token.type) {
@@ -226,7 +240,7 @@ static AstNode *parse_primary_expression(Parser *parser) {
             // Use strtol for robust integer conversion and error checking
             char *end_ptr;
             errno = 0; // Reset errno before calling strtol
-            const long value = strtol(parser->current_token.lexeme, &end_ptr, 10);
+            const int value = (int) strtol(parser->current_token.lexeme, &end_ptr, 10);
 
             // Error handling for strtol
             if (errno == ERANGE) {
@@ -245,7 +259,7 @@ static AstNode *parse_primary_expression(Parser *parser) {
             }
 
             parser_advance(parser); // Consume the constant token
-            return create_int_literal_node(value); // Create the AST node
+            return (AstNode *) create_int_literal_node(value); // Create the AST node
         }
         // Add cases for identifiers, parentheses, etc. later
         default: {

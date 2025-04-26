@@ -41,7 +41,7 @@ void test_run_compiler_creates_s_file_and_removes_i(void) {
     fclose(f);
 
     // Run the compile function
-    const int result = run_compiler(test_i_file, false, false);
+    const int result = run_compiler(test_i_file, false, false, false);
     TEST_ASSERT_EQUAL_INT(0, result);
 
     // Check that the .s file exists
@@ -69,7 +69,55 @@ void test_run_compiler_lex_only(void) {
     fprintf(f, "int main(void) { return 2; }\n");
     fclose(f);
     // Run the compiler in lex_only mode
-    const int result = run_compiler(test_i_file, true, false);
+    const int result = run_compiler(test_i_file, true, false, false);
+    TEST_ASSERT_EQUAL_INT(0, result);
+    // Should NOT produce a .s file
+    char s_file[64];
+    strncpy(s_file, test_i_file, strlen(test_i_file) - 2);
+    s_file[strlen(test_i_file) - 2] = '\0';
+    strcat(s_file, ".s");
+    const FILE *sf = fopen(s_file, "r");
+    TEST_ASSERT_NULL(sf);
+    // Should NOT remove the .i file
+    FILE *ifile = fopen(test_i_file, "r");
+    TEST_ASSERT_NOT_NULL(ifile);
+    fclose(ifile);
+    // Cleanup
+    remove(test_i_file);
+}
+
+void test_run_compiler_parse_only(void) {
+    // Prepare a minimal .i file
+    const char *test_i_file = "test_parse_only.i";
+    FILE *f = fopen(test_i_file, "w");
+    fprintf(f, "int main(void) { return 3; }\n");
+    fclose(f);
+    // Run the compiler in parse_only mode
+    const int result = run_compiler(test_i_file, false, true, false);
+    TEST_ASSERT_EQUAL_INT(0, result);
+    // Should NOT produce a .s file
+    char s_file[64];
+    strncpy(s_file, test_i_file, strlen(test_i_file) - 2);
+    s_file[strlen(test_i_file) - 2] = '\0';
+    strcat(s_file, ".s");
+    const FILE *sf = fopen(s_file, "r");
+    TEST_ASSERT_NULL(sf);
+    // Should NOT remove the .i file
+    FILE *ifile = fopen(test_i_file, "r");
+    TEST_ASSERT_NOT_NULL(ifile);
+    fclose(ifile);
+    // Cleanup
+    remove(test_i_file);
+}
+
+void test_run_compiler_codegen_only(void) {
+    // Prepare a minimal .i file
+    const char *test_i_file = "test_codegen_only.i";
+    FILE *f = fopen(test_i_file, "w");
+    fprintf(f, "int main(void) { return 4; }\n");
+    fclose(f);
+    // Run the compiler in codegen_only mode
+    const int result = run_compiler(test_i_file, false, false, true);
     TEST_ASSERT_EQUAL_INT(0, result);
     // Should NOT produce a .s file
     char s_file[64];
@@ -121,5 +169,7 @@ void run_driver_tests(void) {
     RUN_TEST(test_run_preprocessor_creates_i_file);
     RUN_TEST(test_run_compiler_creates_s_file_and_removes_i);
     RUN_TEST(test_run_compiler_lex_only);
+    RUN_TEST(test_run_compiler_parse_only);
+    RUN_TEST(test_run_compiler_codegen_only);
     RUN_TEST(test_run_assembler_linker_creates_executable_and_removes_s);
 }
