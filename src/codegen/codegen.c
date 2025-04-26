@@ -68,9 +68,12 @@ static bool generate_function(const FuncDefNode *node, StringBuffer *sb) {
 }
 
 static bool generate_statement(AstNode *node, StringBuffer *sb) {
-    // Use base AstNode type
-    if (!node) return true; // Or false? Decide if NULL statement is error.
-    // Let's assume true for now (empty statement is ok).
+    // ReSharper disable once CppDFAConstantConditions
+    if (!node) {
+        // Let's assume true for now (empty statement is ok).
+        // ReSharper disable once CppDFAUnreachableCode
+        return true;
+    }
 
     switch (node->type) {
         // Check type from the base node
@@ -102,12 +105,14 @@ static bool generate_statement(AstNode *node, StringBuffer *sb) {
 
 // Modified: Returns bool for success, value via out parameter
 static bool generate_expression(AstNode *node, int *out_value) {
+    // ReSharper disable once CppDFAConstantConditions
     if (!node) {
+        // ReSharper disable once CppDFAUnreachableCode
         fprintf(stderr, "Codegen Error: Cannot generate code for NULL expression.\n");
         return false; // Error: null expression
     }
 
-    switch (node->base.type) {
+    switch (node->type) {
         case NODE_INT_LITERAL: {
             const IntLiteralNode *int_node = (IntLiteralNode *) node;
             *out_value = int_node->value;
@@ -115,7 +120,7 @@ static bool generate_expression(AstNode *node, int *out_value) {
         }
         // Add cases for other expression types later
         default:
-            fprintf(stderr, "Codegen Error: Unsupported expression type %d\n", node->base.type);
+            fprintf(stderr, "Codegen Error: Unsupported expression type %d\n", node->type);
             return false; // Error: unsupported expression
     }
     return true; // Success

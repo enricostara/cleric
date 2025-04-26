@@ -4,7 +4,7 @@
 #include <string.h> // For strdup
 
 // Function to create an integer literal node
-AstNode *create_int_literal_node(const long value) {
+IntLiteralNode *create_int_literal_node(const int value) {
     IntLiteralNode *node = malloc(sizeof(IntLiteralNode));
     if (!node) {
         perror("Failed to allocate memory for IntLiteralNode");
@@ -12,11 +12,11 @@ AstNode *create_int_literal_node(const long value) {
     }
     node->base.type = NODE_INT_LITERAL;
     node->value = value;
-    return (AstNode *)node; // Cast to base pointer
+    return node; // Cast to base pointer
 }
 
 // Function to create a return statement node
-AstNode *create_return_stmt_node(AstNode *expression) {
+ReturnStmtNode *create_return_stmt_node(AstNode *expression) {
     ReturnStmtNode *node = malloc(sizeof(ReturnStmtNode));
     if (!node) {
         perror("Failed to allocate memory for ReturnStmtNode");
@@ -26,11 +26,11 @@ AstNode *create_return_stmt_node(AstNode *expression) {
     }
     node->base.type = NODE_RETURN_STMT;
     node->expression = expression; // Takes ownership of the expression node
-    return (AstNode *)node;
+    return node;
 }
 
 // Function to create a function definition node
-AstNode *create_func_def_node(const char *name, AstNode *body) {
+FuncDefNode *create_func_def_node(const char *name, AstNode *body) {
     FuncDefNode *node = malloc(sizeof(FuncDefNode));
     if (!node) {
         perror("Failed to allocate memory for FuncDefNode");
@@ -38,18 +38,19 @@ AstNode *create_func_def_node(const char *name, AstNode *body) {
     }
     node->base.type = NODE_FUNC_DEF;
     node->name = name ? strdup(name) : NULL; // Duplicate the name string
-    if (name && !node->name) { // Check if strdup failed
+    if (name && !node->name) {
+        // Check if strdup failed
         perror("Failed to duplicate function name");
         free(node);
         return NULL;
     }
     node->body = body; // Takes ownership of the body node
-    return (AstNode *)node;
+    return node;
 }
 
 // Function to create the program node
 ProgramNode *create_program_node(FuncDefNode *function) {
-     ProgramNode *node = malloc(sizeof(ProgramNode));
+    ProgramNode *node = malloc(sizeof(ProgramNode));
     if (!node) {
         perror("Failed to allocate memory for ProgramNode");
         return NULL;
@@ -68,20 +69,20 @@ void free_ast(AstNode *node) { // NOLINT(*-no-recursion)
 
     switch (node->type) {
         case NODE_PROGRAM: {
-            const ProgramNode *prog_node = (ProgramNode *)node;
+            const ProgramNode *prog_node = (ProgramNode *) node;
             // Assume program owns the function definition
-            free_ast((AstNode *)prog_node->function); // Free children first
+            free_ast((AstNode *) prog_node->function); // Free children first
             break;
         }
         case NODE_FUNC_DEF: {
-            const FuncDefNode *func_node = (FuncDefNode *)node;
+            const FuncDefNode *func_node = (FuncDefNode *) node;
             // Assume func def owns its body
             free_ast(func_node->body); // Free children first
             free(func_node->name); // Free the duplicated function name
             break;
         }
         case NODE_RETURN_STMT: {
-            const ReturnStmtNode *ret_node = (ReturnStmtNode *)node;
+            const ReturnStmtNode *ret_node = (ReturnStmtNode *) node;
             // Assume return stmt owns its expression
             free_ast(ret_node->expression); // Free children first
             break;
@@ -108,7 +109,7 @@ static void print_indent(int level) {
 }
 
 // Recursive function to pretty-print the AST
-void ast_pretty_print(AstNode *node, int indent_level) { // NOLINT(*-no-recursion)
+void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-recursion)
     if (!node) {
         print_indent(indent_level);
         printf("NULL_NODE\n");
@@ -119,15 +120,15 @@ void ast_pretty_print(AstNode *node, int indent_level) { // NOLINT(*-no-recursio
 
     switch (node->type) {
         case NODE_PROGRAM: {
-            ProgramNode *prog_node = (ProgramNode *)node;
+            const ProgramNode *prog_node = (ProgramNode *) node;
             printf("Program(\n");
-            ast_pretty_print((AstNode *)prog_node->function, indent_level + 1);
+            ast_pretty_print((AstNode *) prog_node->function, indent_level + 1);
             print_indent(indent_level);
             printf(")\n");
             break;
         }
         case NODE_FUNC_DEF: {
-            FuncDefNode *func_node = (FuncDefNode *)node;
+            const FuncDefNode *func_node = (FuncDefNode *) node;
             // In a real scenario, you'd print function name, return type, params here.
             printf("Function(name=\"%s\",\n", func_node->name ? func_node->name : "<null>"); // Print actual name
             print_indent(indent_level + 1);
@@ -138,7 +139,7 @@ void ast_pretty_print(AstNode *node, int indent_level) { // NOLINT(*-no-recursio
             break;
         }
         case NODE_RETURN_STMT: {
-            ReturnStmtNode *ret_node = (ReturnStmtNode *)node;
+            const ReturnStmtNode *ret_node = (ReturnStmtNode *) node;
             printf("Return(\n");
             ast_pretty_print(ret_node->expression, indent_level + 1);
             print_indent(indent_level);
@@ -146,8 +147,8 @@ void ast_pretty_print(AstNode *node, int indent_level) { // NOLINT(*-no-recursio
             break;
         }
         case NODE_INT_LITERAL: {
-            IntLiteralNode *int_node = (IntLiteralNode *)node;
-            printf("Constant(%ld)\n", int_node->value);
+            const IntLiteralNode *int_node = (IntLiteralNode *) node;
+            printf("Constant(%d)\n", int_node->value);
             break;
         }
         default:

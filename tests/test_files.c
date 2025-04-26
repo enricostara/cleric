@@ -135,4 +135,3 @@ void run_files_tests(void) {
     RUN_TEST(test_write_string_to_file_overwrite);
     RUN_TEST(test_write_string_to_file_invalid_args);
 }
-

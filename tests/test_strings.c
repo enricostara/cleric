@@ -169,4 +169,3 @@ void run_strings_tests(void) {
     RUN_TEST(test_string_buffer_free_data_simple);
     RUN_TEST(test_string_buffer_free_data_empty);
 }
-

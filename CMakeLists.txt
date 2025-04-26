@@ -36,6 +36,7 @@ add_executable(cleric
         src/parser/ast.c
         src/parser/parser.c
         src/strings/strings.c
+        src/codegen/codegen.c
 )
 
 # --------------------------------------
@@ -52,6 +53,7 @@ add_executable(test_all
         tests/test_ast.c
         tests/test_parser.c
         tests/test_strings.c
+        tests/test_codegen.c
         src/driver/driver.c
         src/lexer/lexer.c
         src/files/files.c
@@ -59,6 +61,7 @@ add_executable(test_all
         src/parser/ast.c
         src/parser/parser.c
         src/strings/strings.c
+        src/codegen/codegen.c
 )
 target_link_libraries(test_all unity)
 target_include_directories(test_all PRIVATE include tests/unity src)

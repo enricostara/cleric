@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 /**
  * Ensures that the StringBuffer has enough capacity to fit an additional
@@ -156,5 +157,19 @@ void string_buffer_clear(StringBuffer *sb) {
         sb->buffer = NULL;
         sb->capacity = 0;
         sb->length = 0;
+    }
+}
+
+/**
+ * @brief Destroys the string buffer, freeing its allocated buffer.
+ *
+ * @param sb Pointer to the StringBuffer.
+ */
+void string_buffer_destroy(StringBuffer* sb) {
+    if (sb) {
+        free(sb->buffer);
+        sb->buffer = NULL;  // Prevent double free
+        sb->length = 0;
+        sb->capacity = 0;
     }
 }

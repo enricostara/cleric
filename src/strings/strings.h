@@ -2,13 +2,12 @@
 #define STRINGS_H
 
 #include <stddef.h> // For size_t
-#include <stdbool.h> // For bool
 
 // Generic dynamic string buffer
 typedef struct {
-    char *buffer;    // Pointer to the allocated buffer
+    char *buffer; // Pointer to the allocated buffer
     size_t capacity; // Current allocated capacity
-    size_t length;   // Current length of the string (excluding null terminator)
+    size_t length; // Current length of the string (excluding null terminator)
 } StringBuffer;
 
 /**
@@ -46,7 +45,6 @@ void string_buffer_append_char(StringBuffer *sb, char c);
  */
 char *string_buffer_get_content(StringBuffer *sb);
 
-
 /**
  * Frees the internal buffer associated with the StringBuffer.
  * Resets the struct members.
@@ -54,5 +52,7 @@ char *string_buffer_get_content(StringBuffer *sb);
  */
 void string_buffer_clear(StringBuffer *sb);
 
+// Destroys the string buffer, freeing allocated memory.
+void string_buffer_destroy(StringBuffer *sb);
 
 #endif // STRINGS_H
