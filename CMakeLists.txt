@@ -37,6 +37,8 @@ add_executable(cleric
         src/parser/parser.c
         src/strings/strings.c
         src/codegen/codegen.c
+        src/memory/arena.h
+        src/memory/arena.c
 )
 
 # --------------------------------------
@@ -55,6 +57,7 @@ add_executable(test_all
         tests/test_strings.c
         tests/test_codegen.c
         tests/test_integration.c
+        tests/test_arena.c # Add arena tests
         src/driver/driver.c
         src/lexer/lexer.c
         src/files/files.c
@@ -63,6 +66,7 @@ add_executable(test_all
         src/parser/parser.c
         src/strings/strings.c
         src/codegen/codegen.c
+        src/memory/arena.c # Add arena implementation
 )
 target_link_libraries(test_all unity)
 target_include_directories(test_all PRIVATE include tests/unity src)

@@ -20,6 +20,8 @@ void run_codegen_tests(void); // Forward declaration for codegen tests
 
 void run_integration_tests(void); // Forward declaration for integration tests
 
+void run_arena_tests(void); // Forward declaration for arena tests
+
 // Global setUp and tearDown for all tests run by this main runner
 void setUp(void) {
     // Optional global setup for all tests
@@ -58,6 +60,9 @@ int main(void) {
 
     printf("\n--- Running Integration Tests --- \n");
     run_integration_tests();
+
+    printf("\n--- Running Arena Tests --- \n");
+    run_arena_tests();
 
     return UNITY_END(); // Use UNITY_END() in the main runner
 }
