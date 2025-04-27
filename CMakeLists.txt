@@ -54,6 +54,7 @@ add_executable(test_all
         tests/test_parser.c
         tests/test_strings.c
         tests/test_codegen.c
+        tests/test_integration.c
         src/driver/driver.c
         src/lexer/lexer.c
         src/files/files.c
