@@ -2,7 +2,7 @@
 #include "../src/lexer/lexer.h" // Include Lexer for tokenization
 #include "../src/parser/parser.h" // Include Parser for parsing
 #include "../src/parser/ast.h"    // Include AST for structure checks
-
+#include "../src/memory/arena.h" // Include Arena for parser
 
 // --- Test Helper Function ---
 
@@ -43,7 +43,10 @@ void test_parse_valid_program(void) {
     lexer_init(&lexer, input);
     Parser parser;
     parser_init(&parser, &lexer);
-    ProgramNode *program_reworked = parse_program(&parser);
+    Arena test_arena = arena_create(1024); // Create arena for this test
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    ProgramNode *program_reworked = parse_program(&parser, &test_arena);
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program_reworked, "Parser returned NULL for valid input");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input");
@@ -70,8 +73,9 @@ void test_parse_valid_program(void) {
     // Check the integer value
     TEST_ASSERT_EQUAL_INT(42, int_literal->value);
 
-    // Clean up the AST
-    free_ast((AstNode *) program_reworked);
+    // Clean up the arena (assuming parse_program used it for allocations)
+    arena_destroy(&test_arena);
+    // free_ast((AstNode *) program_reworked); // Assuming arena handles cleanup
 }
 
 
@@ -82,12 +86,16 @@ void test_parse_missing_semicolon(void) {
     lexer_init(&lexer, input);
     Parser parser;
     parser_init(&parser, &lexer);
-    ProgramNode *program = parse_program(&parser);
+    Arena test_arena = arena_create(1024); // Create arena for this test
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    ProgramNode *program = parse_program(&parser, &test_arena);
 
     TEST_ASSERT_NULL_MESSAGE(program, "Parser did not return NULL for missing semicolon");
     TEST_ASSERT_TRUE_MESSAGE(parser.error_flag, "Parser error flag was not set for missing semicolon");
 
-    // No AST to free as parsing should fail and return NULL
+    // Clean up the arena
+    arena_destroy(&test_arena);
 }
 
 // Test parsing an invalid program (missing closing brace)
@@ -97,10 +105,16 @@ void test_parse_missing_brace(void) {
     lexer_init(&lexer, input);
     Parser parser;
     parser_init(&parser, &lexer);
-    ProgramNode *program = parse_program(&parser);
+    Arena test_arena = arena_create(1024); // Create arena for this test
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    ProgramNode *program = parse_program(&parser, &test_arena);
 
     TEST_ASSERT_NULL_MESSAGE(program, "Parser did not return NULL for missing brace");
     TEST_ASSERT_TRUE_MESSAGE(parser.error_flag, "Parser error flag was not set for missing brace");
+
+    // Clean up the arena
+    arena_destroy(&test_arena);
 }
 
 // Add more test cases for different errors later...

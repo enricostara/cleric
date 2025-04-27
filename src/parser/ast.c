@@ -1,105 +1,71 @@
 #include "ast.h"
-#include <stdlib.h> // For malloc, free
-#include <stdio.h>  // For error messages (optional)
-#include <string.h> // For strdup
+#include "memory/arena.h" // Use arena allocator
+#include <stdio.h>         // For error messages (optional)
+#include <string.h>        // For strlen, strcpy
 
 // Function to create an integer literal node
-IntLiteralNode *create_int_literal_node(const int value) {
-    IntLiteralNode *node = malloc(sizeof(IntLiteralNode));
+IntLiteralNode *create_int_literal_node(const int value, Arena* arena) {
+    IntLiteralNode *node = arena_alloc(arena, sizeof(IntLiteralNode));
     if (!node) {
-        perror("Failed to allocate memory for IntLiteralNode");
+        // arena_alloc already prints errors, just return NULL
         return NULL;
     }
     node->base.type = NODE_INT_LITERAL;
     node->value = value;
-    return node; // Cast to base pointer
+    return node;
 }
 
 // Function to create a return statement node
-ReturnStmtNode *create_return_stmt_node(AstNode *expression) {
-    ReturnStmtNode *node = malloc(sizeof(ReturnStmtNode));
+ReturnStmtNode *create_return_stmt_node(AstNode *expression, Arena* arena) {
+    ReturnStmtNode *node = arena_alloc(arena, sizeof(ReturnStmtNode));
     if (!node) {
-        perror("Failed to allocate memory for ReturnStmtNode");
-        // Free the expression if allocation fails? Depends on ownership rules.
-        // For simplicity here, assume caller manages expression lifetime if this fails.
         return NULL;
     }
     node->base.type = NODE_RETURN_STMT;
-    node->expression = expression; // Takes ownership of the expression node
+    node->expression = expression; // Expression node itself was allocated previously (likely in same arena)
     return node;
 }
 
 // Function to create a function definition node
-FuncDefNode *create_func_def_node(const char *name, AstNode *body) {
-    FuncDefNode *node = malloc(sizeof(FuncDefNode));
+FuncDefNode *create_func_def_node(const char *name, AstNode *body, Arena* arena) {
+    FuncDefNode *node = arena_alloc(arena, sizeof(FuncDefNode));
     if (!node) {
-        perror("Failed to allocate memory for FuncDefNode");
         return NULL;
     }
     node->base.type = NODE_FUNC_DEF;
-    node->name = name ? strdup(name) : NULL; // Duplicate the name string
-    if (name && !node->name) {
-        // Check if strdup failed
-        perror("Failed to duplicate function name");
-        free(node);
-        return NULL;
+    node->body = body; // Body node allocated previously (likely in same arena)
+
+    // Allocate space for name in the arena and copy it
+    if (name) {
+        size_t name_len = strlen(name);
+        node->name = arena_alloc(arena, name_len + 1);
+        if (!node->name) {
+            // Allocation for name failed, even though node allocation succeeded.
+            // This is unlikely but possible if arena is exactly full.
+            // The FuncDefNode is allocated but unusable without a name.
+            // Return NULL to indicate overall failure.
+            // The partially allocated FuncDefNode remains in the arena but won't be used.
+            return NULL;
+        }
+        strcpy(node->name, name); // strcpy is safe due to allocating name_len + 1 bytes
+    } else {
+        node->name = NULL;
     }
-    node->body = body; // Takes ownership of the body node
+
     return node;
 }
 
 // Function to create the program node
-ProgramNode *create_program_node(FuncDefNode *function) {
-    ProgramNode *node = malloc(sizeof(ProgramNode));
+ProgramNode *create_program_node(FuncDefNode *function, Arena* arena) {
+    ProgramNode *node = arena_alloc(arena, sizeof(ProgramNode));
     if (!node) {
-        perror("Failed to allocate memory for ProgramNode");
         return NULL;
     }
     node->base.type = NODE_PROGRAM;
-    node->function = function; // Takes ownership of the function node
+    node->function = function; // Function node allocated previously (likely in same arena)
     return node;
 }
 
-
-// Recursive function to free the AST
-void free_ast(AstNode *node) { // NOLINT(*-no-recursion)
-    if (!node) {
-        return;
-    }
-
-    switch (node->type) {
-        case NODE_PROGRAM: {
-            const ProgramNode *prog_node = (ProgramNode *) node;
-            // Assume program owns the function definition
-            free_ast((AstNode *) prog_node->function); // Free children first
-            break;
-        }
-        case NODE_FUNC_DEF: {
-            const FuncDefNode *func_node = (FuncDefNode *) node;
-            // Assume func def owns its body
-            free_ast(func_node->body); // Free children first
-            free(func_node->name); // Free the duplicated function name
-            break;
-        }
-        case NODE_RETURN_STMT: {
-            const ReturnStmtNode *ret_node = (ReturnStmtNode *) node;
-            // Assume return stmt owns its expression
-            free_ast(ret_node->expression); // Free children first
-            break;
-        }
-        case NODE_INT_LITERAL: {
-            // IntLiteralNode has no children that need freeing
-            break;
-        }
-        default:
-            // Should not happen if AST is well-formed
-            fprintf(stderr, "Warning: Attempting to free unknown node type: %d\n", node->type);
-            break;
-    }
-
-    // Free the node itself after handling its children
-    free(node);
-}
 
 // Helper function to print indentation
 static void print_indent(int level) {

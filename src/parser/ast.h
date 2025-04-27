@@ -1,6 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
+#include "memory/arena.h" // Include arena header
+
 // Define the types of AST nodes we need for "int main(void) { return 2; }"
 typedef enum {
     NODE_PROGRAM, // Represents the entire program (a sequence of top-level declarations)
@@ -42,19 +44,20 @@ typedef struct {
 } ProgramNode;
 
 // Function to create an integer literal node (convenience constructor)
-IntLiteralNode *create_int_literal_node(int value);
+IntLiteralNode *create_int_literal_node(int value, Arena* arena);
 
 // Function to create a return statement node (convenience constructor)
-ReturnStmtNode *create_return_stmt_node(AstNode *expression);
+ReturnStmtNode *create_return_stmt_node(AstNode *expression, Arena* arena);
 
 // Function to create a function definition node (convenience constructor)
 // Takes the function name and body statement as input
-FuncDefNode *create_func_def_node(const char *name, AstNode *body);
+FuncDefNode *create_func_def_node(const char *name, AstNode *body, Arena* arena);
 
 // Function to create the program node (convenience constructor)
-ProgramNode *create_program_node(FuncDefNode *function);
+ProgramNode *create_program_node(FuncDefNode *function, Arena* arena);
 
 // Function to free the entire AST (important for memory management)
+// NOTE: With arena allocation, freeing individual nodes might not be needed,
 void free_ast(AstNode *node);
 
 // Function to pretty-print the AST starting from a given node

@@ -1,21 +1,23 @@
 #include "parser.h"
 #include "ast.h"
+#include "memory/arena.h" // Include Arena for allocation
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> // For strtol
 #include <stdarg.h> // For va_list in parser_error
-#include <errno.h> // For errno and ERANGE
-#include <_string.h>
+#include <errno.h>  // For errno and ERANGE
+#include <limits.h>
+#include <string.h> // For strlen, strcpy
 
 // Forward declarations for static helper functions (parsing rules)
-static FuncDefNode *parse_function_definition(Parser *parser);
+static FuncDefNode *parse_function_definition(Parser *parser, Arena *arena);
 
-static AstNode *parse_statement(Parser *parser);
+static AstNode *parse_statement(Parser *parser, Arena *arena);
 
-static ReturnStmtNode *parse_return_statement(Parser *parser);
+static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena);
 
-static AstNode *parse_expression(Parser *parser);
+static AstNode *parse_expression(Parser *parser, Arena *arena);
 
-static AstNode *parse_primary_expression(Parser *parser);
+static AstNode *parse_primary_expression(Parser *parser, Arena *arena);
 
 // Helper function to consume a token and advance
 static bool parser_consume(Parser *parser, TokenType expected_type);
@@ -26,20 +28,26 @@ static void parser_error(Parser *parser, const char *format, ...);
 // Helper function to advance the parser state
 static void parser_advance(Parser *parser);
 
-
 // --- Public Parser Interface Implementation ---
 void parser_init(Parser *parser, Lexer *lexer) {
     parser->lexer = lexer;
     parser->error_flag = false;
-    parser_advance(parser);
+    // Initialize current_token and peek_token safely
+    // Fetch first token into peek_token
+    parser->peek_token = lexer_next_token(parser->lexer);
+    // Initialize current_token to a known safe state (e.g., EOF or UNKNOWN with NULL lexeme)
+    // Using EOF is reasonable as it won't be freed by token_free
+    parser->current_token = (Token){TOKEN_EOF, NULL, 0};
+
+    // Now perform the first real advance to load current_token and the next peek_token
     parser_advance(parser);
 }
 
-ProgramNode *parse_program(Parser *parser) {
+ProgramNode *parse_program(Parser *parser, Arena *arena) {
     // Parse the function definition
-    FuncDefNode *func_def_node = parse_function_definition(parser);
+    FuncDefNode *func_def_node = parse_function_definition(parser, arena);
     if (parser->error_flag || !func_def_node) {
-        free_ast((AstNode *) func_def_node); // Clean up partial AST if error
+        // No need to free_ast; arena handles cleanup
         return NULL;
     }
 
@@ -48,12 +56,12 @@ ProgramNode *parse_program(Parser *parser) {
         char current_token_str[128];
         token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
         parser_error(parser, "Expected end of file after function definition, but got %s", current_token_str);
-        free_ast((AstNode *) func_def_node);
+        // No need to free_ast; arena handles cleanup
         return NULL;
     }
 
     // Create a ProgramNode from the FuncDefNode
-    ProgramNode *program_node = create_program_node((FuncDefNode *) func_def_node);
+    ProgramNode *program_node = create_program_node(func_def_node, arena);
     return program_node;
 }
 
@@ -63,7 +71,6 @@ void parser_destroy(const Parser *parser) {
     token_free(&parser->peek_token);
     // No other dynamically allocated memory in the Parser struct itself yet
 }
-
 
 // --- Static Helper Function Implementation ---
 static void parser_advance(Parser *parser) {
@@ -112,7 +119,7 @@ static void parser_error(Parser *parser, const char *format, ...) {
 // --- Recursive Descent Parsing Functions ---
 
 // FunctionDefinition: 'int' Identifier '(' 'void' ')' '{' Statement '}'
-static FuncDefNode *parse_function_definition(Parser *parser) {
+static FuncDefNode *parse_function_definition(Parser *parser, Arena *arena) {
     if (parser->error_flag) return NULL; // Don't proceed if an error already occurred
 
     // Expect 'int' keyword
@@ -127,14 +134,16 @@ static FuncDefNode *parse_function_definition(Parser *parser) {
         parser_error(parser, "Expected function name (identifier) after 'int', but got %s", current_token_str);
         return NULL;
     }
-    // Copy the lexeme immediately, as the lexer's buffer might be overwritten by parser_advance
-    char *func_name = strdup(parser->current_token.lexeme);
+    // Copy the lexeme into the arena
+    const size_t name_len = strlen(parser->current_token.lexeme);
+    char *func_name = arena_alloc(arena, name_len + 1);
     if (!func_name) {
-        parser_error(parser, "Memory allocation failed for function name");
+        parser_error(parser, "Memory allocation failed for function name using arena");
         return NULL;
     }
+    strcpy(func_name, parser->current_token.lexeme); // Copy the name
 
-    parser_advance(parser); // Consume identifier - Note: parser_advance doesn't return status
+    parser_advance(parser); // Consume identifier
     // ReSharper disable once CppDFAConstantConditions
     // ReSharper disable once CppDFAUnreachableCode
     if (parser->error_flag) return NULL; // Check error after explicit advance
@@ -160,34 +169,33 @@ static FuncDefNode *parse_function_definition(Parser *parser) {
     }
 
     // Parse the statement block (simplified to one statement)
-    AstNode *body_statement = parse_statement(parser);
+    AstNode *body_statement = parse_statement(parser, arena);
     if (!body_statement) {
         // Check if statement parsing failed (error flag should be set)
-        free(func_name); // Free the copied name if body parsing fails
+        // No need to free func_name, it's in the arena
         return NULL;
     }
 
     // Expect '}' after the statement
     if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
-        free_ast(body_statement); // Clean up allocated statement node on error
-        free(func_name); // Clean up the copied name
+        // No need to free_ast or free func_name; arena handles cleanup
         return NULL; // Error handled and flag set inside parser_consume
     }
 
-    // Create the function definition node using the parsed identifier name
-    FuncDefNode *func_node = create_func_def_node(func_name, body_statement); // Use copied name
-    free(func_name); // create_func_def_node takes ownership via strdup, so free the parser's copy
+    // Create the function definition node using the name from the arena
+    FuncDefNode *func_node = create_func_def_node(func_name, body_statement, arena);
+    // No need to free func_name; it was allocated in the arena and create_func_def_node
+    // now uses the pointer directly (or copies into the arena if it didn't before).
     return func_node;
 }
 
-
 // Statement: ReturnStatement | ... (more statement types later)
-static AstNode *parse_statement(Parser *parser) {
+static AstNode *parse_statement(Parser *parser, Arena *arena) {
     if (parser->error_flag) return NULL;
 
     switch (parser->current_token.type) {
         case TOKEN_KEYWORD_RETURN:
-            return (AstNode *) parse_return_statement(parser);
+            return (AstNode *) parse_return_statement(parser, arena);
         default: {
             char current_token_str[128];
             token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
@@ -198,70 +206,70 @@ static AstNode *parse_statement(Parser *parser) {
 }
 
 // ReturnStatement: 'return' Expression ';'
-static ReturnStmtNode *parse_return_statement(Parser *parser) {
+static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena) {
     // ReSharper disable once CppDFAConstantConditions
     // ReSharper disable once CppDFAUnreachableCode
     if (parser->error_flag) return NULL;
 
-    parser_consume(parser, TOKEN_KEYWORD_RETURN); // Consume 'return'
+    // Consume 'return' keyword
+    if (!parser_consume(parser, TOKEN_KEYWORD_RETURN)) {
+        return NULL; // Error handled inside consume
+    }
 
-    AstNode *expression = parse_expression(parser);
-    // ReSharper disable once CppDFAConstantConditions
-    if (parser->error_flag || !expression) {
-        free_ast(expression); // Clean up potentially partial expression
+    // Parse the expression to be returned
+    AstNode *expression = parse_expression(parser, arena);
+    if (!expression) {
+        // Error occurred during expression parsing
         return NULL;
     }
 
+    // Expect ';' after the expression
     if (!parser_consume(parser, TOKEN_SYMBOL_SEMICOLON)) {
-        free_ast(expression); // Clean up expression if semicolon is missing
         return NULL;
     }
 
-    // Use the creation function from ast.h
-    return create_return_stmt_node(expression); // Aligned with ast.h
+    // Create the return statement node
+    return create_return_stmt_node(expression, arena); // Pass arena
 }
-
 
 // Expression: PrimaryExpression
-static AstNode *parse_expression(Parser *parser) {
+static AstNode *parse_expression(Parser *parser, Arena *arena) {
     if (parser->error_flag) return NULL;
-    return parse_primary_expression(parser);
+    // For now, our expression grammar is very simple: only primary expressions
+    return parse_primary_expression(parser, arena);
 }
 
-
 // PrimaryExpression: IntegerConstant | Identifier | '(' Expression ')'
-static AstNode *parse_primary_expression(Parser *parser) {
+static AstNode *parse_primary_expression(Parser *parser, Arena *arena) {
     // ReSharper disable once CppDFAConstantConditions
     // ReSharper disable once CppDFAUnreachableCode
     if (parser->error_flag) return NULL;
 
     switch (parser->current_token.type) {
         case TOKEN_CONSTANT: {
-            // Use strtol for robust integer conversion and error checking
-            char *end_ptr;
             errno = 0; // Reset errno before calling strtol
-            const int value = (int) strtol(parser->current_token.lexeme, &end_ptr, 10);
+            char *end_ptr;
+            const long val = strtol(parser->current_token.lexeme, &end_ptr, 10);
 
-            // Error handling for strtol
-            if (errno == ERANGE) {
-                parser_error(parser, "Integer constant '%s' out of range for long.", parser->current_token.lexeme);
+            // Check for conversion errors
+            if (errno == ERANGE || *end_ptr != '\0') {
+                parser_error(parser, "Invalid integer literal: %s", parser->current_token.lexeme);
                 return NULL;
             }
-            if (end_ptr == parser->current_token.lexeme) {
-                // No digits were found
-                parser_error(parser, "Invalid integer constant format '%s'.", parser->current_token.lexeme);
-                return NULL;
-            }
-            if (*end_ptr != '\0') {
-                // Extra characters after number
-                parser_error(parser, "Invalid characters after integer constant '%s'.", parser->current_token.lexeme);
+            // Check if the value fits within an int
+            if (val < INT_MIN || val > INT_MAX) {
+                parser_error(parser, "Integer literal out of range: %s", parser->current_token.lexeme);
                 return NULL;
             }
 
-            parser_advance(parser); // Consume the constant token
-            return (AstNode *) create_int_literal_node(value); // Create the AST node
+            const int value = (int) val;
+            parser_advance(parser); // Consume the integer token
+            // ReSharper disable once CppDFAConstantConditions
+            // ReSharper disable once CppDFAUnreachableCode
+            if (parser->error_flag) return NULL; // Check error after explicit advance
+            return (AstNode *) create_int_literal_node(value, arena); // Pass arena
         }
-        // Add cases for identifiers, parentheses, etc. later
+        // Add cases for Identifier, Parenthesized Expression, etc. later
         default: {
             char current_token_str[128];
             token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));

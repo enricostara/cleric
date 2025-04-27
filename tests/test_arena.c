@@ -8,7 +8,7 @@
 
 // Helper to check alignment
 static int is_aligned(void *ptr, size_t alignment) {
-    return ((uintptr_t)ptr % alignment) == 0;
+    return ((uintptr_t) ptr % alignment) == 0;
 }
 
 // Helper to align up
@@ -42,7 +42,7 @@ void test_arena_create_zero_size(void) {
     TEST_ASSERT_EQUAL(0, arena.total_size);
 
     // Optional: Check allocation attempt with this zero-size arena
-    void* ptr = arena_alloc(&arena, 1);
+    void *ptr = arena_alloc(&arena, 1);
     TEST_ASSERT_NULL(ptr); // Should fail to allocate from a zero-size arena
 
     arena_destroy(&arena); // Should handle potentially NULL start gracefully
@@ -68,7 +68,7 @@ void test_arena_alloc_multiple(void) {
     void *ptr2 = arena_alloc(&arena, 70);
     TEST_ASSERT_NOT_NULL(ptr2);
     TEST_ASSERT_TRUE(is_aligned(ptr2, MAX_ALIGNMENT));
-     // Check that ptr2 starts after ptr1 + its size, considering alignment
+    // Check that ptr2 starts after ptr1 + its size, considering alignment
     TEST_ASSERT_TRUE((uintptr_t)ptr2 >= (uintptr_t)ptr1 + 50);
     TEST_ASSERT_GREATER_OR_EQUAL(offset1 + 70, arena.offset);
 
@@ -79,10 +79,10 @@ void test_arena_alloc_alignment(void) {
     Arena arena = arena_create(1024);
     // Allocate small chunks to observe alignment padding
     for (int i = 0; i < 10; ++i) {
-        char *ptr = (char*)arena_alloc(&arena, 1); // Allocate 1 byte
+        char *ptr = (char *) arena_alloc(&arena, 1); // Allocate 1 byte
         TEST_ASSERT_NOT_NULL(ptr);
         TEST_ASSERT_TRUE(is_aligned(ptr, MAX_ALIGNMENT));
-        *ptr = (char)i; // Touch the memory
+        *ptr = (char) i; // Touch the memory
     }
     arena_destroy(&arena);
 }
@@ -110,7 +110,7 @@ void test_arena_alloc_out_of_memory(void) {
         TEST_ASSERT_TRUE(is_aligned(ptr3, MAX_ALIGNMENT));
         // Check that ptr3 is positioned correctly after the first allocation + alignment padding
         TEST_ASSERT_EQUAL_PTR((void*)(arena.start + align_up(offset_after_fail - 80, MAX_ALIGNMENT) + 80), ptr3);
-         TEST_ASSERT_GREATER_OR_EQUAL(offset_after_fail + 1, arena.offset); // Offset should advance
+        TEST_ASSERT_GREATER_OR_EQUAL(offset_after_fail + 1, arena.offset); // Offset should advance
     } else {
         // If somehow ptr1 perfectly filled it, then ptr3 should be NULL
         TEST_ASSERT_NULL(ptr3);

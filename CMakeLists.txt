@@ -40,6 +40,7 @@ add_executable(cleric
         src/memory/arena.h
         src/memory/arena.c
 )
+target_include_directories(cleric PRIVATE src)
 
 # --------------------------------------
 # Test executable: 'test_all'

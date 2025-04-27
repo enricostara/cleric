@@ -33,7 +33,7 @@ static void test_compile_return_4(void) {
     TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch");
 
     // Cleanup
-    free_ast(ast_root); // Free the AST
+    // free_ast(ast_root); // AST cleanup is handled by arena_destroy within run_compiler_core
     string_buffer_destroy(&sb); // Destroy the buffer
 }
 

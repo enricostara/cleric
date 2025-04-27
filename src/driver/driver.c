@@ -4,10 +4,10 @@
 #include "driver.h"
 #include "../lexer/lexer.h"
 #include "../parser/parser.h" // Include parser header
-#include "../parser/ast.h"    // Include AST header (for printing/freeing)
 #include "../codegen/codegen.h" // Include Codegen header
 #include "../strings/strings.h" // Include StringBuffer header
 #include "../files/files.h"
+#include "../memory/arena.h" // Added: Include arena header
 
 /**
  * Runs the gcc preprocessor on the input file and writes output to .i file.
@@ -61,9 +61,10 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
     StringBuffer sb;
     string_buffer_init(&sb, 1024); // Initialize buffer for core function output
     AstNode *ast_root = NULL; // To receive the AST root for freeing
+    // ReSharper disable once CppDFAUnusedValue
     int result = 1; // Default to error
 
-    bool core_success = run_compiler_core(src, lex_only, parse_only, codegen_only, &sb, &ast_root);
+    bool const core_success = run_compiler_core(src, lex_only, parse_only, codegen_only, &sb, &ast_root);
 
     if (core_success) {
         // If only lexing, parsing, or codegen-to-stdout was requested, we are done successfully.
@@ -95,7 +96,6 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
 
     // --- Cleanup ---
     string_buffer_destroy(&sb); // Always destroy the buffer
-    free_ast(ast_root); // Always free the AST (safe if ast_root is NULL)
     free(src); // Always free the source code
 
     return result;
@@ -142,8 +142,16 @@ bool run_compiler_core(const char *source_code,
                        AstNode **out_ast_root) {
     // Output AST root for freeing later
 
-    bool success = false; // Default to failure
     *out_ast_root = NULL; // Initialize output AST pointer
+
+    // --- Arena Setup ---
+    Arena ast_arena = arena_create(1024 * 1024); // Create a 1MB arena for this compilation
+    // Corrected check: Verify arena creation by checking the start pointer
+    if (ast_arena.start == NULL) {
+        fprintf(stderr, "Driver Error: Failed to create memory arena for AST.\n");
+        arena_destroy(&ast_arena); // Attempt cleanup even if creation failed partially
+        return false; // Cannot proceed without memory
+    }
 
     // --- Lexing Phase ---
     Lexer lexer;
@@ -167,10 +175,12 @@ bool run_compiler_core(const char *source_code,
         token_free(&tok);
     }
     if (error) {
+        arena_destroy(&ast_arena); // Destroy the arena (releases all AST memory)
         return false; // Lexical error
     }
 
     if (lex_only) {
+        arena_destroy(&ast_arena); // Destroy the arena (releases all AST memory)
         return true; // Lexing succeeded, stop here
     }
 
@@ -182,13 +192,15 @@ bool run_compiler_core(const char *source_code,
     parser_init(&parser, &lexer);
 
     printf("Parsing...\n");
-    ProgramNode *ast_root_local = parse_program(&parser);
-    *out_ast_root = (AstNode *) ast_root_local; // Store AST root for caller cleanup
+    // Pass the arena to the parser
+    ProgramNode *ast_root_local = parse_program(&parser, &ast_arena);
+    *out_ast_root = (AstNode *) ast_root_local; // Store AST root (points into arena memory)
 
     if (parser.error_flag || !ast_root_local) {
         fprintf(stderr, "Parsing failed.\n");
-        // AST might be partially created, caller MUST free *out_ast_root
-        parser_destroy(&parser); // Clean up parser resources before returning
+        // AST memory is managed by the arena, no need to call free_ast
+        parser_destroy(&parser); // Clean up parser resources
+        arena_destroy(&ast_arena); // Destroy the arena (releases all AST memory)
         return false; // Parsing failed
     }
 
@@ -199,16 +211,18 @@ bool run_compiler_core(const char *source_code,
 
     // Store parser state before potential early return
     bool parse_error = parser.error_flag;
-    parser_destroy(&parser); // Clean up parser resources now
+    parser_destroy(&parser); // Clean up parser resources
 
     if (parse_error) {
         // Check error flag after destroy to ensure cleanup
         // AST is potentially incomplete, caller must free *out_ast_root
+        arena_destroy(&ast_arena); // Destroy the arena (releases all AST memory)
         return false;
     }
 
     if (parse_only) {
         // AST is complete, caller must free *out_ast_root
+        arena_destroy(&ast_arena); // Destroy the arena (releases all AST memory)
         return true; // Parsing succeeded, stop here
     }
 
@@ -219,6 +233,7 @@ bool run_compiler_core(const char *source_code,
     if (!output_assembly_sb) {
         fprintf(stderr, "Error: Output string buffer is NULL during code generation.\n");
         // Caller must free *out_ast_root
+        arena_destroy(&ast_arena); // Destroy the arena (releases all AST memory)
         return false;
     }
     // No need to init sb, caller does it.
@@ -227,6 +242,7 @@ bool run_compiler_core(const char *source_code,
         fprintf(stderr, "Code generation failed.\n");
         // output_assembly_sb might be partially filled. Caller might want to destroy it.
         // Caller must free *out_ast_root
+        arena_destroy(&ast_arena); // Destroy the arena (releases all AST memory)
         return false; // Codegen failed
     }
 
@@ -238,10 +254,12 @@ bool run_compiler_core(const char *source_code,
         printf("%s\n", assembly_code ? assembly_code : "<EMPTY>"); // Print assembly to stdout
         printf("------------------------------------\n");
         // Caller must free *out_ast_root and destroy sb
+        arena_destroy(&ast_arena); // Destroy the arena (releases all AST memory)
         return true; // Codegen succeeded, stop here
     }
 
     // Full success (Lex -> Parse -> Codegen completed for writing)
     // Caller must free *out_ast_root and destroy sb (after writing)
+    arena_destroy(&ast_arena); // Destroy the arena (releases all AST memory)
     return true;
 }

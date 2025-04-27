@@ -2,16 +2,20 @@
 #include "../src/codegen/codegen.h"
 #include "../src/parser/ast.h"
 #include "../src/strings/strings.h"
+#include "../src/memory/arena.h"
 
 // --- Test Cases ---
 
 // Test generating code for a simple function returning an integer literal
 static void test_codegen_simple_return(void) {
     // 1. Create AST: program { func main() { return 42; } }
-    IntLiteralNode *return_expr = create_int_literal_node(42);
-    ReturnStmtNode *return_stmt = create_return_stmt_node((AstNode *) return_expr);
-    FuncDefNode *func_def = create_func_def_node("main", (AstNode *) return_stmt);
-    ProgramNode *program = create_program_node(func_def);
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    IntLiteralNode *return_expr = create_int_literal_node(42, &test_arena);
+    ReturnStmtNode *return_stmt = create_return_stmt_node((AstNode *) return_expr, &test_arena);
+    FuncDefNode *func_def = create_func_def_node("main", (AstNode *) return_stmt, &test_arena);
+    ProgramNode *program = create_program_node(func_def, &test_arena);
 
     // 2. Setup Codegen State (just the buffer)
     StringBuffer sb;
@@ -35,7 +39,7 @@ static void test_codegen_simple_return(void) {
 
     // 5. Cleanup
     string_buffer_destroy(&sb);
-    free_ast((AstNode *) program); // Free the AST
+    arena_destroy(&test_arena);
 }
 
 // --- Test Runner ---

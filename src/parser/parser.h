@@ -3,6 +3,7 @@
 
 #include "../lexer/lexer.h" // Need Lexer and Token types
 #include "ast.h"           // Need AST node types (specifically ProgramNode)
+#include "memory/arena.h" // Include arena header
 #include <stdbool.h>       // For bool type
 
 // Parser state structure
@@ -28,20 +29,19 @@ typedef struct {
 void parser_init(Parser *parser, Lexer *lexer);
 
 /**
- * @brief Parses the entire token stream from the lexer.
+ * @brief Parses the entire token stream from the lexer using the provided arena.
  *
  * This is the main entry point for parsing. It attempts to parse the input
- * according to the language grammar and builds an Abstract Syntax Tree (AST).
- * For the initial simple case "int main(void) { return 2; }", it expects
- * exactly one function definition.
+ * according to the language grammar and builds an Abstract Syntax Tree (AST)
+ * allocating nodes from the provided arena.
  *
  * @param parser Pointer to the initialized Parser struct.
+ * @param arena Pointer to the memory arena to use for AST node allocations.
  * @return ProgramNode* Pointer to the root of the generated AST (ProgramNode)
  *         if parsing is successful, otherwise NULL if a syntax error occurs
- *         or memory allocation fails. The caller is responsible for freeing
- *         the returned AST using free_ast().
+ *         or memory allocation fails. The memory is owned by the arena.
  */
-ProgramNode *parse_program(Parser *parser);
+ProgramNode *parse_program(Parser *parser, Arena *arena);
 
 /**
  * @brief Cleans up resources used by the parser.
