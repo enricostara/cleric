@@ -79,7 +79,7 @@ c && ./build/test_all
 ```
 
 ## License
-Permissive BSD 2-Clause License (see LICENSE file for details - *assuming one exists or will be added*).
+Permissive BSD 2-Clause License (see LICENSE file for details).
 
 ---
 For educational reference. Contributions and suggestions welcome!
