@@ -15,7 +15,10 @@ void run_ast_tests(void);
 void run_parser_tests(void);
 
 void run_strings_tests(void); // Forward declaration for string tests
+
 void run_codegen_tests(void); // Forward declaration for codegen tests
+
+void run_integration_tests(void); // Forward declaration for integration tests
 
 // Global setUp and tearDown for all tests run by this main runner
 void setUp(void) {
@@ -52,6 +55,9 @@ int main(void) {
 
     printf("\n--- Running Codegen Tests --- \n");
     run_codegen_tests();
+
+    printf("\n--- Running Integration Tests --- \n");
+    run_integration_tests();
 
     return UNITY_END(); // Use UNITY_END() in the main runner
 }

@@ -37,14 +37,6 @@ int run_preprocessor(const char *input_file) {
     return 0;
 }
 
-// Forward declaration for the core compilation function
-static bool run_compiler_core(const char *source_code,
-                              bool lex_only,
-                              bool parse_only,
-                              bool codegen_only,
-                              StringBuffer *output_assembly_sb,
-                              AstNode **out_ast_root);
-
 // Function: compilation from .i file to .s file (using the core compiler logic)
 int run_compiler(const char *input_file, const bool lex_only, const bool parse_only, const bool codegen_only) {
     // Use utility to check extension
@@ -103,8 +95,8 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
 
     // --- Cleanup ---
     string_buffer_destroy(&sb); // Always destroy the buffer
-    free_ast(ast_root);         // Always free the AST (safe if ast_root is NULL)
-    free(src);                  // Always free the source code
+    free_ast(ast_root); // Always free the AST (safe if ast_root is NULL)
+    free(src); // Always free the source code
 
     return result;
 }
@@ -142,12 +134,13 @@ int run_assembler_linker(const char *input_file) {
 // -----------------------------------------------------------------------------
 // Core Compilation Logic (Source String -> Assembly String Buffer)
 // -----------------------------------------------------------------------------
-static bool run_compiler_core(const char *source_code,
-                              bool lex_only,
-                              bool parse_only,
-                              bool codegen_only,
-                              StringBuffer *output_assembly_sb, // Output buffer for assembly
-                              AstNode **out_ast_root) {         // Output AST root for freeing later
+bool run_compiler_core(const char *source_code,
+                       bool lex_only,
+                       bool parse_only,
+                       bool codegen_only,
+                       StringBuffer *output_assembly_sb, // Output buffer for assembly
+                       AstNode **out_ast_root) {
+    // Output AST root for freeing later
 
     bool success = false; // Default to failure
     *out_ast_root = NULL; // Initialize output AST pointer
@@ -208,8 +201,9 @@ static bool run_compiler_core(const char *source_code,
     bool parse_error = parser.error_flag;
     parser_destroy(&parser); // Clean up parser resources now
 
-    if (parse_error) { // Check error flag after destroy to ensure cleanup
-         // AST is potentially incomplete, caller must free *out_ast_root
+    if (parse_error) {
+        // Check error flag after destroy to ensure cleanup
+        // AST is potentially incomplete, caller must free *out_ast_root
         return false;
     }
 
