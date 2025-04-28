@@ -5,19 +5,20 @@ A minimal C compiler implemented in C for educational purposes.
 ## Overview
 Cleric demonstrates the basic stages of compiling a subset of C code:
 - **Preprocessing**: Uses `gcc -E` to handle includes, macros, and comments, converting `.c` files to `.i` files.
-- **Lexing**: Breaks the preprocessed source code into a stream of tokens.
+- **Lexing**: Breaks the source code into a stream of tokens.
 - **Parsing**: Constructs an Abstract Syntax Tree (AST) from the token stream, verifying the code's structure.
 - **Code Generation**: Translates the AST into assembly code (currently targeting x86-64 AT&T syntax).
 - **Assembly & Linking**: Uses the system assembler (e.g., `as`) and linker (e.g., `ld`) to produce an executable file from the generated assembly.
 
 ## Features
-- **Modular Design**: Clear separation between lexer, parser, code generator, and driver components.
+- **Modular Design**: Clear separation between lexer, parser, code generator, and compiler driver components.
 - **Abstract Syntax Tree (AST)**: Uses an AST to represent the code's structure internally.
 - **Intermediate Stage Inspection**: Allows viewing the output of different stages:
     - `--lex`: Print the token stream.
     - `--parse`: Print the generated Abstract Syntax Tree.
     - `--codegen`: Print the generated assembly code to standard output.
-- **Testable Core Logic**: The core compilation pipeline (lexing, parsing, codegen) is extracted into a function (`run_compiler_core`) accessible for integration testing.
+- **Arena Allocator**: Efficiently manages memory for AST nodes using a custom arena allocator, simplifying cleanup.
+- **Testable Core Logic**: The core compilation pipeline (lexing, parsing, codegen) is handled by the `compile` function, which is testable.
 - **Comprehensive Testing**: Includes both unit tests (for individual modules) and integration tests (verifying the core string-to-string compilation).
 
 ## Usage
@@ -31,7 +32,10 @@ mkdir build
 cd build
 
 # Configure the build (use Debug for development/testing)
-c="clang" .. # or cmake -DCMAKE_C_COMPILER=gcc ..
+# Example using clang:
+# cmake -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Debug ..
+# Example using default compiler:
+cmake -DCMAKE_BUILD_TYPE=Debug ..
 cmake --build .
 # Or, use make directly after cmake:
 # make
@@ -72,7 +76,7 @@ The project includes unit tests (using the Unity framework) and integration test
 ```sh
 # Ensure you've built with Debug configuration for tests
 # From the project root directory:
-c && ./build/test_all
+cmake --build build && ./build/test_all
 
 # Or, if you are in the build directory:
 # cmake --build . && ./test_all
