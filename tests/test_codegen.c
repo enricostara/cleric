@@ -25,7 +25,7 @@ static void test_codegen_simple_return(void) {
     bool success = codegen_generate_program(&sb, program);
 
     // 4. Assertions
-    TEST_ASSERT_TRUE(success);
+    TEST_ASSERT_TRUE_MESSAGE(success, "codegen_generate_program failed");
 
     // Expected assembly for: return 42;
     const char *expected_asm =
@@ -34,12 +34,13 @@ static void test_codegen_simple_return(void) {
             "    movl    $42, %eax\n"
             "    retq\n";
 
-    const char *actual_asm = string_buffer_get_content(&sb);
-    TEST_ASSERT_EQUAL_STRING(expected_asm, actual_asm);
+    const char *actual_asm = string_buffer_content_str(&sb); // Use read-only access
+    TEST_ASSERT_NOT_NULL_MESSAGE(actual_asm, "Output assembly buffer is NULL after content_str");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch");
 
     // 5. Cleanup
-    string_buffer_destroy(&sb);
     arena_destroy(&test_arena);
+    string_buffer_destroy(&sb);
 }
 
 // --- Test Runner ---

@@ -28,7 +28,7 @@ static void test_compile_return_4(void) {
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed");
 
     // Assert the generated assembly matches expected
-    const char *actual_asm = string_buffer_get_content(&sb);
+    const char *actual_asm = string_buffer_content_str(&sb);
     TEST_ASSERT_NOT_NULL_MESSAGE(actual_asm, "Output assembly buffer is NULL");
     TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch");
 

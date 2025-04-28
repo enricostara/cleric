@@ -35,15 +35,12 @@ void string_buffer_append(StringBuffer *sb, const char *format, ...);
  */
 void string_buffer_append_char(StringBuffer *sb, char c);
 
-/**
- * Returns the final string content and transfers ownership to the caller.
- * The StringBuffer itself should be freed separately if needed, but the
- * internal buffer pointer is detached.
- * Ensures the returned string is null-terminated.
- * @param sb Pointer to the StringBuffer.
- * @return A pointer to the dynamically allocated string buffer. The caller is responsible for freeing this.
- */
-char *string_buffer_get_content(StringBuffer *sb);
+// Get the content as a C string (read-only, pointer valid until next modification)
+const char *string_buffer_content_str(const StringBuffer *sb);
+
+// Get the internal buffer (transfers ownership - USE WITH CAUTION)
+// Kept for specific use cases, but prefer string_buffer_c_str or copy
+char *string_buffer_release_content(StringBuffer *sb);
 
 /**
  * Frees the internal buffer associated with the StringBuffer.

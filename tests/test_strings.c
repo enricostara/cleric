@@ -110,24 +110,34 @@ static void test_string_buffer_append_empty(void) {
     string_buffer_clear(&sb);
 }
 
-// Test getting content (transfers ownership)
-static void test_string_buffer_get_content(void) {
+// Test getting content (both read-only and ownership transfer)
+static void test_string_buffer_content_access(void) {
     StringBuffer sb;
-    string_buffer_init(&sb, 16);
-    string_buffer_append(&sb, "Test Data");
-    TEST_ASSERT_EQUAL_size_t(9, sb.length);
+    string_buffer_init(&sb, 10);
+    string_buffer_append(&sb, "Hello");
 
-    char *content = string_buffer_get_content(&sb);
-    TEST_ASSERT_NOT_NULL(content);
-    TEST_ASSERT_EQUAL_STRING("Test Data", content);
+    // Test read-only access with c_str
+    const char *content_ro = string_buffer_content_str(&sb);
+    TEST_ASSERT_EQUAL_STRING("Hello", content_ro);
+    TEST_ASSERT_EQUAL(5, sb.length); // Buffer should be unchanged
+    TEST_ASSERT_NOT_NULL(sb.buffer); // Buffer should still be attached
 
-    // Check if sb is reset after getting content
-    TEST_ASSERT_NULL(sb.buffer);
-    TEST_ASSERT_EQUAL_size_t(0, sb.capacity);
-    TEST_ASSERT_EQUAL_size_t(0, sb.length);
+    // Test ownership transfer with release_content
+    char *content_released = string_buffer_release_content(&sb);
+    TEST_ASSERT_EQUAL_STRING("Hello", content_released);
+    TEST_ASSERT_EQUAL(0, sb.length); // Buffer should be reset
+    TEST_ASSERT_NULL(sb.buffer); // Buffer should be detached
 
-    // Caller must free the content
-    free(content);
+    // Crucially, the caller must free the released content
+    free(content_released);
+
+    // Test getting content from empty buffer (after release)
+    const char *empty_ro = string_buffer_content_str(&sb); // Should be ""
+    TEST_ASSERT_EQUAL_STRING("", empty_ro);
+    char *empty_released = string_buffer_release_content(&sb); // Should be NULL
+    TEST_ASSERT_NULL(empty_released);
+
+    string_buffer_destroy(&sb); // Should be safe even if buffer is NULL
 }
 
 // Test freeing data
@@ -165,7 +175,7 @@ void run_strings_tests(void) {
     RUN_TEST(test_string_buffer_append_realloc);
     RUN_TEST(test_string_buffer_append_char_realloc);
     RUN_TEST(test_string_buffer_append_empty);
-    RUN_TEST(test_string_buffer_get_content);
+    RUN_TEST(test_string_buffer_content_access);
     RUN_TEST(test_string_buffer_free_data_simple);
     RUN_TEST(test_string_buffer_free_data_empty);
 }

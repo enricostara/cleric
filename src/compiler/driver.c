@@ -2,12 +2,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include "driver.h"
-#include "../lexer/lexer.h"
 #include "../parser/parser.h" // Include parser header
-#include "../codegen/codegen.h" // Include Codegen header
 #include "../strings/strings.h" // Include StringBuffer header
 #include "../files/files.h"
-#include "../memory/arena.h" // Added: Include arena header
 #include "compiler.h" // Added: Include new compiler header
 
 /**
@@ -74,7 +71,7 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
         } else {
             // Full compilation succeeded, write assembly to file
             printf("Writing assembly code to %s...\n", output_file);
-            const char *assembly_code = string_buffer_get_content(&sb);
+            const char *assembly_code = string_buffer_content_str(&sb); // Use read-only access
             if (!write_string_to_file(output_file, assembly_code)) {
                 fprintf(stderr, "Failed to write assembly to %s\n", output_file);
                 remove(output_file); // Attempt removal

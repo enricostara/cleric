@@ -121,17 +121,11 @@ bool compile(const char *source_code,
     if (codegen_only) {
         printf("Codegen successful. Outputting assembly to stdout:\n");
         printf("--- Generated Assembly (stdout) ---\n");
-        // NOTE: string_buffer_get_content transfers ownership. We need to handle it.
-        // For codegen_only, we print it here. The caller is responsible for the buffer.
-        // A better approach might be to *not* get_content here, but let the caller do it.
-        // However, sticking to current logic for now.
-        const char *assembly_code = string_buffer_get_content(output_assembly_sb);
+        // Using string_buffer_content_str now provides read-only access.
+        // The StringBuffer remains valid and is destroyed at the end of this function.
+        const char *assembly_code = string_buffer_content_str(output_assembly_sb);
         printf("%s\n", assembly_code ? assembly_code : "<EMPTY>"); // Print assembly to stdout
         printf("------------------------------------\n");
-        // Since we took ownership, we should free it.
-        // BUT the contract seems to be caller handles the buffer in codegen_only mode.
-        // Let's revert the get_content and let the caller (run_compiler) handle it.
-        // free((void*)assembly_code); // No, don't free here based on caller's responsibility
     }
 
     // IMPORTANT: Arena is destroyed ONLY on success or error *within* this function.

@@ -18,7 +18,8 @@
  */
 static bool ensure_capacity(StringBuffer *sb, const size_t additional_needed) {
     const size_t required_total = sb->length + additional_needed;
-    if (required_total < sb->length) { // Check for overflow
+    if (required_total < sb->length) {
+        // Check for overflow
         fprintf(stderr, "StringBuffer Error: Size calculation overflow.\n");
         return false;
     }
@@ -32,10 +33,11 @@ static bool ensure_capacity(StringBuffer *sb, const size_t additional_needed) {
     size_t new_capacity = sb->capacity > 0 ? sb->capacity : 1; // Start with 1 if capacity is 0
     while (new_capacity < required_capacity) {
         new_capacity *= 2;
-        if (new_capacity < sb->capacity) { // Check for overflow during doubling
+        if (new_capacity < sb->capacity) {
+            // Check for overflow during doubling
             fprintf(stderr, "StringBuffer Error: Capacity calculation overflow during resize.\n");
-             // Try setting to maximum possible size if overflow occurs? Or just fail.
-            new_capacity = (size_t)-1; // Max size_t value
+            // Try setting to maximum possible size if overflow occurs? Or just fail.
+            new_capacity = (size_t) -1; // Max size_t value
             if (new_capacity < required_capacity) return false; // Still not enough
             break; // Use max capacity
         }
@@ -60,7 +62,7 @@ void string_buffer_init(StringBuffer *sb, size_t initial_capacity) {
     if (initial_capacity == 0) {
         initial_capacity = 16; // Default small capacity
     }
-    sb->buffer = (char *)malloc(initial_capacity);
+    sb->buffer = (char *) malloc(initial_capacity);
     if (!sb->buffer) {
         perror("Failed to allocate string buffer");
         exit(EXIT_FAILURE); // Critical error
@@ -105,7 +107,7 @@ void string_buffer_append(StringBuffer *sb, const char *format, ...) {
         return; // Or handle error more gracefully
     }
 
-    size_t additional_needed = (size_t)required;
+    size_t additional_needed = (size_t) required;
 
     // Ensure buffer has enough capacity
     if (!ensure_capacity(sb, additional_needed)) {
@@ -120,7 +122,7 @@ void string_buffer_append(StringBuffer *sb, const char *format, ...) {
     int written = vsnprintf(sb->buffer + sb->length, sb->capacity - sb->length, format, args2);
     va_end(args2);
 
-    if (written < 0 || (size_t)written != additional_needed) {
+    if (written < 0 || (size_t) written != additional_needed) {
         fprintf(stderr, "StringBuffer Error: vsnprintf writing failed or wrote unexpected size.\n");
         // Handle potential buffer corruption or error state
     } else {
@@ -140,8 +142,39 @@ void string_buffer_append_char(StringBuffer *sb, char c) {
     sb->buffer[sb->length] = '\0'; // Maintain null termination
 }
 
-char *string_buffer_get_content(StringBuffer *sb) {
+// --- Get Content ---
+
+// Returns a read-only pointer to the internal buffer.
+// Pointer is valid until the buffer is modified or destroyed.
+const char *string_buffer_content_str(const StringBuffer *sb) {
+    if (!sb || !sb->buffer) {
+        // Return an empty string literal if buffer is NULL or sb is NULL
+        // or if length is 0 (buffer might be allocated but empty)
+        return "";
+    }
+    // Buffer should already be null-terminated by append functions
+    return sb->buffer;
+}
+
+// Returns the final string content and transfers ownership to the caller.
+// The StringBuffer itself is reset.
+// USE WITH CAUTION - Prefer string_buffer_c_str for read-only access.
+char *string_buffer_release_content(StringBuffer *sb) {
     if (!sb) return NULL;
+
+    // Ensure null termination before detaching, if buffer exists
+    if (sb->buffer) {
+        if (sb->length < sb->capacity) {
+            sb->buffer[sb->length] = '\0';
+        } else if (sb->capacity > 0) {
+            // Buffer is exactly full, ensure last char is null terminator
+            sb->buffer[sb->capacity - 1] = '\0';
+            // Note: This might truncate the last actual character if capacity
+            // didn't account for the null terminator initially.
+            // The ensure_capacity logic should handle this.
+        }
+    }
+
     char *content = sb->buffer;
     // Detach buffer from the struct to transfer ownership
     sb->buffer = NULL;
@@ -151,6 +184,7 @@ char *string_buffer_get_content(StringBuffer *sb) {
     return content;
 }
 
+// --- Clear & Destroy ---
 void string_buffer_clear(StringBuffer *sb) {
     if (sb && sb->buffer) {
         free(sb->buffer);
@@ -165,10 +199,10 @@ void string_buffer_clear(StringBuffer *sb) {
  *
  * @param sb Pointer to the StringBuffer.
  */
-void string_buffer_destroy(StringBuffer* sb) {
+void string_buffer_destroy(StringBuffer *sb) {
     if (sb) {
         free(sb->buffer);
-        sb->buffer = NULL;  // Prevent double free
+        sb->buffer = NULL; // Prevent double free
         sb->length = 0;
         sb->capacity = 0;
     }
