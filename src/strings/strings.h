@@ -38,10 +38,6 @@ void string_buffer_append_char(StringBuffer *sb, char c);
 // Get the content as a C string (read-only, pointer valid until next modification)
 const char *string_buffer_content_str(const StringBuffer *sb);
 
-// Get the internal buffer (transfers ownership - USE WITH CAUTION)
-// Kept for specific use cases, but prefer string_buffer_c_str or copy
-char *string_buffer_release_content(StringBuffer *sb);
-
 /**
  * Frees the internal buffer associated with the StringBuffer.
  * Resets the struct members.

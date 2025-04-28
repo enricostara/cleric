@@ -116,26 +116,17 @@ static void test_string_buffer_content_access(void) {
     string_buffer_init(&sb, 10);
     string_buffer_append(&sb, "Hello");
 
-    // Test read-only access with c_str
+    // Test read-only access with content_str
     const char *content_ro = string_buffer_content_str(&sb);
     TEST_ASSERT_EQUAL_STRING("Hello", content_ro);
     TEST_ASSERT_EQUAL(5, sb.length); // Buffer should be unchanged
     TEST_ASSERT_NOT_NULL(sb.buffer); // Buffer should still be attached
 
-    // Test ownership transfer with release_content
-    char *content_released = string_buffer_release_content(&sb);
-    TEST_ASSERT_EQUAL_STRING("Hello", content_released);
-    TEST_ASSERT_EQUAL(0, sb.length); // Buffer should be reset
-    TEST_ASSERT_NULL(sb.buffer); // Buffer should be detached
-
-    // Crucially, the caller must free the released content
-    free(content_released);
-
-    // Test getting content from empty buffer (after release)
-    const char *empty_ro = string_buffer_content_str(&sb); // Should be ""
+    // Test getting content from empty buffer
+    string_buffer_clear(&sb); // Clear the buffer first
+    const char *empty_ro = string_buffer_content_str(&sb); // Should return ""
     TEST_ASSERT_EQUAL_STRING("", empty_ro);
-    char *empty_released = string_buffer_release_content(&sb); // Should be NULL
-    TEST_ASSERT_NULL(empty_released);
+    TEST_ASSERT_EQUAL(0, sb.length);
 
     string_buffer_destroy(&sb); // Should be safe even if buffer is NULL
 }

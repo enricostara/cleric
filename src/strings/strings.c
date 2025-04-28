@@ -156,34 +156,6 @@ const char *string_buffer_content_str(const StringBuffer *sb) {
     return sb->buffer;
 }
 
-// Returns the final string content and transfers ownership to the caller.
-// The StringBuffer itself is reset.
-// USE WITH CAUTION - Prefer string_buffer_c_str for read-only access.
-char *string_buffer_release_content(StringBuffer *sb) {
-    if (!sb) return NULL;
-
-    // Ensure null termination before detaching, if buffer exists
-    if (sb->buffer) {
-        if (sb->length < sb->capacity) {
-            sb->buffer[sb->length] = '\0';
-        } else if (sb->capacity > 0) {
-            // Buffer is exactly full, ensure last char is null terminator
-            sb->buffer[sb->capacity - 1] = '\0';
-            // Note: This might truncate the last actual character if capacity
-            // didn't account for the null terminator initially.
-            // The ensure_capacity logic should handle this.
-        }
-    }
-
-    char *content = sb->buffer;
-    // Detach buffer from the struct to transfer ownership
-    sb->buffer = NULL;
-    sb->capacity = 0;
-    sb->length = 0;
-    // The caller is now responsible for freeing `content`
-    return content;
-}
-
 // --- Clear & Destroy ---
 void string_buffer_clear(StringBuffer *sb) {
     if (sb && sb->buffer) {
