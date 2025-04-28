@@ -14,7 +14,7 @@
 // -----------------------------------------------------------------------------
 
 // Forward declarations for static helper functions
-static bool run_lexer(const char *source_code, bool print_tokens);
+static bool run_lexer(Lexer *lexer, bool print_tokens); // Takes an initialized lexer
 static bool run_parser(Lexer *lexer, Arena *arena, bool print_ast, AstNode **out_ast_root);
 static bool run_codegen(ProgramNode *ast_root, StringBuffer *output_assembly_sb, bool print_assembly);
 
@@ -27,8 +27,12 @@ bool compile(const char *source_code,
 
     *out_ast_root = NULL; // Initialize output AST pointer
 
+    Lexer lexer;
+    lexer_init(&lexer, source_code);
+
     // --- Lexing Phase ---
-    if (!run_lexer(source_code, lex_only || parse_only || codegen_only)) {
+    bool const lex_success = run_lexer(&lexer, (lex_only || parse_only || codegen_only));
+    if (!lex_success) {
         return false; // Lexical error
     }
 
@@ -43,10 +47,10 @@ bool compile(const char *source_code,
         return false; // Cannot proceed without memory
     }
 
+    // --- Reset Lexer for Parsing ---
+    lexer_reset(&lexer); // Reset the same lexer instance
+
     // --- Parsing Phase ---
-    Lexer lexer;
-    lexer_init(&lexer, source_code);
-    lexer_reset(&lexer); // Reset lexer for parsing
     bool parse_success = run_parser(&lexer, &ast_arena, (parse_only || codegen_only), out_ast_root);
     if (!parse_success) {
         arena_destroy(&ast_arena); // Clean up arena on parse failure
@@ -81,13 +85,12 @@ bool compile(const char *source_code,
 // Helper Functions for Compilation Stages
 // -----------------------------------------------------------------------------
 
-static bool run_lexer(const char *source_code, bool print_tokens) {
-    Lexer lexer;
-    lexer_init(&lexer, source_code);
+static bool run_lexer(Lexer *lexer, bool print_tokens) {
+    // Assumes lexer is already initialized
     Token tok;
     int error = 0;
     printf("Lexing...\n");
-    while ((tok = lexer_next_token(&lexer)).type != TOKEN_EOF) {
+    while ((tok = lexer_next_token(lexer)).type != TOKEN_EOF) {
         if (tok.type == TOKEN_UNKNOWN) {
             char token_str[128];
             token_to_string(tok, token_str, sizeof(token_str));
