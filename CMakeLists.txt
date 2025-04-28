@@ -29,7 +29,8 @@ add_library(unity tests/unity/unity.c)
 add_executable(cleric
         src/cleric.c
 
-        src/driver/driver.c
+        src/compiler/driver.c
+        src/compiler/compiler.c
         src/lexer/lexer.c
         src/files/files.c
         src/args/args.c
@@ -57,9 +58,10 @@ add_executable(test_all
         tests/test_parser.c
         tests/test_strings.c
         tests/test_codegen.c
-        tests/test_integration.c
+        tests/test_compiler.c
         tests/test_arena.c # Add arena tests
-        src/driver/driver.c
+        src/compiler/driver.c
+        src/compiler/compiler.c # Add new compiler core source
         src/lexer/lexer.c
         src/files/files.c
         src/args/args.c

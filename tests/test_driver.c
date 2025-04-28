@@ -1,5 +1,5 @@
 #include "unity/unity.h"
-#include "../src/driver/driver.h"
+#include "../src/compiler/driver.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -14,14 +14,6 @@ int run_preprocessor(const char *input_file);
 // Compiles a .i file to a .s file (or performs lex/parse only)
 int run_compiler(const char *input_file, bool lex_only, bool parse_only, bool codegen_only);
 
-// Core compilation function (exposed for testing)
-bool run_compiler_core(const char *source_code,
-                       bool lex_only,
-                       bool parse_only,
-                       bool codegen_only,
-                       StringBuffer *output_assembly_sb,
-                       AstNode **out_ast_root);
-
 // Assembles and links a .s file to an executable, removes .s on success
 int run_assembler_linker(const char *input_file);
 

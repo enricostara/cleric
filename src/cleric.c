@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include "driver/driver.h"
+#include "compiler/driver.h"
 #include "files/files.h"
 #include "args/args.h"
 

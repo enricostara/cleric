@@ -1,7 +1,7 @@
 #include "unity.h"
-#include "../src/driver/driver.h"
 #include "../src/strings/strings.h"
-#include "../src/parser/ast.h" // For free_ast
+#include "../src/parser/ast.h" // For AstNode type
+#include "../src/compiler/compiler.h" // Include the new compiler header
 #include <stdlib.h> // For NULL
 
 
@@ -12,20 +12,20 @@ static void test_compile_return_4(void) {
     // IMPORTANT: Ensure expected_asm EXACTLY matches the compiler output,
     // including newlines and spacing.
     const char *expected_asm =
-        ".globl _main\n"
-        "_main:\n"
-        "    movl    $4, %eax\n"
-        "    retq\n";
+            ".globl _main\n"
+            "_main:\n"
+            "    movl    $4, %eax\n"
+            "    retq\n";
 
     StringBuffer sb;
     string_buffer_init(&sb, 256); // Initialize buffer
     AstNode *ast_root = NULL;
 
     // Run the core compiler pipeline (no _only flags)
-    bool success = run_compiler_core(input_c, false, false, false, &sb, &ast_root);
+    bool const success = compile(input_c, false, false, false, &sb, &ast_root);
 
     // Assert compilation succeeded
-    TEST_ASSERT_TRUE_MESSAGE(success, "run_compiler_core failed");
+    TEST_ASSERT_TRUE_MESSAGE(success, "compile failed");
 
     // Assert the generated assembly matches expected
     const char *actual_asm = string_buffer_get_content(&sb);
