@@ -66,6 +66,17 @@ ProgramNode *create_program_node(FuncDefNode *function, Arena* arena) {
     return node;
 }
 
+// Function to create a unary operation node
+UnaryOpNode *create_unary_op_node(const UnaryOperatorType op, AstNode *operand, Arena *arena) {
+    UnaryOpNode *node = arena_alloc(arena, sizeof(UnaryOpNode));
+    if (!node) {
+        return NULL; // Allocation failed
+    }
+    node->base.type = NODE_UNARY_OP;
+    node->op = op;
+    node->operand = operand; // Operand node allocated previously
+    return node;
+}
 
 // Helper function to print indentation
 static void print_indent(int level) {
@@ -108,6 +119,17 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
             const ReturnStmtNode *ret_node = (ReturnStmtNode *) node;
             printf("Return(\n");
             ast_pretty_print(ret_node->expression, indent_level + 1);
+            print_indent(indent_level);
+            printf(")\n");
+            break;
+        }
+        case NODE_UNARY_OP: { // Added case for unary operators
+            const UnaryOpNode *unary_node = (UnaryOpNode *) node;
+            const char *op_str = (unary_node->op == OPERATOR_NEGATE) ? "Negate" :
+                                (unary_node->op == OPERATOR_COMPLEMENT) ? "Complement" :
+                                "UnknownOp";
+            printf("UnaryOp(op=%s,\n", op_str);
+            ast_pretty_print(unary_node->operand, indent_level + 1);
             print_indent(indent_level);
             printf(")\n");
             break;

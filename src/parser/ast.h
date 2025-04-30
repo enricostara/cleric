@@ -8,8 +8,15 @@ typedef enum {
     NODE_PROGRAM, // Represents the entire program (a sequence of top-level declarations)
     NODE_FUNC_DEF, // Represents a function definition
     NODE_RETURN_STMT, // Represents a return statement
-    NODE_INT_LITERAL // Represents an integer literal constant
+    NODE_INT_LITERAL, // Represents an integer literal constant
+    NODE_UNARY_OP // Represents a unary operation (e.g., -, ~)
 } NodeType;
+
+// Define the types of Unary Operators
+typedef enum {
+    OPERATOR_NEGATE, // - (Arithmetic negation)
+    OPERATOR_COMPLEMENT // ~ (Bitwise complement)
+} UnaryOperatorType;
 
 // Base structure for all AST nodes
 typedef struct AstNode {
@@ -22,10 +29,17 @@ typedef struct {
     int value; // The integer value
 } IntLiteralNode;
 
+// Structure for a unary operation node
+typedef struct {
+    AstNode base; // type = NODE_UNARY_OP
+    UnaryOperatorType op; // The specific unary operator (NEGATE or COMPLEMENT)
+    AstNode *operand; // The expression the operator applies to
+} UnaryOpNode;
+
 // Structure for a return statement node
 typedef struct {
     AstNode base; // type = NODE_RETURN_STMT
-    AstNode *expression; // The expression being returned (e.g., an IntLiteralNode)
+    AstNode *expression; // The expression being returned (e.g., an IntLiteralNode, a UnaryOpNode)
 } ReturnStmtNode;
 
 // Structure for a function definition node
@@ -45,6 +59,9 @@ typedef struct {
 
 // Function to create an integer literal node (convenience constructor)
 IntLiteralNode *create_int_literal_node(int value, Arena* arena);
+
+// Function to create a unary operation node (convenience constructor)
+UnaryOpNode *create_unary_op_node(UnaryOperatorType op, AstNode *operand, Arena *arena);
 
 // Function to create a return statement node (convenience constructor)
 ReturnStmtNode *create_return_stmt_node(AstNode *expression, Arena* arena);
