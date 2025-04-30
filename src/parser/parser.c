@@ -15,9 +15,7 @@ static AstNode *parse_statement(Parser *parser, Arena *arena);
 
 static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena);
 
-static AstNode *parse_expression(Parser *parser, Arena *arena);
-
-static AstNode *parse_primary_expression(Parser *parser, Arena *arena);
+static AstNode *parse_exp(Parser *parser, Arena *arena); // Renamed from parse_primary_expression
 
 // Helper function to consume a token and advance
 static bool parser_consume(Parser *parser, TokenType expected_type);
@@ -216,65 +214,110 @@ static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena) {
         return NULL; // Error handled inside consume
     }
 
-    // Parse the expression to be returned
-    AstNode *expression = parse_expression(parser, arena);
-    if (!expression) {
-        // Error occurred during expression parsing
+    // Parse the expression that follows using the new function
+    AstNode *expression_node = parse_exp(parser, arena);
+    if (!expression_node) {
+        // Error should have been reported by parse_exp or earlier
         return NULL;
     }
 
     // Expect ';' after the expression
     if (!parser_consume(parser, TOKEN_SYMBOL_SEMICOLON)) {
+        // Error handled in parser_consume
         return NULL;
     }
 
     // Create the return statement node
-    return create_return_stmt_node(expression, arena); // Pass arena
+    ReturnStmtNode *return_node = create_return_stmt_node(expression_node, arena);
+    if (!return_node) {
+        parser_error(parser, "Memory allocation failed for return statement node");
+        return NULL;
+    }
+    return return_node;
 }
 
-// Expression: PrimaryExpression
-static AstNode *parse_expression(Parser *parser, Arena *arena) {
-    if (parser->error_flag) return NULL;
-    // For now, our expression grammar is very simple: only primary expressions
-    return parse_primary_expression(parser, arena);
-}
-
-// PrimaryExpression: IntegerConstant | Identifier | '(' Expression ')'
-static AstNode *parse_primary_expression(Parser *parser, Arena *arena) {
-    // ReSharper disable once CppDFAConstantConditions
-    // ReSharper disable once CppDFAUnreachableCode
+// Expression parsing: Handles Integers, Unary Ops (- ~), and Parentheses
+// <exp> ::= <int> | <unop> <exp> | "(" <exp> ")"
+// <unop> ::= "-" | "~"
+static AstNode *parse_exp(Parser *parser, Arena *arena) { // NOLINT(*-no-recursion)
     if (parser->error_flag) return NULL;
 
-    switch (parser->current_token.type) {
-        case TOKEN_CONSTANT: {
-            errno = 0; // Reset errno before calling strtol
-            char *end_ptr;
-            const long val = strtol(parser->current_token.lexeme, &end_ptr, 10);
+    // Handle Unary Operators
+    if (parser->current_token.type == TOKEN_SYMBOL_MINUS || parser->current_token.type == TOKEN_SYMBOL_TILDE) {
+        const UnaryOperatorType op_type = parser->current_token.type == TOKEN_SYMBOL_MINUS
+                                      ? OPERATOR_NEGATE
+                                      : OPERATOR_COMPLEMENT;
 
-            // Check for conversion errors
-            if (errno == ERANGE || *end_ptr != '\0') {
-                parser_error(parser, "Invalid integer literal: %s", parser->current_token.lexeme);
-                return NULL;
-            }
-            // Check if the value fits within an int
-            if (val < INT_MIN || val > INT_MAX) {
-                parser_error(parser, "Integer literal out of range: %s", parser->current_token.lexeme);
-                return NULL;
-            }
+        parser_advance(parser); // Consume the operator ('-' or '~')
+        if (parser->error_flag) return NULL; // Check if advance caused an error
 
-            const int value = (int) val;
-            parser_advance(parser); // Consume the integer token
-            // ReSharper disable once CppDFAConstantConditions
-            // ReSharper disable once CppDFAUnreachableCode
-            if (parser->error_flag) return NULL; // Check error after explicit advance
-            return (AstNode *) create_int_literal_node(value, arena); // Pass arena
-        }
-        // Add cases for Identifier, Parenthesized Expression, etc. later
-        default: {
-            char current_token_str[128];
-            token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
-            parser_error(parser, "Expected expression (e.g., integer constant), but got %s", current_token_str);
+        AstNode *operand_node = parse_exp(parser, arena); // Recursively parse the operand
+        if (!operand_node) {
+            // Error already reported by recursive call or advance
             return NULL;
         }
+
+        // Create the UnaryOpNode
+        UnaryOpNode* unary_node = create_unary_op_node(op_type, operand_node, arena);
+        if (!unary_node) {
+             parser_error(parser, "Memory allocation failed for unary operator node");
+             return NULL;
+        }
+        return (AstNode*)unary_node;
     }
+
+    // Handle Integer Literals
+    if (parser->current_token.type == TOKEN_CONSTANT) {
+        char *end_ptr;
+        errno = 0; // Reset errno before call
+        const long val_long = strtol(parser->current_token.lexeme, &end_ptr, 10);
+
+        // Error checking for strtol
+        if (parser->current_token.lexeme == end_ptr) { // No digits found
+            parser_error(parser, "Invalid integer literal format: %s", parser->current_token.lexeme);
+            return NULL;
+        }
+        if (*end_ptr != '\0') { // Extra characters after number (should have been caught by lexer, but double-check)
+            parser_error(parser, "Invalid characters after integer literal: %s", parser->current_token.lexeme);
+            return NULL;
+        }
+        if (errno == ERANGE || val_long < INT_MIN || val_long > INT_MAX) {
+            parser_error(parser, "Integer literal out of range: %s", parser->current_token.lexeme);
+            return NULL;
+        }
+
+        const int value = (int) val_long;
+        IntLiteralNode* node = create_int_literal_node(value, arena);
+        if (!node) {
+            parser_error(parser, "Memory allocation failed for integer literal node");
+            return NULL;
+        }
+        parser_advance(parser); // Consume the constant token
+        return (AstNode*)node;
+    }
+
+    // Handle Parenthesized Expressions
+    if (parser->current_token.type == TOKEN_SYMBOL_LPAREN) {
+        parser_advance(parser); // Consume '('
+        if (parser->error_flag) return NULL;
+
+        AstNode *inner_exp_node = parse_exp(parser, arena); // Recursively parse the inner expression
+        if (!inner_exp_node) {
+            // Error already reported
+            return NULL;
+        }
+
+        // Consume ')'
+        if (!parser_consume(parser, TOKEN_SYMBOL_RPAREN)) {
+            // Error reported by parser_consume
+            return NULL;
+        }
+        return inner_exp_node; // Return the node from inside the parentheses
+    }
+
+    // Handle Error Case
+    char current_token_str[128];
+    token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
+    parser_error(parser, "Expected expression (integer, unary op, or '('), but got %s", current_token_str);
+    return NULL;
 }
