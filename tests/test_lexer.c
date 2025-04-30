@@ -1,135 +1,184 @@
 #include <string.h>
+#include <stdio.h> // For snprintf in helper
 
 #include "../src/lexer/lexer.h"
 #include "unity/unity.h"
 
-void test_tokenize_minimal_c(void) {
-    const char *src = "int main(void) { return 2; }\n";
-    Lexer lexer;
-    lexer_init(&lexer, src);
-    Token tok;
+// --- Test Case Data Structures ---
 
-    // KEYWORD: int
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_KEYWORD_INT, tok.type);
-    TEST_ASSERT_NULL(tok.lexeme);
-    token_free(&tok);
+typedef struct {
+    TokenType type;
+    const char *lexeme; // Expected lexeme (NULL if not applicable or checked)
+} ExpectedToken;
 
-    // IDENTIFIER: main
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_IDENTIFIER, tok.type);
-    TEST_ASSERT_NOT_NULL(tok.lexeme);
-    TEST_ASSERT_EQUAL_STRING("main", tok.lexeme);
-    token_free(&tok);
+typedef struct {
+    const char *name; // Name of the test case
+    const char *source;
+    ExpectedToken *expected_tokens;
+    size_t num_expected_tokens;
+} LexerTestCase;
 
-    // SYMBOL: (
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_SYMBOL_LPAREN, tok.type);
-    TEST_ASSERT_NULL(tok.lexeme);
-    token_free(&tok);
+// --- Helper Function to Run a Single Test Case ---
 
-    // KEYWORD: void
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_KEYWORD_VOID, tok.type);
-    TEST_ASSERT_NULL(tok.lexeme);
-    token_free(&tok);
-
-    // SYMBOL: )
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_SYMBOL_RPAREN, tok.type);
-    TEST_ASSERT_NULL(tok.lexeme);
-    token_free(&tok);
-
-    // SYMBOL: {
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_SYMBOL_LBRACE, tok.type);
-    TEST_ASSERT_NULL(tok.lexeme);
-    token_free(&tok);
-
-    // KEYWORD: return
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_KEYWORD_RETURN, tok.type);
-    TEST_ASSERT_NULL(tok.lexeme);
-    token_free(&tok);
-
-    // CONSTANT: 2
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_CONSTANT, tok.type);
-    TEST_ASSERT_NOT_NULL(tok.lexeme);
-    TEST_ASSERT_EQUAL_STRING("2", tok.lexeme);
-    token_free(&tok);
-
-    // SYMBOL: ;
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_SYMBOL_SEMICOLON, tok.type);
-    TEST_ASSERT_NULL(tok.lexeme);
-    token_free(&tok);
-
-    // SYMBOL: }
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_SYMBOL_RBRACE, tok.type);
-    TEST_ASSERT_NULL(tok.lexeme);
-    token_free(&tok);
-
-    // End of input
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_EOF, tok.type);
-    token_free(&tok);
-}
-
-void test_tokenize_unknown_token(void) {
-    // The input contains an unrecognized character: '@'
-    const char *src = "int main() { @ }";
-    Lexer lexer;
-    lexer_init(&lexer, src);
-    Token tok;
-    // Skip to the unknown token
-    tok = lexer_next_token(&lexer);
-    token_free(&tok); // int
-    tok = lexer_next_token(&lexer);
-    token_free(&tok); // main
-    tok = lexer_next_token(&lexer);
-    token_free(&tok); // (
-    tok = lexer_next_token(&lexer);
-    token_free(&tok); // )
-    tok = lexer_next_token(&lexer);
-    token_free(&tok); // {
-    // Now should get TOKEN_UNKNOWN for '@'
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_UNKNOWN, tok.type);
-    TEST_ASSERT_NOT_NULL(tok.lexeme);
-    TEST_ASSERT_EQUAL_CHAR('@', tok.lexeme[0]);
-    token_free(&tok);
-    // Next should be '}'
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_SYMBOL_RBRACE, tok.type);
-    token_free(&tok);
-    // End of input
-    tok = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL(TOKEN_EOF, tok.type);
-    token_free(&tok);
-}
-
-void test_tokenize_invalid_identifier(void) {
-    // Input: constant immediately followed by identifier (invalid in C): 1foo
-    const char *src = "int main() { return 1foo; }";
-    Lexer lexer;
-    lexer_init(&lexer, src);
-    Token tok;
-    int found_invalid = 0;
-    while ((tok = lexer_next_token(&lexer)).type != TOKEN_EOF) {
-        if (tok.type == TOKEN_UNKNOWN) {
-            found_invalid = 1;
-            TEST_ASSERT_NOT_NULL(tok.lexeme);
-            // Should catch the 'f' as invalid after '1'
-            TEST_ASSERT_EQUAL_CHAR('f', tok.lexeme[0]);
-            token_free(&tok);
-            break;
-        }
-        token_free(&tok);
+static void run_single_lexer_test(const LexerTestCase *test_case) {
+    char message[256];
+    snprintf(message, sizeof(message), "Test Case: %s", test_case->name);
+    UNITY_TEST_ASSERT_NOT_NULL(test_case->source, __LINE__, "Test case source cannot be NULL.");
+    // Only assert non-NULL expected_tokens if we actually expect tokens
+    if (test_case->num_expected_tokens > 0) {
+        UNITY_TEST_ASSERT_NOT_NULL(test_case->expected_tokens, __LINE__, "Test case expected tokens cannot be NULL for non-zero token count.");
     }
-    TEST_ASSERT_TRUE_MESSAGE(found_invalid, "Lexer did not catch invalid identifier after constant");
+
+    Lexer lexer;
+    lexer_init(&lexer, test_case->source);
+    Token tok;
+    size_t token_count = 0;
+
+    for (size_t i = 0; i < test_case->num_expected_tokens; ++i) {
+        tok = lexer_next_token(&lexer);
+        token_count++;
+
+        // Prepare detailed message for assertion failures
+        char assert_msg[512];
+        char tok_str_buf[128];
+        token_to_string(tok, tok_str_buf, sizeof(tok_str_buf));
+
+        snprintf(assert_msg, sizeof(assert_msg),
+                 "[%s] Token %zu: Type mismatch. Expected %d, Got %d (%s)",
+                 test_case->name, i + 1, test_case->expected_tokens[i].type, tok.type, tok_str_buf);
+        TEST_ASSERT_EQUAL_INT_MESSAGE(test_case->expected_tokens[i].type, tok.type, assert_msg);
+
+        if (test_case->expected_tokens[i].lexeme) {
+            snprintf(assert_msg, sizeof(assert_msg),
+                     "[%s] Token %zu: Lexeme mismatch. Expected '%s', Got '%s'",
+                     test_case->name, i + 1, test_case->expected_tokens[i].lexeme, tok.lexeme ? tok.lexeme : "NULL");
+            TEST_ASSERT_NOT_NULL_MESSAGE(tok.lexeme, assert_msg);
+            TEST_ASSERT_EQUAL_STRING_MESSAGE(test_case->expected_tokens[i].lexeme, tok.lexeme, assert_msg);
+        }
+
+        token_free(&tok); // Free the token after checking
+    }
+
+    // Check for EOF
+    tok = lexer_next_token(&lexer);
+    snprintf(message, sizeof(message), "[%s] Expected EOF after %zu tokens", test_case->name, test_case->num_expected_tokens);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(TOKEN_EOF, tok.type, message);
+    token_free(&tok);
+
+    // Check if any extra tokens were produced
+    tok = lexer_next_token(&lexer);
+    snprintf(message, sizeof(message), "[%s] Expected EOF, but got another token (%d)", test_case->name, tok.type);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(TOKEN_EOF, tok.type, message);
+    token_free(&tok);
 }
+
+// --- Test Data ---
+
+// Expected tokens for "int main(void) { return 2; }\n"
+ExpectedToken minimal_c_expected[] = {
+    {TOKEN_KEYWORD_INT, NULL},
+    {TOKEN_IDENTIFIER, "main"},
+    {TOKEN_SYMBOL_LPAREN, NULL},
+    {TOKEN_KEYWORD_VOID, NULL},
+    {TOKEN_SYMBOL_RPAREN, NULL},
+    {TOKEN_SYMBOL_LBRACE, NULL},
+    {TOKEN_KEYWORD_RETURN, NULL},
+    {TOKEN_CONSTANT, "2"},
+    {TOKEN_SYMBOL_SEMICOLON, NULL},
+    {TOKEN_SYMBOL_RBRACE, NULL}
+};
+
+// Expected tokens for "int main() { @ }"
+ExpectedToken unknown_token_expected[] = {
+    {TOKEN_KEYWORD_INT, NULL},
+    {TOKEN_IDENTIFIER, "main"},
+    {TOKEN_SYMBOL_LPAREN, NULL},
+    {TOKEN_SYMBOL_RPAREN, NULL},
+    {TOKEN_SYMBOL_LBRACE, NULL},
+    {TOKEN_UNKNOWN, "@"},
+    {TOKEN_SYMBOL_RBRACE, NULL}
+};
+
+// Expected tokens for "int main() { return 1foo; }"
+// Note: We expect UNKNOWN('f') after consuming '1', then IDENTIFIER('oo')
+ExpectedToken invalid_identifier_expected[] = {
+    {TOKEN_KEYWORD_INT, NULL},
+    {TOKEN_IDENTIFIER, "main"},
+    {TOKEN_SYMBOL_LPAREN, NULL},
+    {TOKEN_SYMBOL_RPAREN, NULL},
+    {TOKEN_SYMBOL_LBRACE, NULL},
+    {TOKEN_KEYWORD_RETURN, NULL},
+    {TOKEN_UNKNOWN, "f"}, // Token 7: Invalid char after '1'
+    {TOKEN_IDENTIFIER, "oo"}, // Token 8: Remaining part
+    {TOKEN_SYMBOL_SEMICOLON, NULL},
+    {TOKEN_SYMBOL_RBRACE, NULL}
+};
+
+// Expected tokens for "~ -- - "
+ExpectedToken operators_expected[] = {
+    {TOKEN_SYMBOL_TILDE, NULL},
+    {TOKEN_SYMBOL_DECREMENT, NULL},
+    {TOKEN_SYMBOL_MINUS, NULL}
+};
+
+// Define an empty array for tests that expect zero tokens
+ExpectedToken no_tokens_expected[] = {};
+
+// Array of all test cases
+LexerTestCase test_cases[] = {
+    {
+        "Minimal C function",
+        "int main(void) { return 2; }\n",
+        minimal_c_expected,
+        sizeof(minimal_c_expected) / sizeof(ExpectedToken)
+    },
+    {
+        "Unknown character",
+        "int main() { @ }",
+        unknown_token_expected,
+        sizeof(unknown_token_expected) / sizeof(ExpectedToken)
+    },
+    {
+        "Invalid identifier after constant",
+        "int main() { return 1foo; }",
+        invalid_identifier_expected,
+        sizeof(invalid_identifier_expected) / sizeof(ExpectedToken)
+    },
+    {
+        "Operators ~ -- -",
+        "~ -- - ",
+        operators_expected,
+        sizeof(operators_expected) / sizeof(ExpectedToken)
+    },
+    // Add more test cases here easily
+    {
+        "Empty Input",
+        "",
+        no_tokens_expected, // Use the empty array
+        0
+    },
+    {
+        "Whitespace only",
+        "  \t \n ",
+        no_tokens_expected, // Use the empty array
+        0
+    }
+};
+
+// --- Test Runner Function for Tokenization ---
+
+// This function is called by Unity for each test case
+void test_lexer_runner(void) {
+    size_t num_test_cases = sizeof(test_cases) / sizeof(LexerTestCase);
+    for (size_t i = 0; i < num_test_cases; ++i) {
+        // Use Unity's test case execution mechanism if needed, or just call directly
+        // For simplicity here, we call directly. If using advanced Unity features,
+        // you might register each test case name.
+        run_single_lexer_test(&test_cases[i]);
+    }
+}
+
+// --- Tests for token_to_string (can remain separate) ---
 
 void test_token_to_string_keyword(void) {
     char buffer[64];
@@ -195,9 +244,10 @@ void test_token_to_string_buffer_limit(void) {
 }
 
 void run_lexer_tests(void) {
-    RUN_TEST(test_tokenize_minimal_c);
-    RUN_TEST(test_tokenize_unknown_token);
-    RUN_TEST(test_tokenize_invalid_identifier);
+    // Run the consolidated tokenization tests
+    RUN_TEST(test_lexer_runner);
+
+    // Run the token_to_string tests
     RUN_TEST(test_token_to_string_keyword);
     RUN_TEST(test_token_to_string_symbol);
     RUN_TEST(test_token_to_string_identifier);

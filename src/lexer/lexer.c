@@ -85,21 +85,24 @@ Token lexer_next_token(Lexer *lexer) {
     // Integer constants: [0-9]+
     if (isdigit(c)) {
         const size_t const_start = lexer->pos;
-        lexer->pos++;
-        while (lexer->pos < lexer->len && isdigit(lexer->src[lexer->pos]))
-            lexer->pos++;
+        lexer->pos++; // Consume the first digit
+        while (lexer->pos < lexer->len && isdigit(lexer->src[lexer->pos])) {
+            lexer->pos++; // Consume subsequent digits
+        }
         // Check for invalid trailing identifier part (e.g., 1foo)
         if (lexer->pos < lexer->len && (isalpha(lexer->src[lexer->pos]) || lexer->src[lexer->pos] == '_')) {
-            // Emit TOKEN_UNKNOWN for the first invalid character
+            // Invalid character found after digits. Consume it.
             char bad_char = lexer->src[lexer->pos];
-            lexer->pos++;
+            lexer->pos++; // Advance past the bad character
+            // Return UNKNOWN for the bad character. The preceding digits are effectively skipped/consumed.
             char *lexeme = strndup(&bad_char, 1);
-            return (Token){TOKEN_UNKNOWN, lexeme, lexer->pos - 1};
+            return (Token){TOKEN_UNKNOWN, lexeme, lexer->pos - 1}; // Position is where the bad char was
         }
+        // If no invalid char followed, it's a valid constant.
         char *lexeme = strndup(lexer->src + const_start, lexer->pos - const_start);
         return (Token){TOKEN_CONSTANT, lexeme, const_start};
     }
-    // Single-character symbols
+    // Single-character symbols and potential multi-character symbols
     TokenType sym_type = TOKEN_UNKNOWN;
     switch (c) {
         case '(': sym_type = TOKEN_SYMBOL_LPAREN;
@@ -112,6 +115,19 @@ Token lexer_next_token(Lexer *lexer) {
             break;
         case ';': sym_type = TOKEN_SYMBOL_SEMICOLON;
             break;
+        case '~': sym_type = TOKEN_SYMBOL_TILDE;
+            break;
+        case '-':
+            // Check for '--' (decrement)
+        {
+            if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '-') {
+                lexer->pos += 2; // Consume both '-'
+                return (Token){TOKEN_SYMBOL_DECREMENT, NULL, start};
+            }
+            // Otherwise, it's just '-' (minus)
+            sym_type = TOKEN_SYMBOL_MINUS;
+        }
+        break;
         default: break;
     }
     if (sym_type != TOKEN_UNKNOWN) {
@@ -141,7 +157,6 @@ void token_free(const Token *token) {
             break;
     }
 }
-
 
 // Function to create a string representation of a token
 void token_to_string(Token token, char *buffer, size_t buffer_size) {
@@ -178,6 +193,12 @@ void token_to_string(Token token, char *buffer, size_t buffer_size) {
         case TOKEN_SYMBOL_RBRACE: type_str = "'}'";
             break;
         case TOKEN_SYMBOL_SEMICOLON: type_str = "';'";
+            break;
+        case TOKEN_SYMBOL_TILDE: type_str = "'~'";
+            break;
+        case TOKEN_SYMBOL_MINUS: type_str = "'-'";
+            break;
+        case TOKEN_SYMBOL_DECREMENT: type_str = "'--'";
             break;
         // Add other symbols here...
 

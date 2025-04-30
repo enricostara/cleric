@@ -18,6 +18,9 @@ typedef enum {
     TOKEN_SYMBOL_LBRACE, // '{'
     TOKEN_SYMBOL_RBRACE, // '}'
     TOKEN_SYMBOL_SEMICOLON, // ';'
+    TOKEN_SYMBOL_TILDE, // '~'
+    TOKEN_SYMBOL_MINUS, // '-'
+    TOKEN_SYMBOL_DECREMENT, // '--'
     TOKEN_EOF, // End of input
     TOKEN_UNKNOWN // Unrecognized character/token
 } TokenType;
