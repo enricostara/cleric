@@ -27,14 +27,14 @@ Arena arena_create(const size_t initial_size) {
     return arena;
 }
 
-void *arena_alloc(Arena *arena, size_t size) {
+void *arena_alloc(Arena *arena, const size_t size) {
     if (arena == NULL || arena->start == NULL) {
         fprintf(stderr, "Error: Attempt to allocate from uninitialized or failed arena.\n");
         return NULL;
     }
 
     // Calculate the next aligned offset
-    size_t current_aligned_offset = align_up(arena->offset, MAX_ALIGNMENT);
+    const size_t current_aligned_offset = align_up(arena->offset, MAX_ALIGNMENT);
 
     // Check if there's enough space
     if (current_aligned_offset + size > arena->total_size) {
