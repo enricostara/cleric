@@ -40,6 +40,7 @@ add_executable(cleric
         src/codegen/codegen.c
         src/memory/arena.h
         src/memory/arena.c
+        src/ir/tac.c
 )
 target_include_directories(cleric PRIVATE src)
 
@@ -59,9 +60,10 @@ add_executable(test_all
         tests/test_strings.c
         tests/test_codegen.c
         tests/test_compiler.c
-        tests/test_arena.c # Add arena tests
+        tests/test_arena.c
+        tests/test_tac.c
         src/compiler/driver.c
-        src/compiler/compiler.c # Add new compiler core source
+        src/compiler/compiler.c
         src/lexer/lexer.c
         src/files/files.c
         src/args/args.c
@@ -69,7 +71,8 @@ add_executable(test_all
         src/parser/parser.c
         src/strings/strings.c
         src/codegen/codegen.c
-        src/memory/arena.c # Add arena implementation
+        src/memory/arena.c
+        src/ir/tac.c
 )
 target_link_libraries(test_all unity)
 target_include_directories(test_all PRIVATE include tests/unity src)

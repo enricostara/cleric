@@ -75,7 +75,7 @@ TacInstruction* create_tac_instruction_return(const TacOperand src, Arena* arena
 //------------------------------------------------------------------------------
 
 TacFunction* create_tac_function(const char* name, Arena* arena) {
-    TacFunction* func = (TacFunction*)arena_alloc(arena, sizeof(TacFunction));
+    TacFunction* func = arena_alloc(arena, sizeof(TacFunction));
     if (!func) {
         perror("Failed to allocate TAC function");
         exit(EXIT_FAILURE);
@@ -83,7 +83,7 @@ TacFunction* create_tac_function(const char* name, Arena* arena) {
 
     // Allocate space for the name string in the arena and copy it
     size_t name_len = strlen(name) + 1;
-    char* name_copy = (char*)arena_alloc(arena, name_len);
+    char* name_copy = arena_alloc(arena, name_len);
     if (!name_copy) {
          perror("Failed to allocate TAC function name");
          exit(EXIT_FAILURE);
@@ -102,14 +102,14 @@ TacFunction* create_tac_function(const char* name, Arena* arena) {
     return func;
 }
 
-void add_instruction_to_function(TacFunction* func, TacInstruction* instr, Arena* arena) {
+void add_instruction_to_function(TacFunction* func, const TacInstruction* instr, Arena* arena) {
     if (func->instruction_count >= func->instruction_capacity) {
         // Grow the array using the arena.
         // Note: Arena allocators typically don't support 'realloc'.
         // We allocate a new, larger block and copy the old data.
         // The old block remains allocated in the arena but is unused.
-        size_t new_capacity = func->instruction_capacity * 2;
-        TacInstruction* new_instructions = (TacInstruction*)arena_alloc(arena, new_capacity * sizeof(TacInstruction));
+        const size_t new_capacity = func->instruction_capacity * 2;
+        TacInstruction* new_instructions = arena_alloc(arena, new_capacity * sizeof(TacInstruction));
         if (!new_instructions) {
              perror("Failed to grow TAC instructions array");
              exit(EXIT_FAILURE);
@@ -125,7 +125,7 @@ void add_instruction_to_function(TacFunction* func, TacInstruction* instr, Arena
 }
 
 TacProgram* create_tac_program(Arena* arena) {
-    TacProgram* prog = (TacProgram*)arena_alloc(arena, sizeof(TacProgram));
+    TacProgram* prog = arena_alloc(arena, sizeof(TacProgram));
     if (!prog) {
         perror("Failed to allocate TAC program");
         exit(EXIT_FAILURE);
@@ -146,7 +146,7 @@ void add_function_to_program(TacProgram* prog, TacFunction* func, Arena* arena) 
     if (prog->function_count >= prog->function_capacity) {
         // Grow the array of function pointers
         size_t new_capacity = prog->function_capacity * 2;
-        TacFunction** new_functions = (TacFunction**)arena_alloc(arena, new_capacity * sizeof(TacFunction*));
+        TacFunction** new_functions = arena_alloc(arena, new_capacity * sizeof(TacFunction*));
          if (!new_functions) {
              perror("Failed to grow TAC functions array");
              exit(EXIT_FAILURE);

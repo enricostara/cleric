@@ -22,6 +22,8 @@ void run_integration_tests(void); // Forward declaration for integration tests
 
 void run_arena_tests(void); // Forward declaration for arena tests
 
+void run_tac_tests(void);
+
 // Global setUp and tearDown for all tests run by this main runner
 void setUp(void) {
     // Optional global setup for all tests
@@ -63,6 +65,9 @@ int main(void) {
 
     printf("\n--- Running Arena Tests --- \n");
     run_arena_tests();
+
+    printf("\n--- Running TAC Tests --- \n");
+    run_tac_tests();
 
     return UNITY_END(); // Use UNITY_END() in the main runner
 }

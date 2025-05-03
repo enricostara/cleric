@@ -97,7 +97,7 @@ TacInstruction* create_tac_instruction_return(TacOperand src, Arena* arena);
 
 // Function and Program manipulation
 TacFunction* create_tac_function(const char* name, Arena* arena);
-void add_instruction_to_function(TacFunction* func, TacInstruction* instr, Arena* arena);
+void add_instruction_to_function(TacFunction* func, const TacInstruction* instr, Arena* arena);
 
 TacProgram* create_tac_program(Arena* arena);
 void add_function_to_program(TacProgram* prog, TacFunction* func, Arena* arena);
