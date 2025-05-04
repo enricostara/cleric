@@ -7,10 +7,12 @@ void test_parse_args_no_args(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_FALSE(codegen_only);
 }
 
@@ -19,10 +21,12 @@ void test_parse_args_too_many_args(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_FALSE(codegen_only);
 }
 
@@ -31,10 +35,12 @@ void test_parse_args_valid_file(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_EQUAL_STRING("input.c", parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_EQUAL_STRING("input.c", parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_FALSE(codegen_only);
 }
 
@@ -43,10 +49,12 @@ void test_parse_args_lex_only_valid(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_EQUAL_STRING("prog.c", parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_EQUAL_STRING("prog.c", parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_TRUE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_FALSE(codegen_only);
 }
 
@@ -55,10 +63,12 @@ void test_parse_args_lex_only_missing_file(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_FALSE(codegen_only);
 }
 
@@ -67,10 +77,12 @@ void test_parse_args_invalid_option(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_FALSE(codegen_only);
 }
 
@@ -79,10 +91,12 @@ void test_parse_args_parse_only_valid(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_EQUAL_STRING("prog.c", parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_EQUAL_STRING("prog.c", parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_TRUE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_FALSE(codegen_only);
 }
 
@@ -91,10 +105,12 @@ void test_parse_args_parse_only_missing_file(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_FALSE(codegen_only);
 }
 
@@ -105,10 +121,12 @@ void test_parse_args_codegen_only_valid(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_EQUAL_STRING("asm_me.c", parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_EQUAL_STRING("asm_me.c", parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_TRUE(codegen_only);
 }
 
@@ -117,10 +135,12 @@ void test_parse_args_codegen_only_missing_file(void) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &codegen_only));
+    TEST_ASSERT_NULL(parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
+    TEST_ASSERT_FALSE(irgen_only);
     TEST_ASSERT_FALSE(codegen_only);
 }
 

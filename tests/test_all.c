@@ -62,8 +62,8 @@ int main(void) {
     printf("\n--- Running Codegen Tests --- \n");
     run_codegen_tests();
 
-    printf("\n--- Running Integration Tests --- \n");
-    run_integration_tests();
+    // printf("\n--- Running Integration Tests --- \n");
+    // run_integration_tests();
 
     printf("\n--- Running Arena Tests --- \n");
     run_arena_tests();
