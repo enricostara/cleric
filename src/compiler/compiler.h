@@ -21,17 +21,11 @@
  * @return true if the requested compilation stage (or full compilation) succeeded, false otherwise.
  */
 bool compile(const char *source_code,
-             // Input source code string
-             const bool lex_only,
-             // Stop after IR generation?
-             const bool parse_only,
-             // Stop after lexing?
-             const bool irgen_only,
-             // Stop after parsing?
-             const bool codegen_only,
-             // Stop after code generation?
+             bool lex_only,
+             bool parse_only,
+             bool irgen_only,
+             bool codegen_only,
              StringBuffer *output_assembly_sb
-             // Output buffer for assembly
-             );                          // AST is managed internally via arena
+);
 
 #endif // COMPILER_H
