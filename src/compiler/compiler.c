@@ -5,6 +5,8 @@
 #include "../codegen/codegen.h"
 #include "../strings/strings.h"
 #include "../memory/arena.h"
+#include "../ir/tac.h"         // Include TAC header
+#include "../ir/ast_to_tac.h"  // Include AST-to-TAC header
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h> // For token_to_string
@@ -15,16 +17,19 @@
 
 // Forward declarations for static helper functions
 static bool run_lexer(Lexer *lexer, bool print_tokens); // Takes an initialized lexer
+
 static bool run_parser(Lexer *lexer, Arena *arena, bool print_ast, AstNode **out_ast_root);
+
 static bool run_codegen(ProgramNode *ast_root, StringBuffer *output_assembly_sb, bool print_assembly);
 
+static bool run_irgen(ProgramNode *ast_root, Arena *arena, bool print_tac, TacProgram **out_tac_program); // Add IRGen step
+
 bool compile(const char *source_code,
-             bool lex_only,
-             bool parse_only,
-             bool codegen_only,
+             const bool lex_only,
+             const bool parse_only,
+             const bool codegen_only,
              StringBuffer *output_assembly_sb, // Output buffer for assembly
              AstNode **out_ast_root) {
-
     *out_ast_root = NULL; // Initialize output AST pointer
 
     Lexer lexer;
@@ -58,8 +63,18 @@ bool compile(const char *source_code,
     }
 
     if (parse_only) {
-        arena_destroy(&ast_arena); // Clean up arena before returning
         return true; // Parsing succeeded, stop here
+    }
+
+    // --- IR Generation Phase (AST -> TAC) ---
+    // Note: TAC program shares the same arena as the AST
+    ProgramNode *ast_root_local = (ProgramNode *) *out_ast_root;
+    TacProgram *tac_program; // Declare variable to hold the result
+    bool irgen_success = run_irgen(ast_root_local, &ast_arena, false /* print_tac */, &tac_program);
+    if (!irgen_success) {
+        // Error message printed by run_irgen
+        arena_destroy(&ast_arena); // Clean up arena
+        return false; // IR generation failed
     }
 
     // --- Code Generation Phase ---
@@ -70,12 +85,10 @@ bool compile(const char *source_code,
         return false;
     }
 
-    // Get the root node pointer from the output parameter
-    ProgramNode *ast_root_local = (ProgramNode *)*out_ast_root;
-
-    bool codegen_success = run_codegen(ast_root_local, output_assembly_sb, codegen_only);
+    const bool codegen_success = run_codegen(ast_root_local, output_assembly_sb, codegen_only);
 
     // Cleanup arena regardless of codegen success/failure *if* we got this far
+    // This cleans up memory for both AST and TAC structures
     arena_destroy(&ast_arena);
 
     return codegen_success; // Return success status of the final stage
@@ -85,7 +98,7 @@ bool compile(const char *source_code,
 // Helper Functions for Compilation Stages
 // -----------------------------------------------------------------------------
 
-static bool run_lexer(Lexer *lexer, bool print_tokens) {
+static bool run_lexer(Lexer *lexer, const bool print_tokens) {
     // Assumes lexer is already initialized
     Token tok;
     int error = 0;
@@ -114,7 +127,7 @@ static bool run_lexer(Lexer *lexer, bool print_tokens) {
     return true;
 }
 
-static bool run_parser(Lexer *lexer, Arena *arena, bool print_ast, AstNode **out_ast_root) {
+static bool run_parser(Lexer *lexer, Arena *arena, const bool print_ast, AstNode **out_ast_root) {
     // Assume lexer is already initialized and positioned at the start
     Parser parser;
     parser_init(&parser, lexer);
@@ -141,7 +154,7 @@ static bool run_parser(Lexer *lexer, Arena *arena, bool print_ast, AstNode **out
     return !parse_error;
 }
 
-static bool run_codegen(ProgramNode *ast_root, StringBuffer *output_assembly_sb, bool print_assembly) {
+static bool run_codegen(ProgramNode *ast_root, StringBuffer *output_assembly_sb, const bool print_assembly) {
     printf("Generating code...\n");
 
     if (!codegen_generate_program(output_assembly_sb, ast_root)) {
@@ -158,4 +171,31 @@ static bool run_codegen(ProgramNode *ast_root, StringBuffer *output_assembly_sb,
     }
 
     return true;
+}
+
+// -----------------------------------------------------------------------------
+// IR Generation (AST -> TAC)
+// -----------------------------------------------------------------------------
+static bool run_irgen(ProgramNode *ast_root, Arena *arena, const bool print_tac, TacProgram **out_tac_program) {
+    printf("Generating IR (TAC)...\n");
+
+    // The ast_to_tac function uses the same arena provided for the AST
+    TacProgram *tac_program = ast_to_tac(ast_root, arena);
+
+    if (!tac_program) {
+        fprintf(stderr, "IR generation (AST to TAC) failed.\n");
+        return false; // Return failure status
+    }
+
+    printf("IR generation successful.\n");
+
+    if (print_tac) {
+        // TODO: Implement TAC printing function
+        printf("--- Generated TAC (stdout) ---\n");
+        printf("TAC printing not yet implemented.\n");
+        printf("------------------------------\n");
+    }
+
+    *out_tac_program = tac_program; // Assign to output parameter
+    return true; // Return success status
 }
