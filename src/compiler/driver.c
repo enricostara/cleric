@@ -36,7 +36,7 @@ int run_preprocessor(const char *input_file) {
 }
 
 // Function: compilation from .i file to .s file (using the core compiler logic)
-int run_compiler(const char *input_file, const bool lex_only, const bool parse_only, const bool codegen_only) {
+int run_compiler(const char *input_file, const bool lex_only, const bool irgen_only, const bool parse_only, const bool codegen_only) {
     // Use utility to check extension
     if (!filename_has_ext(input_file, ".i")) {
         fprintf(stderr, "Input file should have a .i extension\n");
@@ -58,15 +58,14 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
 
     StringBuffer sb;
     string_buffer_init(&sb, 1024); // Initialize buffer for core function output
-    AstNode *ast_root = NULL; // To receive the AST root for freeing
     // ReSharper disable once CppDFAUnusedValue
     int result = 1; // Default to error
 
-    bool const core_success = compile(src, lex_only, parse_only, codegen_only, &sb, &ast_root);
+    bool const core_success = compile(src, lex_only, irgen_only, parse_only, codegen_only, &sb);
 
     if (core_success) {
-        // If only lexing, parsing, or codegen-to-stdout was requested, we are done successfully.
-        if (lex_only || parse_only || codegen_only) {
+        // If only lexing, parsing, irgen or codegen-to-stdout was requested, we are done successfully.
+        if (lex_only || irgen_only || parse_only || codegen_only) {
             result = 0;
         } else {
             // Full compilation succeeded, write assembly to file

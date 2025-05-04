@@ -29,8 +29,9 @@
 int main(int argc, char *argv[]) {
     bool lex_only = false;
     bool parse_only = false;
+    bool irgen_only = false;
     bool codegen_only = false;
-    const char *input_file = parse_args(argc, argv, &lex_only, &parse_only, &codegen_only);
+    const char *input_file = parse_args(argc, argv, &lex_only, &parse_only, &irgen_only, &codegen_only);
     if (!input_file) return 1;
     if (run_preprocessor(input_file) != 0) return 1;
     char i_file[1024];
@@ -39,10 +40,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     // Pass all flags to the compiler driver
-    if (run_compiler(i_file, lex_only, parse_only, codegen_only) != 0) return 1;
+    if (run_compiler(i_file, lex_only, parse_only, irgen_only, codegen_only) != 0) return 1;
 
     // Skip assembly/linking if any "only" mode is active
-    if (!lex_only && !parse_only && !codegen_only) {
+    if (!lex_only && !parse_only && !irgen_only && !codegen_only) {
         char s_file[1024];
         if (!filename_replace_ext(input_file, ".s", s_file, sizeof(s_file))) {
             fprintf(stderr, "Failed to construct .s filename\n");

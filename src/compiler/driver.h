@@ -12,7 +12,7 @@
 int run_preprocessor(const char *input_file);
 
 // Compiles a .i file to a .s file (or performs lex/parse only)
-int run_compiler(const char *input_file, bool lex_only, bool parse_only, bool codegen_only);
+int run_compiler(const char *input_file, bool lex_only, bool parse_only, bool irgen_only, bool codegen_only);
 
 // Assembles and links a .s file to an executable, removes .s on success
 int run_assembler_linker(const char *input_file);
