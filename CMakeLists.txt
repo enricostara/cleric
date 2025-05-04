@@ -63,6 +63,7 @@ add_executable(test_all
         tests/test_compiler.c
         tests/test_arena.c
         tests/test_tac.c
+        tests/test_ast_to_tac.c
         src/compiler/driver.c
         src/compiler/compiler.c
         src/lexer/lexer.c
