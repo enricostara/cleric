@@ -18,7 +18,7 @@ void run_strings_tests(void); // Forward declaration for string tests
 
 void run_codegen_tests(void); // Forward declaration for codegen tests
 
-void run_integration_tests(void); // Forward declaration for integration tests
+void run_compiler_tests(void); // Forward declaration for integration tests
 
 void run_arena_tests(void); // Forward declaration for arena tests
 
@@ -62,8 +62,8 @@ int main(void) {
     printf("\n--- Running Codegen Tests --- \n");
     run_codegen_tests();
 
-    // printf("\n--- Running Integration Tests --- \n");
-    // run_integration_tests();
+    // printf("\n--- Running Compiler Tests --- \n");
+    // run_compiler_tests();
 
     printf("\n--- Running Arena Tests --- \n");
     run_arena_tests();

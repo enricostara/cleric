@@ -42,6 +42,6 @@ static void test_compile_return_4(void) {
 
 // --- Test Runner --- 
 
-void run_integration_tests(void) {
+void run_compiler_tests(void) {
     RUN_TEST(test_compile_return_4);
 }

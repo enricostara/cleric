@@ -4,7 +4,7 @@
 #include <stdbool.h> // Needed for bool
 
 // --- Forward declarations for static helper functions (AST visitors) ---
-static bool generate_program(const ProgramNode *node, StringBuffer *sb);
+static bool generate_program(const ProgramNode *program, StringBuffer *sb);
 
 static bool generate_function(const FuncDefNode *node, StringBuffer *sb);
 
@@ -27,10 +27,10 @@ bool codegen_generate_program(StringBuffer *sb, ProgramNode *program) {
 // --- Static helper function implementations ---
 
 // AST Visitors
-static bool generate_program(const ProgramNode *node, StringBuffer *sb) {
+static bool generate_program(const ProgramNode *program, StringBuffer *sb) {
     // For now, assume program has exactly one function definition
-    if (node->function) {
-        if (!generate_function(node->function, sb)) {
+    if (program->function) {
+        if (!generate_function(program->function, sb)) {
             // Check return value
             return false; // Propagate error
         }
