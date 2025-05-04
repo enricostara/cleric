@@ -41,6 +41,7 @@ add_executable(cleric
         src/memory/arena.h
         src/memory/arena.c
         src/ir/tac.c
+        src/ir/ast_to_tac.c
 )
 target_include_directories(cleric PRIVATE src)
 
@@ -73,6 +74,7 @@ add_executable(test_all
         src/codegen/codegen.c
         src/memory/arena.c
         src/ir/tac.c
+        src/ir/ast_to_tac.c
 )
 target_link_libraries(test_all unity)
 target_include_directories(test_all PRIVATE include tests/unity src)
