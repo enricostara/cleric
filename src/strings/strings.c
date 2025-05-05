@@ -1,4 +1,5 @@
 #include "strings.h"
+#include "../memory/arena.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +12,7 @@
  * If the buffer is too small, it is reallocated to a new capacity that is
  * at least as large as the required capacity.
  * If reallocation fails, the function prints an error message and exits.
- * @param sb The StringBuffer to ensure has enough capacity.
+ * @param sb The StringBuffer to ensure has enough capacity, using its arena.
  * @param additional_needed The number of additional bytes to ensure space for.
  * @return true if the buffer had enough capacity or was successfully resized,
  *         false if the buffer was too small and reallocation failed.
@@ -44,27 +45,39 @@ static bool ensure_capacity(StringBuffer *sb, const size_t additional_needed) {
     }
 
     // Reallocate
-    char *new_buffer = realloc(sb->buffer, new_capacity);
+    // Use arena_alloc; resizing means allocating new block and copying
+    char *new_buffer = arena_alloc(sb->arena, new_capacity);
     if (!new_buffer) {
-        perror("Failed to reallocate string buffer");
-        // Consider freeing the old buffer sb->buffer here before exiting?
-        // Depending on desired error handling.
-        exit(EXIT_FAILURE); // Critical error
+        fprintf(stderr, "Arena allocation failed for string buffer resize\n");
+        // Arena handles potential cleanup on its own failure modes (if any)
+        // Consider returning false or having a different strategy if exit is too harsh.
+        // For now, maintain the exit behavior for consistency with previous version.
+        exit(EXIT_FAILURE);
+    }
+
+    // Copy old content to new buffer if there was old content
+    if (sb->buffer && sb->length > 0) {
+        memcpy(new_buffer, sb->buffer, sb->length);
+        // Old buffer remains in the arena, but sb->buffer now points to the new one.
     }
 
     sb->buffer = new_buffer;
     sb->capacity = new_capacity;
+    // Ensure null-termination after potential copy
+    sb->buffer[sb->length] = '\0';
     return true;
 }
 
 
-void string_buffer_init(StringBuffer *sb, size_t initial_capacity) {
+void string_buffer_init(StringBuffer *sb, Arena *arena, size_t initial_capacity) {
     if (initial_capacity == 0) {
         initial_capacity = 16; // Default small capacity
     }
-    sb->buffer = (char *) malloc(initial_capacity);
+    // Allocate initial buffer from the arena
+    sb->arena = arena;
+    sb->buffer = (char *) arena_alloc(sb->arena, initial_capacity);
     if (!sb->buffer) {
-        perror("Failed to allocate string buffer");
+        fprintf(stderr, "Arena allocation failed for string buffer init\n");
         exit(EXIT_FAILURE); // Critical error
     }
     sb->capacity = initial_capacity;
@@ -156,26 +169,11 @@ const char *string_buffer_content_str(const StringBuffer *sb) {
     return sb->buffer;
 }
 
-// --- Clear & Destroy ---
-void string_buffer_clear(StringBuffer *sb) {
+// --- Reset ---
+void string_buffer_reset(StringBuffer *sb) {
     if (sb && sb->buffer) {
-        free(sb->buffer);
-        sb->buffer = NULL;
-        sb->capacity = 0;
+        // Reset length, keep buffer and capacity, ready for reuse
         sb->length = 0;
-    }
-}
-
-/**
- * @brief Destroys the string buffer, freeing its allocated buffer.
- *
- * @param sb Pointer to the StringBuffer.
- */
-void string_buffer_destroy(StringBuffer *sb) {
-    if (sb) {
-        free(sb->buffer);
-        sb->buffer = NULL; // Prevent double free
-        sb->length = 0;
-        sb->capacity = 0;
+        sb->buffer[0] = '\0'; // Ensure it's an empty string
     }
 }

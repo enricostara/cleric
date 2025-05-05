@@ -4,21 +4,20 @@
 #include "../parser/ast.h" // Needed for AstNode, FuncDefNode etc.
 #include "../codegen/codegen.h"
 #include "../strings/strings.h"
-#include "../memory/arena.h"
-#include "../ir/tac.h"         // Include TAC header
-#include "../ir/ast_to_tac.h"  // Include AST-to-TAC header
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h> // For token_to_string
+
+#include "ir/ast_to_tac.h"
+#include "ir/tac.h"
 
 // -----------------------------------------------------------------------------
 // Core Compilation Logic (Source String -> Assembly String Buffer)
 // -----------------------------------------------------------------------------
 
 // Forward declarations for static helper functions
-static bool run_lexer(Lexer *lexer, bool print_tokens); // Takes an initialized lexer
+static bool run_lexer(Lexer *lexer, Arena *arena, const char *source_code, bool print_tokens); // Takes an initialized lexer
 
-static bool run_parser(Lexer *lexer, Arena *arena, bool print_ast, ProgramNode **out_program);
+static bool run_parser(Parser *parser, Lexer *lexer, Arena *arena, bool print_ast, ProgramNode **out_program);
 
 static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_program, bool print_tac);
 
@@ -31,45 +30,38 @@ bool compile(const char *source_code,
              const bool parse_only,
              const bool irgen_only,
              const bool codegen_only,
-             StringBuffer *output_assembly_sb) {
+             StringBuffer *output_assembly_sb,
+             Arena *arena) {
     ProgramNode *program = NULL; // Internal pointer to the AST root
 
     Lexer lexer;
-    // --- Arena Setup ---
-    Arena ast_arena = arena_create(1024 * 1024); // 1MB arena
-    if (ast_arena.start == NULL) {
-        fprintf(stderr, "Compiler Error: Failed to create memory arena for AST.\n");
-        return false; // Cannot proceed without memory
-    }
-
     // Initialize lexer with the arena
-    lexer_init(&lexer, source_code, &ast_arena);
+    lexer_init(&lexer, source_code, arena);
 
     // --- Lexing Phase ---
     // Pass the arena, even if just lexing, as lexemes are allocated into it.
-    bool const lex_success = run_lexer(&lexer, (lex_only || parse_only || codegen_only));
+    bool const lex_success = run_lexer(&lexer, arena, source_code, (lex_only || parse_only || codegen_only));
     if (!lex_success) {
-        arena_destroy(&ast_arena); // Clean up arena on lex failure
         return false; // Lexical error
     }
 
     if (lex_only) {
-        arena_destroy(&ast_arena); // Clean up arena
         return true; // Lexing succeeded, stop here
     }
 
     // --- Reset Lexer for Parsing ---
     lexer_reset(&lexer); // Reset the same lexer instance
 
+    Parser parser;
+    parser_init(&parser, &lexer, arena); // Pass arena to parser_init
+
     // --- Parsing Phase ---
-    const bool parse_success = run_parser(&lexer, &ast_arena, parse_only || codegen_only, &program);
+    const bool parse_success = run_parser(&parser, &lexer, arena, parse_only || codegen_only, &program);
     if (!parse_success) {
-        arena_destroy(&ast_arena); // Clean up arena on parse failure
         return false;
     }
 
     if (parse_only) {
-        arena_destroy(&ast_arena); // Clean up arena
         return true; // Parsing succeeded, stop here
     }
 
@@ -77,16 +69,14 @@ bool compile(const char *source_code,
     // Note: TAC program shares the same arena as the AST
     // ProgramNode *ast_root_local = (ProgramNode *) ast_root;
     // TacProgram *tac_program; // Declare variable to hold the result
-    // const bool irgen_success = run_irgen(ast_root_local, &ast_arena, &tac_program, codegen_only || irgen_only);
+    // const bool irgen_success = run_irgen(ast_root_local, arena, &tac_program, codegen_only || irgen_only);
     // if (!irgen_success) {
     //     // Error message printed by run_irgen
-    //     arena_destroy(&ast_arena); // Clean up arena
     //     return false; // IR generation failed
     // }
 
     // If irgen_only is requested, stop here after successful IR generation
     // if (irgen_only) {
-    //     arena_destroy(&ast_arena);
     //     return true;
     // }
 
@@ -94,15 +84,10 @@ bool compile(const char *source_code,
     // Ensure output buffer is valid if we reach codegen
     if (!output_assembly_sb) {
         fprintf(stderr, "Compiler Error: Output string buffer is NULL during code generation.\n");
-        arena_destroy(&ast_arena);
         return false;
     }
 
     const bool codegen_success = run_codegen(program, output_assembly_sb, codegen_only);
-
-    // Cleanup arena regardless of codegen success/failure *if* we got this far
-    // This cleans up memory for both AST and TAC structures
-    arena_destroy(&ast_arena);
 
     return codegen_success; // Return success status of the final stage
 }
@@ -111,7 +96,7 @@ bool compile(const char *source_code,
 // Helper Functions for Compilation Stages
 // -----------------------------------------------------------------------------
 
-static bool run_lexer(Lexer *lexer, const bool print_tokens) {
+static bool run_lexer(Lexer *lexer, Arena *arena, const char *source_code, bool print_tokens) {
     // Assumes lexer is already initialized
     Token tok;
     printf("Lexing...\n");
@@ -149,15 +134,12 @@ static bool run_lexer(Lexer *lexer, const bool print_tokens) {
     return true; // Lexing completed successfully
 }
 
-static bool run_parser(Lexer *lexer, Arena *arena, const bool print_ast, ProgramNode **out_program) {
+static bool run_parser(Parser *parser, Lexer *lexer, Arena *arena, bool print_ast, ProgramNode **out_program) {
     // Assume lexer is already initialized and positioned at the start
-    Parser parser;
-    parser_init(&parser, lexer, arena); // Pass arena to parser_init
- 
     printf("Parsing...\n");
-    ProgramNode *ast_root_local = parse_program(&parser);
+    ProgramNode *ast_root_local = parse_program(parser);
  
-    if (parser.error_flag) {
+    if (parser->error_flag) {
         fprintf(stderr, "Parsing failed due to errors.\n");
         return false; // Parsing failed
     }
@@ -176,7 +158,7 @@ static bool run_parser(Lexer *lexer, Arena *arena, const bool print_ast, Program
 // -----------------------------------------------------------------------------
 // IR Generation (AST -> TAC)
 // -----------------------------------------------------------------------------
-static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_program, const bool print_tac) {
+static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_program, bool print_tac) {
     printf("Generating IR (TAC)...\n");
 
     // The ast_to_tac function uses the same arena provided for the AST
@@ -202,6 +184,8 @@ static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_
 
 static bool run_codegen(ProgramNode *program, StringBuffer *output_assembly_sb, const bool print_assembly) {
     printf("Generating code...\n");
+
+    string_buffer_reset(output_assembly_sb);
 
     if (!codegen_generate_program(output_assembly_sb,  program)) {
         fprintf(stderr, "Code generation failed.\n");

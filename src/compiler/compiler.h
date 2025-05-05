@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include "../strings/strings.h" // For StringBuffer
-#include "../parser/ast.h"    // For AstNode
+#include "../memory/arena.h"  // For Arena
 
 /**
  * @brief Core compilation logic: Source String -> Assembly String Buffer.
@@ -18,6 +18,7 @@
  * @param codegen_only If true, stop after code generation and print assembly to stdout.
  * @param output_assembly_sb Pointer to an initialized StringBuffer where the generated assembly code will be stored (if not codegen_only).
  *                           The caller is responsible for destroying this buffer.
+ * @param arena The arena to use for memory allocation.
  * @return true if the requested compilation stage (or full compilation) succeeded, false otherwise.
  */
 bool compile(const char *source_code,
@@ -25,7 +26,7 @@ bool compile(const char *source_code,
              bool parse_only,
              bool irgen_only,
              bool codegen_only,
-             StringBuffer *output_assembly_sb
-);
+             StringBuffer *output_assembly_sb,
+             Arena *arena);
 
 #endif // COMPILER_H
