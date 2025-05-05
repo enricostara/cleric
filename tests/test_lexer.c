@@ -27,7 +27,8 @@ static void run_single_lexer_test(const LexerTestCase *test_case, Arena *arena) 
     UNITY_TEST_ASSERT_NOT_NULL(test_case->source, __LINE__, "Test case source cannot be NULL.");
     // Only assert non-NULL expected_tokens if we actually expect tokens
     if (test_case->num_expected_tokens > 0) {
-        UNITY_TEST_ASSERT_NOT_NULL(test_case->expected_tokens, __LINE__, "Test case expected tokens cannot be NULL for non-zero token count.");
+        UNITY_TEST_ASSERT_NOT_NULL(test_case->expected_tokens, __LINE__,
+                                   "Test case expected tokens cannot be NULL for non-zero token count.");
     }
 
     Lexer lexer;
@@ -38,7 +39,8 @@ static void run_single_lexer_test(const LexerTestCase *test_case, Arena *arena) 
 
     for (size_t i = 0; i < test_case->num_expected_tokens; ++i) {
         success = lexer_next_token(&lexer, &tok); // Use lexer's internal arena
-        snprintf(message, sizeof(message), "[%s] lexer_next_token failed unexpectedly (returned false) at token %zu", test_case->name, i + 1);
+        snprintf(message, sizeof(message), "[%s] lexer_next_token failed unexpectedly (returned false) at token %zu",
+                 test_case->name, i + 1);
         TEST_ASSERT_TRUE_MESSAGE(success, message); // Fail if lexer reported an error
         token_count++;
 
@@ -63,15 +65,19 @@ static void run_single_lexer_test(const LexerTestCase *test_case, Arena *arena) 
 
     // Check for EOF
     success = lexer_next_token(&lexer, &tok);
-    snprintf(message, sizeof(message), "[%s] lexer_next_token failed unexpectedly (returned false) when checking for EOF", test_case->name);
+    snprintf(message, sizeof(message),
+             "[%s] lexer_next_token failed unexpectedly (returned false) when checking for EOF", test_case->name);
     TEST_ASSERT_TRUE_MESSAGE(success, message); // Fail if lexer reported an error
 
-    snprintf(message, sizeof(message), "[%s] Expected EOF after %zu tokens", test_case->name, test_case->num_expected_tokens);
+    snprintf(message, sizeof(message), "[%s] Expected EOF after %zu tokens", test_case->name,
+             test_case->num_expected_tokens);
     TEST_ASSERT_EQUAL_INT_MESSAGE(TOKEN_EOF, tok.type, message);
 
     // Check if any extra tokens were produced
     success = lexer_next_token(&lexer, &tok);
-    snprintf(message, sizeof(message), "[%s] lexer_next_token failed unexpectedly (returned false) when checking for extra tokens", test_case->name);
+    snprintf(message, sizeof(message),
+             "[%s] lexer_next_token failed unexpectedly (returned false) when checking for extra tokens",
+             test_case->name);
     TEST_ASSERT_TRUE_MESSAGE(success, message); // Fail if lexer reported an error
     snprintf(message, sizeof(message), "[%s] Expected EOF, but got another token (%d)", test_case->name, tok.type);
     TEST_ASSERT_EQUAL_INT_MESSAGE(TOKEN_EOF, tok.type, message);

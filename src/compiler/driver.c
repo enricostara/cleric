@@ -38,24 +38,15 @@ int run_preprocessor(const char *input_file) {
 // Function: compilation from .i file to .s file (using the core compiler logic)
 int run_compiler(const char *input_file, const bool lex_only, const bool parse_only, const bool irgen_only,
                  const bool codegen_only) {
-    // Create the main arena for this compilation run
-    Arena main_arena = arena_create(1024 * 1024); // Example size: 1MB
-    if (!main_arena.start) {
-        fprintf(stderr, "Driver Error: Failed to create main arena.\n");
-        return 1; // Indicate failure
-    }
-
     // Use utility to check extension
     if (!filename_has_ext(input_file, ".i")) {
         fprintf(stderr, "Error: Input file '%s' does not have '.i' extension.\n", input_file);
-        arena_destroy(&main_arena); // Destroy on error
         return 1;
     }
 
     char output_file[1024];
     if (!filename_replace_ext(input_file, ".s", output_file, sizeof(output_file))) {
         fprintf(stderr, "Failed to construct .s filename for %s\n", input_file);
-        arena_destroy(&main_arena); // Destroy on error
         return 1;
     }
 
@@ -64,8 +55,14 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
     if (!src) {
         fprintf(stderr, "Error reading input file '%s'.\n", input_file);
         free(src); // Free the buffer from read_file (though it should be NULL)
-        arena_destroy(&main_arena); // Destroy on error
         return 1;
+    }
+
+    // Create the main arena for this compilation run
+    Arena main_arena = arena_create(1024 * 1024); // Example size: 1MB
+    if (!main_arena.start) {
+        fprintf(stderr, "Driver Error: Failed to create main arena.\n");
+        return 1; // Indicate failure
     }
 
     StringBuffer sb;
@@ -73,7 +70,7 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
     // ReSharper disable once CppDFAUnusedValue
     int result = 1; // Default to error
 
-    bool const core_success = compile(src, lex_only, parse_only, irgen_only, codegen_only, &sb, &main_arena);
+    const bool core_success = compile(src, lex_only, parse_only, irgen_only, codegen_only, &sb, &main_arena);
 
     if (core_success) {
         // If only lexing, parsing, irgen or codegen-to-stdout was requested, we are done successfully.

@@ -3,7 +3,8 @@
 #include <stdio.h>
 
 // Parses CLI arguments. Sets flags and returns input_file or NULL on error.
-const char *parse_args(const int argc, char *argv[], bool *lex_only, bool *parse_only, bool *irgen_only, bool *codegen_only) {
+const char *parse_args(const int argc, char *argv[], bool *lex_only, bool *parse_only, bool *irgen_only,
+                       bool *codegen_only) {
     *lex_only = false;
     *parse_only = false;
     *irgen_only = false;
@@ -12,7 +13,8 @@ const char *parse_args(const int argc, char *argv[], bool *lex_only, bool *parse
     // Case 1: Standard usage (cleric <file>)
     if (argc == 2) {
         // Ensure the single argument isn't accidentally an option
-        if (strcmp(argv[1], "--lex") != 0 && strcmp(argv[1], "--parse") != 0 && strcmp(argv[1], "--codegen") != 0 && strcmp(argv[1], "--irgen-only") != 0) {
+        if (strcmp(argv[1], "--lex") != 0 && strcmp(argv[1], "--parse") != 0 && strcmp(argv[1], "--codegen") != 0 &&
+            strcmp(argv[1], "--irgen-only") != 0) {
             return argv[1]; // Valid filename
         }
         // If argv[1] is an option, fall through to error
@@ -24,7 +26,7 @@ const char *parse_args(const int argc, char *argv[], bool *lex_only, bool *parse
             fprintf(stdout, "Lex-only mode enabled\n");
             return argv[2]; // Valid filename for lexing
         }
-        if (strcmp(argv[1], "--parse") == 0) { 
+        if (strcmp(argv[1], "--parse") == 0) {
             *parse_only = true;
             fprintf(stdout, "Parse-only mode enabled\n");
             return argv[2]; // Valid filename for parsing

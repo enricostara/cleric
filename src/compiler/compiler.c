@@ -15,7 +15,9 @@
 // -----------------------------------------------------------------------------
 
 // Forward declarations for static helper functions
-static bool run_lexer(Lexer *lexer, Arena *arena, const char *source_code, bool print_tokens); // Takes an initialized lexer
+static bool run_lexer(Lexer *lexer, Arena *arena, const char *source_code, bool print_tokens);
+
+// Takes an initialized lexer
 
 static bool run_parser(Parser *parser, Lexer *lexer, Arena *arena, bool print_ast, ProgramNode **out_program);
 
@@ -138,7 +140,7 @@ static bool run_parser(Parser *parser, Lexer *lexer, Arena *arena, bool print_as
     // Assume lexer is already initialized and positioned at the start
     printf("Parsing...\n");
     ProgramNode *ast_root_local = parse_program(parser);
- 
+
     if (parser->error_flag) {
         fprintf(stderr, "Parsing failed due to errors.\n");
         return false; // Parsing failed
@@ -187,7 +189,7 @@ static bool run_codegen(ProgramNode *program, StringBuffer *output_assembly_sb, 
 
     string_buffer_reset(output_assembly_sb);
 
-    if (!codegen_generate_program(output_assembly_sb,  program)) {
+    if (!codegen_generate_program(output_assembly_sb, program)) {
         fprintf(stderr, "Code generation failed.\n");
         return false; // Codegen failed
     }

@@ -49,10 +49,7 @@ static bool ensure_capacity(StringBuffer *sb, const size_t additional_needed) {
     char *new_buffer = arena_alloc(sb->arena, new_capacity);
     if (!new_buffer) {
         fprintf(stderr, "Arena allocation failed for string buffer resize\n");
-        // Arena handles potential cleanup on its own failure modes (if any)
-        // Consider returning false or having a different strategy if exit is too harsh.
-        // For now, maintain the exit behavior for consistency with previous version.
-        exit(EXIT_FAILURE);
+        return false;
     }
 
     // Copy old content to new buffer if there was old content
