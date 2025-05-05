@@ -18,30 +18,34 @@ static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena);
 static AstNode *parse_exp(Parser *parser, Arena *arena); // Renamed from parse_primary_expression
 
 // Helper function to consume a token and advance
-static bool parser_consume(Parser *parser, TokenType expected_type);
+static bool parser_consume(Parser *parser, Arena *arena, TokenType expected_type);
 
 // Helper function to report errors
 static void parser_error(Parser *parser, const char *format, ...);
 
 // Helper function to advance the parser state
-static void parser_advance(Parser *parser);
+static void parser_advance(Parser *parser, Arena *arena);
 
 // --- Public Parser Interface Implementation ---
-void parser_init(Parser *parser, Lexer *lexer) {
+void parser_init(Parser *parser,  Lexer *lexer, Arena *arena)
+{
     parser->lexer = lexer;
     parser->error_flag = false;
     // Initialize current_token and peek_token safely
     // Fetch first token into peek_token
-    parser->peek_token = lexer_next_token(parser->lexer);
+    parser->peek_token = lexer_next_token(parser->lexer, arena);
     // Initialize current_token to a known safe state (e.g., EOF or UNKNOWN with NULL lexeme)
     // Using EOF is reasonable as it won't be freed by token_free
     parser->current_token = (Token){TOKEN_EOF, NULL, 0};
 
     // Now perform the first real advance to load current_token and the next peek_token
-    parser_advance(parser);
+    parser_advance(parser, arena);
 }
 
 ProgramNode *parse_program(Parser *parser, Arena *arena) {
+    // Perform the initial advance now that we have the arena.
+    parser_advance(parser, arena); // Load current_token and peek_token
+
     // Parse the function definition
     FuncDefNode *func_def_node = parse_function_definition(parser, arena);
     if (parser->error_flag || !func_def_node) {
@@ -64,17 +68,16 @@ ProgramNode *parse_program(Parser *parser, Arena *arena) {
 }
 
 void parser_destroy(const Parser *parser) {
-    // Free any remaining tokens if necessary (e.g., if parsing stopped mid-way)
-    token_free(&parser->current_token);
-    token_free(&parser->peek_token);
-    // No other dynamically allocated memory in the Parser struct itself yet
+    // No explicit freeing needed for tokens as lexemes are in the arena.
+    // The arena itself is managed externally (e.g., by the compiler).
 }
 
 // --- Static Helper Function Implementation ---
-static void parser_advance(Parser *parser) {
-    token_free(&parser->current_token); // Free the lexeme of the *previous* current_token
+static void parser_advance(Parser *parser, Arena *arena) {
+    // No need to free current_token's lexeme; it's in the arena.
     parser->current_token = parser->peek_token;
-    parser->peek_token = lexer_next_token(parser->lexer);
+    // Pass the arena to lexer_next_token
+    parser->peek_token = lexer_next_token(parser->lexer, arena);
 
     // Check if the lexer encountered an unknown token
     if (parser->peek_token.type == TOKEN_UNKNOWN && !parser->error_flag) {
@@ -84,9 +87,9 @@ static void parser_advance(Parser *parser) {
     }
 }
 
-static bool parser_consume(Parser *parser, const TokenType expected_type) {
+static bool parser_consume(Parser *parser, Arena *arena, TokenType expected_type) {
     if (parser->current_token.type == expected_type) {
-        parser_advance(parser);
+        parser_advance(parser, arena);
         // Check if parser_advance itself encountered an error (like TOKEN_UNKNOWN)
         return !parser->error_flag; // Return true if no error occurred during advance
     }
@@ -121,7 +124,7 @@ static FuncDefNode *parse_function_definition(Parser *parser, Arena *arena) {
     if (parser->error_flag) return NULL; // Don't proceed if an error already occurred
 
     // Expect 'int' keyword
-    if (!parser_consume(parser, TOKEN_KEYWORD_INT)) {
+    if (!parser_consume(parser, arena, TOKEN_KEYWORD_INT)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
@@ -141,28 +144,28 @@ static FuncDefNode *parse_function_definition(Parser *parser, Arena *arena) {
     }
     strcpy(func_name, parser->current_token.lexeme); // Copy the name
 
-    parser_advance(parser); // Consume identifier
+    parser_advance(parser, arena); // Consume identifier
     // ReSharper disable once CppDFAConstantConditions
     // ReSharper disable once CppDFAUnreachableCode
     if (parser->error_flag) return NULL; // Check error after explicit advance
 
     // Expect '('
-    if (!parser_consume(parser, TOKEN_SYMBOL_LPAREN)) {
+    if (!parser_consume(parser, arena, TOKEN_SYMBOL_LPAREN)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Simplified: Assume 'void' parameter for now
-    if (!parser_consume(parser, TOKEN_KEYWORD_VOID)) {
+    if (!parser_consume(parser, arena, TOKEN_KEYWORD_VOID)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Expect ')'
-    if (!parser_consume(parser, TOKEN_SYMBOL_RPAREN)) {
+    if (!parser_consume(parser, arena, TOKEN_SYMBOL_RPAREN)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Expect '{'
-    if (!parser_consume(parser, TOKEN_SYMBOL_LBRACE)) {
+    if (!parser_consume(parser, arena, TOKEN_SYMBOL_LBRACE)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
@@ -175,7 +178,7 @@ static FuncDefNode *parse_function_definition(Parser *parser, Arena *arena) {
     }
 
     // Expect '}' after the statement
-    if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
+    if (!parser_consume(parser, arena, TOKEN_SYMBOL_RBRACE)) {
         // No need to free_ast or free func_name; arena handles cleanup
         return NULL; // Error handled and flag set inside parser_consume
     }
@@ -210,7 +213,7 @@ static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena) {
     if (parser->error_flag) return NULL;
 
     // Consume 'return' keyword
-    if (!parser_consume(parser, TOKEN_KEYWORD_RETURN)) {
+    if (!parser_consume(parser, arena, TOKEN_KEYWORD_RETURN)) {
         return NULL; // Error handled inside consume
     }
 
@@ -222,7 +225,7 @@ static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena) {
     }
 
     // Expect ';' after the expression
-    if (!parser_consume(parser, TOKEN_SYMBOL_SEMICOLON)) {
+    if (!parser_consume(parser, arena, TOKEN_SYMBOL_SEMICOLON)) {
         // Error handled in parser_consume
         return NULL;
     }
@@ -248,7 +251,7 @@ static AstNode *parse_exp(Parser *parser, Arena *arena) { // NOLINT(*-no-recursi
                                       ? OPERATOR_NEGATE
                                       : OPERATOR_COMPLEMENT;
 
-        parser_advance(parser); // Consume the operator ('-' or '~')
+        parser_advance(parser, arena); // Consume the operator ('-' or '~')
         if (parser->error_flag) return NULL; // Check if advance caused an error
 
         AstNode *operand_node = parse_exp(parser, arena); // Recursively parse the operand
@@ -292,13 +295,13 @@ static AstNode *parse_exp(Parser *parser, Arena *arena) { // NOLINT(*-no-recursi
             parser_error(parser, "Memory allocation failed for integer literal node");
             return NULL;
         }
-        parser_advance(parser); // Consume the constant token
+        parser_advance(parser, arena); // Consume the constant token
         return (AstNode*)node;
     }
 
     // Handle Parenthesized Expressions
     if (parser->current_token.type == TOKEN_SYMBOL_LPAREN) {
-        parser_advance(parser); // Consume '('
+        parser_advance(parser, arena); // Consume '('
         if (parser->error_flag) return NULL;
 
         AstNode *inner_exp_node = parse_exp(parser, arena); // Recursively parse the inner expression
@@ -308,7 +311,7 @@ static AstNode *parse_exp(Parser *parser, Arena *arena) { // NOLINT(*-no-recursi
         }
 
         // Consume ')'
-        if (!parser_consume(parser, TOKEN_SYMBOL_RPAREN)) {
+        if (!parser_consume(parser, arena, TOKEN_SYMBOL_RPAREN)) {
             // Error reported by parser_consume
             return NULL;
         }

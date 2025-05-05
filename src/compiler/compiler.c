@@ -16,7 +16,7 @@
 // -----------------------------------------------------------------------------
 
 // Forward declarations for static helper functions
-static bool run_lexer(Lexer *lexer, bool print_tokens); // Takes an initialized lexer
+static bool run_lexer(Lexer *lexer, Arena *arena, bool print_tokens); // Takes an initialized lexer
 
 static bool run_parser(Lexer *lexer, Arena *arena, bool print_ast, ProgramNode **out_program);
 
@@ -37,21 +37,24 @@ bool compile(const char *source_code,
     Lexer lexer;
     lexer_init(&lexer, source_code);
 
-    // --- Lexing Phase ---
-    bool const lex_success = run_lexer(&lexer, (lex_only || parse_only || codegen_only));
-    if (!lex_success) {
-        return false; // Lexical error
-    }
-
-    if (lex_only) {
-        return true; // Lexing succeeded, stop here
-    }
-
     // --- Arena Setup ---
     Arena ast_arena = arena_create(1024 * 1024); // 1MB arena
     if (ast_arena.start == NULL) {
         fprintf(stderr, "Compiler Error: Failed to create memory arena for AST.\n");
         return false; // Cannot proceed without memory
+    }
+
+    // --- Lexing Phase ---
+    // Pass the arena, even if just lexing, as lexemes are allocated into it.
+    bool const lex_success = run_lexer(&lexer, &ast_arena, (lex_only || parse_only || codegen_only));
+    if (!lex_success) {
+        arena_destroy(&ast_arena); // Clean up arena on lex failure
+        return false; // Lexical error
+    }
+
+    if (lex_only) {
+        arena_destroy(&ast_arena); // Clean up arena
+        return true; // Lexing succeeded, stop here
     }
 
     // --- Reset Lexer for Parsing ---
@@ -107,18 +110,18 @@ bool compile(const char *source_code,
 // Helper Functions for Compilation Stages
 // -----------------------------------------------------------------------------
 
-static bool run_lexer(Lexer *lexer, const bool print_tokens) {
+static bool run_lexer(Lexer *lexer, Arena *arena, const bool print_tokens) { // Keep Arena param
     // Assumes lexer is already initialized
     Token tok;
     int error = 0;
     printf("Lexing...\n");
-    while ((tok = lexer_next_token(lexer)).type != TOKEN_EOF) {
+    while ((tok = lexer_next_token(lexer, arena)).type != TOKEN_EOF) {
         if (tok.type == TOKEN_UNKNOWN) {
             char token_str[128];
             token_to_string(tok, token_str, sizeof(token_str));
             fprintf(stderr, "Lexical error: unknown token %s at position %zu\n", token_str, tok.position);
-            token_free(&tok);
-            error = 1;
+            // No token_free needed; lexeme (if any) is in arena
+            error = 1; // Keep error flag
             break;
         }
         if (print_tokens) {
@@ -126,7 +129,7 @@ static bool run_lexer(Lexer *lexer, const bool print_tokens) {
             token_to_string(tok, token_str, sizeof(token_str));
             printf("%s, pos=%zu\n", token_str, tok.position);
         }
-        token_free(&tok);
+        // No token_free needed; lexeme (if any) is in arena
     }
     if (error) {
         printf("Lexing failed.\n");
@@ -139,7 +142,7 @@ static bool run_lexer(Lexer *lexer, const bool print_tokens) {
 static bool run_parser(Lexer *lexer, Arena *arena, const bool print_ast, ProgramNode **out_program) {
     // Assume lexer is already initialized and positioned at the start
     Parser parser;
-    parser_init(&parser, lexer);
+    parser_init(&parser, lexer, arena); // Pass arena to parser_init
 
     printf("Parsing...\n");
     ProgramNode *ast_root_local = parse_program(&parser, arena);
@@ -147,7 +150,6 @@ static bool run_parser(Lexer *lexer, Arena *arena, const bool print_ast, Program
 
     if (parser.error_flag || !ast_root_local) {
         fprintf(stderr, "Parsing failed.\n");
-        parser_destroy(&parser);
         return false; // Parsing failed
     }
 
@@ -157,8 +159,7 @@ static bool run_parser(Lexer *lexer, Arena *arena, const bool print_ast, Program
         ast_pretty_print((AstNode *) ast_root_local, 0);
     }
 
-    bool parse_error = parser.error_flag;
-    parser_destroy(&parser); // Clean up parser resources
+    const bool parse_error = parser.error_flag;
 
     return !parse_error;
 }

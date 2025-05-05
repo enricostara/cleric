@@ -24,9 +24,10 @@ typedef struct {
  * (current and peek) to prime the parsing process.
  *
  * @param parser Pointer to the Parser struct to initialize.
- * @param lexer Pointer to the initialized Lexer providing the tokens.
+ * @param lexer Pointer to the Lexer struct to use for tokenization.
+ * @param arena Pointer to the memory arena to use for AST node allocations.
  */
-void parser_init(Parser *parser, Lexer *lexer);
+void parser_init(Parser *parser, Lexer *lexer, Arena *arena);
 
 /**
  * @brief Parses the entire token stream from the lexer using the provided arena.

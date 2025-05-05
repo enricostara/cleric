@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include "memory/arena.h" // Include Arena for allocation
 
 /**
  * Checks if the given string matches a reserved keyword.
@@ -57,10 +58,11 @@ static void skip_whitespace(Lexer *lexer) {
 
 /**
  * Scans and returns the next token from the input.
- * The returned token's lexeme must be freed by the caller.
+ * The returned token's lexeme (if applicable, e.g., identifiers, constants)
+ * will be allocated within the provided arena.
  * If the end of input is reached, returns TOKEN_EOF.
  */
-Token lexer_next_token(Lexer *lexer) {
+Token lexer_next_token(Lexer *lexer, Arena *arena) {
     skip_whitespace(lexer);
     size_t start = lexer->pos;
     if (lexer->pos >= lexer->len) {
@@ -79,7 +81,16 @@ Token lexer_next_token(Lexer *lexer) {
             // For keywords, do not allocate a lexeme (set to NULL)
             return (Token){type, NULL, id_start};
         }
-        char *lexeme = strndup(lexer->src + id_start, id_len);
+        // Allocate lexeme in the arena
+        char *lexeme = arena_alloc(arena, id_len + 1);
+        if (!lexeme) {
+            fprintf(stderr, "Lexer Error: Arena allocation failed for identifier lexeme.\n");
+            // Consider how to signal this error - maybe a specific TOKEN_ARENA_ERROR?
+            // For now, return UNKNOWN with NULL lexeme as a fallback.
+            return (Token){TOKEN_UNKNOWN, NULL, id_start};
+        }
+        memcpy(lexeme, lexer->src + id_start, id_len);
+        lexeme[id_len] = '\0'; // Null-terminate
         return (Token){TOKEN_IDENTIFIER, lexeme, id_start};
     }
     // Integer constants: [0-9]+
@@ -94,12 +105,25 @@ Token lexer_next_token(Lexer *lexer) {
             // Invalid character found after digits. Consume it.
             char bad_char = lexer->src[lexer->pos];
             lexer->pos++; // Advance past the bad character
-            // Return UNKNOWN for the bad character. The preceding digits are effectively skipped/consumed.
-            char *lexeme = strndup(&bad_char, 1);
+            // Allocate space for the single bad character in the arena
+            char *lexeme = arena_alloc(arena, 2); // 1 char + null terminator
+            if (!lexeme) {
+                fprintf(stderr, "Lexer Error: Arena allocation failed for unknown token lexeme (suffix).\n");
+                return (Token){TOKEN_UNKNOWN, NULL, lexer->pos - 1};
+            }
+            lexeme[0] = bad_char;
+            lexeme[1] = '\0';
             return (Token){TOKEN_UNKNOWN, lexeme, lexer->pos - 1}; // Position is where the bad char was
         }
         // If no invalid char followed, it's a valid constant.
-        char *lexeme = strndup(lexer->src + const_start, lexer->pos - const_start);
+        const size_t const_len = lexer->pos - const_start;
+        char *lexeme = arena_alloc(arena, const_len + 1);
+        if (!lexeme) {
+            fprintf(stderr, "Lexer Error: Arena allocation failed for constant lexeme.\n");
+            return (Token){TOKEN_UNKNOWN, NULL, const_start};
+        }
+        memcpy(lexeme, lexer->src + const_start, const_len);
+        lexeme[const_len] = '\0';
         return (Token){TOKEN_CONSTANT, lexeme, const_start};
     }
     // Single-character symbols and potential multi-character symbols
@@ -137,25 +161,15 @@ Token lexer_next_token(Lexer *lexer) {
     }
     // Unknown/unrecognized character: return as TOKEN_UNKNOWN
     lexer->pos++;
-    char *lexeme = strndup(&c, 1);
-    return (Token){TOKEN_UNKNOWN, lexeme, start};
-}
-
-/**
- * Frees memory allocated for a token's lexeme.
- * @param token Pointer to Token
- */
-void token_free(const Token *token) {
-    if (!token) return;
-    switch (token->type) {
-        case TOKEN_IDENTIFIER:
-        case TOKEN_CONSTANT:
-            if (token->lexeme) free(token->lexeme);
-            break;
-        default:
-            // Keyword and symbol tokens: lexeme is NULL/static, do not free
-            break;
+    // Allocate space for the single unknown character in the arena
+    char *lexeme = arena_alloc(arena, 2); // 1 char + null terminator
+    if (!lexeme) {
+         fprintf(stderr, "Lexer Error: Arena allocation failed for unknown token lexeme (char).\n");
+         return (Token){TOKEN_UNKNOWN, NULL, start};
     }
+    lexeme[0] = c;
+    lexeme[1] = '\0';
+    return (Token){TOKEN_UNKNOWN, lexeme, start};
 }
 
 // Function to create a string representation of a token

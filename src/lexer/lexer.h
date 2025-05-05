@@ -1,7 +1,7 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include <stddef.h>
+#include "memory/arena.h" // Include Arena for allocation
 
 /**
  * Token types for a minimal C subset lexer.
@@ -60,10 +60,13 @@ void lexer_init(Lexer *lexer, const char *src);
  * Returns the next token from the input stream.
  * Skips whitespace and advances the lexer's position.
  * The returned token's lexeme must be freed by the caller using token_free().
- * @param lexer Pointer to initialized Lexer
- * @return      Next Token in the input stream
+ * @param lexer A pointer to the Lexer instance.
+ * @param arena A pointer to the Arena allocator for storing lexemes.
+ * @return The next Token recognized in the source code.
+ * The returned token's lexeme (if applicable, e.g., identifiers, constants)
+ * will be allocated within the provided arena.
  */
-Token lexer_next_token(Lexer *lexer);
+Token lexer_next_token(Lexer *lexer, Arena *arena);
 
 /**
  * Resets the lexer's position to the beginning of the source string.
@@ -76,11 +79,5 @@ void lexer_reset(Lexer *lexer);
  * Writes the representation into the provided buffer.
  */
 void token_to_string(Token token, char *buffer, size_t buffer_size);
-
-/**
- * Frees resources held by a token (specifically, the lexeme string).
- * @param token Pointer to Token
- */
-void token_free(const Token *token);
 
 #endif // LEXER_H
