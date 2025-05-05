@@ -16,7 +16,7 @@
 // -----------------------------------------------------------------------------
 
 // Forward declarations for static helper functions
-static bool run_lexer(Lexer *lexer, Arena *arena, bool print_tokens); // Takes an initialized lexer
+static bool run_lexer(Lexer *lexer, bool print_tokens); // Takes an initialized lexer
 
 static bool run_parser(Lexer *lexer, Arena *arena, bool print_ast, ProgramNode **out_program);
 
@@ -35,8 +35,6 @@ bool compile(const char *source_code,
     ProgramNode *program = NULL; // Internal pointer to the AST root
 
     Lexer lexer;
-    lexer_init(&lexer, source_code);
-
     // --- Arena Setup ---
     Arena ast_arena = arena_create(1024 * 1024); // 1MB arena
     if (ast_arena.start == NULL) {
@@ -44,9 +42,12 @@ bool compile(const char *source_code,
         return false; // Cannot proceed without memory
     }
 
+    // Initialize lexer with the arena
+    lexer_init(&lexer, source_code, &ast_arena);
+
     // --- Lexing Phase ---
     // Pass the arena, even if just lexing, as lexemes are allocated into it.
-    bool const lex_success = run_lexer(&lexer, &ast_arena, (lex_only || parse_only || codegen_only));
+    bool const lex_success = run_lexer(&lexer, (lex_only || parse_only || codegen_only));
     if (!lex_success) {
         arena_destroy(&ast_arena); // Clean up arena on lex failure
         return false; // Lexical error
@@ -110,12 +111,12 @@ bool compile(const char *source_code,
 // Helper Functions for Compilation Stages
 // -----------------------------------------------------------------------------
 
-static bool run_lexer(Lexer *lexer, Arena *arena, const bool print_tokens) { // Keep Arena param
+static bool run_lexer(Lexer *lexer, const bool print_tokens) {
     // Assumes lexer is already initialized
     Token tok;
     int error = 0;
     printf("Lexing...\n");
-    while ((tok = lexer_next_token(lexer, arena)).type != TOKEN_EOF) {
+    while ((tok = lexer_next_token(lexer)).type != TOKEN_EOF) {
         if (tok.type == TOKEN_UNKNOWN) {
             char token_str[128];
             token_to_string(tok, token_str, sizeof(token_str));

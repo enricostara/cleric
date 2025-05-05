@@ -33,8 +33,8 @@ void parser_init(Parser *parser,  Lexer *lexer, Arena *arena)
     parser->error_flag = false;
     // Prime the parser: Fetch the first two tokens.
     // Use the provided arena for lexeme allocation.
-    parser->current_token = lexer_next_token(parser->lexer, arena);
-    parser->peek_token = lexer_next_token(parser->lexer, arena);
+    parser->current_token = lexer_next_token(parser->lexer);
+    parser->peek_token = lexer_next_token(parser->lexer);
 
     // Check for immediate errors (e.g., UNKNOWN token at start)
     if (parser->current_token.type == TOKEN_UNKNOWN) {
@@ -80,7 +80,7 @@ static void parser_advance(Parser *parser, Arena *arena) {
     // No need to free current_token's lexeme; it's in the arena.
     parser->current_token = parser->peek_token;
     // Pass the arena to lexer_next_token
-    parser->peek_token = lexer_next_token(parser->lexer, arena);
+    parser->peek_token = lexer_next_token(parser->lexer);
 
     // Check if the lexer encountered an unknown token
     if (parser->peek_token.type == TOKEN_UNKNOWN && !parser->error_flag) {

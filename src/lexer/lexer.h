@@ -42,31 +42,33 @@ typedef struct {
  * - src: pointer to the input source string
  * - pos: current position in the source string
  * - len: total length of the input source string
+ * - arena: Pointer to the arena used for allocations
  */
 typedef struct {
     const char *src;
     size_t pos;
     size_t len;
+    Arena *arena; // Pointer to the arena used for allocations
 } Lexer;
 
 /**
  * Initializes the lexer state for a given input string.
  * @param lexer Pointer to a Lexer struct
  * @param src   Null-terminated source string to tokenize
+ * @param arena Pointer to the Arena to use for allocations
  */
-void lexer_init(Lexer *lexer, const char *src);
+void lexer_init(Lexer *lexer, const char *src, Arena *arena);
 
 /**
  * Returns the next token from the input stream.
  * Skips whitespace and advances the lexer's position.
- * The returned token's lexeme must be freed by the caller using token_free().
  * @param lexer A pointer to the Lexer instance.
- * @param arena A pointer to the Arena allocator for storing lexemes.
  * @return The next Token recognized in the source code.
- * The returned token's lexeme (if applicable, e.g., identifiers, constants)
- * will be allocated within the provided arena.
+ * The returned token's lexeme (if applicable, e.g., identifiers, constants),
+ * is allocated within the lexer's internal arena and should not be freed manually.
+ * Memory will be reclaimed when the lexer's arena is destroyed.
  */
-Token lexer_next_token(Lexer *lexer, Arena *arena);
+Token lexer_next_token(Lexer *lexer);
 
 /**
  * Resets the lexer's position to the beginning of the source string.

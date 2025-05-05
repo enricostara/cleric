@@ -51,11 +51,11 @@ void test_parse_valid_program(void) {
 
     // Reworking the test slightly to check the flag:
     Lexer lexer;
-    lexer_init(&lexer, input);
-    Parser parser;
     Arena test_arena = arena_create(1024); // Create arena for this test
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
 
+    Parser parser;
     parser_init(&parser, &lexer, &test_arena);
 
     ProgramNode *program_reworked = parse_program(&parser, &test_arena);
@@ -95,11 +95,11 @@ void test_parse_valid_program(void) {
 void test_parse_missing_semicolon(void) {
     const char *input = "int main(void) { return 42 }"; // Missing semicolon
     Lexer lexer;
-    lexer_init(&lexer, input);
-    Parser parser;
     Arena test_arena = arena_create(1024); // Create arena for this test
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
 
+    Parser parser;
     parser_init(&parser, &lexer, &test_arena);
 
     ProgramNode *program = parse_program(&parser, &test_arena);
@@ -115,11 +115,11 @@ void test_parse_missing_semicolon(void) {
 void test_parse_missing_brace(void) {
     const char *input = "int main(void) { return 42;"; // Missing brace
     Lexer lexer;
-    lexer_init(&lexer, input);
-    Parser parser;
     Arena test_arena = arena_create(1024); // Create arena for this test
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
 
+    Parser parser;
     parser_init(&parser, &lexer, &test_arena);
 
     ProgramNode *program = parse_program(&parser, &test_arena);
@@ -138,7 +138,7 @@ void test_parse_negation_operator(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     
     Lexer lexer;
-    lexer_init(&lexer, input);
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     
@@ -174,7 +174,7 @@ void test_parse_complement_operator(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     
     Lexer lexer;
-    lexer_init(&lexer, input);
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     
@@ -210,7 +210,7 @@ void test_parse_nested_unary_operators(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     
     Lexer lexer;
-    lexer_init(&lexer, input);
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     
@@ -246,7 +246,7 @@ void test_parse_parenthesized_expression(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     
     Lexer lexer;
-    lexer_init(&lexer, input);
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     
@@ -284,7 +284,7 @@ void test_parse_unary_with_parentheses(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     
     Lexer lexer;
-    lexer_init(&lexer, input);
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     
@@ -320,7 +320,7 @@ void test_parse_complex_nested_expression(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     
     Lexer lexer;
-    lexer_init(&lexer, input);
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     
@@ -372,12 +372,11 @@ void test_parse_complex_nested_expression(void) {
 
 // Test parsing a program with invalid unary expression (missing operand)
 void test_parse_invalid_unary_expression(void) {
-    const char *input = "int main(void) { return -; }";
-    Arena test_arena = arena_create(1024);
-    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
-    
+    const char *input = "int main(void) { return -; }"; // Missing operand
     Lexer lexer;
-    lexer_init(&lexer, input);
+    Arena test_arena = arena_create(1024); // Create arena
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     
@@ -391,12 +390,11 @@ void test_parse_invalid_unary_expression(void) {
 
 // Test parsing a program with mismatched parentheses
 void test_parse_mismatched_parentheses(void) {
-    const char *input = "int main(void) { return (42; }";
-    Arena test_arena = arena_create(1024);
-    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
-    
+    const char *input = "int main(void) { return (42; }"; // Mismatched parenthesis
     Lexer lexer;
-    lexer_init(&lexer, input);
+    Arena test_arena = arena_create(1024); // Create arena
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     
@@ -415,7 +413,7 @@ void test_parse_integer_bounds(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     
     Lexer lexer;
-    lexer_init(&lexer, input);
+    lexer_init(&lexer, input, &test_arena);
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     
@@ -440,7 +438,7 @@ void test_parse_integer_bounds(void) {
     
     // Verify integer literal
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, return_stmt->expression->type);
-    IntLiteralNode *int_literal = (IntLiteralNode*)return_stmt->expression;
+    const IntLiteralNode *int_literal = (IntLiteralNode*)return_stmt->expression;
     TEST_ASSERT_EQUAL_INT(2147483647, int_literal->value); // INT_MAX
     
     arena_destroy(&test_arena);
@@ -448,12 +446,11 @@ void test_parse_integer_bounds(void) {
 
 // Test parsing a program with integer exceeding the representable range
 void test_parse_integer_overflow(void) {
-    const char *input = "int main(void) { return 2147483648; }"; // INT_MAX + 1 for 32-bit int
-    Arena test_arena = arena_create(1024);
-    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
-    
+    const char *input = "int main(void) { return 2147483648; }"; // One more than INT_MAX
     Lexer lexer;
-    lexer_init(&lexer, input);
+    Arena test_arena = arena_create(1024); // Create arena
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     

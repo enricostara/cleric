@@ -33,10 +33,11 @@ static int is_keyword(const char *str, const size_t len, TokenType *out_type) {
 /**
  * Initializes the lexer state for a given input string.
  */
-void lexer_init(Lexer *lexer, const char *src) {
+void lexer_init(Lexer *lexer, const char *src, Arena *arena) {
     lexer->src = src;
     lexer->pos = 0;
     lexer->len = strlen(src);
+    lexer->arena = arena; // Store the arena pointer
 }
 
 /**
@@ -59,10 +60,10 @@ static void skip_whitespace(Lexer *lexer) {
 /**
  * Scans and returns the next token from the input.
  * The returned token's lexeme (if applicable, e.g., identifiers, constants)
- * will be allocated within the provided arena.
+ * will be allocated within the lexer's arena.
  * If the end of input is reached, returns TOKEN_EOF.
  */
-Token lexer_next_token(Lexer *lexer, Arena *arena) {
+Token lexer_next_token(Lexer *lexer) {
     skip_whitespace(lexer);
     size_t start = lexer->pos;
     if (lexer->pos >= lexer->len) {
@@ -82,7 +83,7 @@ Token lexer_next_token(Lexer *lexer, Arena *arena) {
             return (Token){type, NULL, id_start};
         }
         // Allocate lexeme in the arena
-        char *lexeme = arena_alloc(arena, id_len + 1);
+        char *lexeme = arena_alloc(lexer->arena, id_len + 1);
         if (!lexeme) {
             fprintf(stderr, "Lexer Error: Arena allocation failed for identifier lexeme.\n");
             // Consider how to signal this error - maybe a specific TOKEN_ARENA_ERROR?
@@ -106,7 +107,7 @@ Token lexer_next_token(Lexer *lexer, Arena *arena) {
             char bad_char = lexer->src[lexer->pos];
             lexer->pos++; // Advance past the bad character
             // Allocate space for the single bad character in the arena
-            char *lexeme = arena_alloc(arena, 2); // 1 char + null terminator
+            char *lexeme = arena_alloc(lexer->arena, 2); // 1 char + null terminator
             if (!lexeme) {
                 fprintf(stderr, "Lexer Error: Arena allocation failed for unknown token lexeme (suffix).\n");
                 return (Token){TOKEN_UNKNOWN, NULL, lexer->pos - 1};
@@ -117,7 +118,7 @@ Token lexer_next_token(Lexer *lexer, Arena *arena) {
         }
         // If no invalid char followed, it's a valid constant.
         const size_t const_len = lexer->pos - const_start;
-        char *lexeme = arena_alloc(arena, const_len + 1);
+        char *lexeme = arena_alloc(lexer->arena, const_len + 1);
         if (!lexeme) {
             fprintf(stderr, "Lexer Error: Arena allocation failed for constant lexeme.\n");
             return (Token){TOKEN_UNKNOWN, NULL, const_start};
@@ -162,7 +163,7 @@ Token lexer_next_token(Lexer *lexer, Arena *arena) {
     // Unknown/unrecognized character: return as TOKEN_UNKNOWN
     lexer->pos++;
     // Allocate space for the single unknown character in the arena
-    char *lexeme = arena_alloc(arena, 2); // 1 char + null terminator
+    char *lexeme = arena_alloc(lexer->arena, 2); // 1 char + null terminator
     if (!lexeme) {
          fprintf(stderr, "Lexer Error: Arena allocation failed for unknown token lexeme (char).\n");
          return (Token){TOKEN_UNKNOWN, NULL, start};
