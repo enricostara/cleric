@@ -3,13 +3,14 @@
 #include "../src/parser/ast.h"
 #include "../src/strings/strings.h"
 #include "../src/memory/arena.h"
+#include "../src/parser/parser.h"
 
 // --- Test Cases ---
 
 // Test generating code for a simple function returning an integer literal
 static void test_codegen_simple_return(void) {
     // 1. Create AST: program { func main() { return 42; } }
-    Arena test_arena = arena_create(1024);
+    Arena test_arena = arena_create(1024 * 4);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
 
     IntLiteralNode *return_expr = create_int_literal_node(42, &test_arena);
@@ -19,7 +20,7 @@ static void test_codegen_simple_return(void) {
 
     // 2. Setup Codegen State (just the buffer)
     StringBuffer sb;
-    string_buffer_init(&sb, 256);
+    string_buffer_init(&sb, &test_arena, 256);
 
     // 3. Generate Code
     bool success = codegen_generate_program(&sb, program);
@@ -40,7 +41,6 @@ static void test_codegen_simple_return(void) {
 
     // 5. Cleanup
     arena_destroy(&test_arena);
-    string_buffer_destroy(&sb);
 }
 
 // --- Test Runner ---

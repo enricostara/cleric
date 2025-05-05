@@ -2,9 +2,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include "driver.h"
-#include "../parser/parser.h" // Include parser header
 #include "../strings/strings.h" // Include StringBuffer header
 #include "../files/files.h"
+#include "../memory/arena.h" // Include Arena header
 #include "compiler.h" // Added: Include new compiler header
 
 /**
@@ -38,31 +38,42 @@ int run_preprocessor(const char *input_file) {
 // Function: compilation from .i file to .s file (using the core compiler logic)
 int run_compiler(const char *input_file, const bool lex_only, const bool parse_only, const bool irgen_only,
                  const bool codegen_only) {
+    // Create the main arena for this compilation run
+    Arena main_arena = arena_create(1024 * 1024); // Example size: 1MB
+    if (!main_arena.start) {
+        fprintf(stderr, "Driver Error: Failed to create main arena.\n");
+        return 1; // Indicate failure
+    }
+
     // Use utility to check extension
     if (!filename_has_ext(input_file, ".i")) {
-        fprintf(stderr, "Input file should have a .i extension\n");
+        fprintf(stderr, "Error: Input file '%s' does not have '.i' extension.\n", input_file);
+        arena_destroy(&main_arena); // Destroy on error
         return 1;
     }
 
     char output_file[1024];
     if (!filename_replace_ext(input_file, ".s", output_file, sizeof(output_file))) {
         fprintf(stderr, "Failed to construct .s filename for %s\n", input_file);
+        arena_destroy(&main_arena); // Destroy on error
         return 1;
     }
 
     long f_size = 0;
     char *src = read_entire_file(input_file, &f_size);
     if (!src) {
-        fprintf(stderr, "Failed to open or read %s\n", input_file);
+        fprintf(stderr, "Error reading input file '%s'.\n", input_file);
+        free(src); // Free the buffer from read_file (though it should be NULL)
+        arena_destroy(&main_arena); // Destroy on error
         return 1;
     }
 
     StringBuffer sb;
-    string_buffer_init(&sb, 1024); // Initialize buffer for core function output
+    string_buffer_init(&sb, &main_arena, 1024); // Initialize buffer for core function output
     // ReSharper disable once CppDFAUnusedValue
     int result = 1; // Default to error
 
-    bool const core_success = compile(src, lex_only, parse_only, irgen_only, codegen_only, &sb);
+    bool const core_success = compile(src, lex_only, parse_only, irgen_only, codegen_only, &sb, &main_arena);
 
     if (core_success) {
         // If only lexing, parsing, irgen or codegen-to-stdout was requested, we are done successfully.
@@ -93,8 +104,8 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
     }
 
     // --- Cleanup ---
-    string_buffer_destroy(&sb); // Always destroy the buffer
-    free(src); // Always free the source code
+    free(src); // Free source code buffer
+    arena_destroy(&main_arena); // Destroy the arena
 
     return result;
 }

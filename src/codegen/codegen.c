@@ -9,6 +9,7 @@ static bool generate_program(const ProgramNode *program, StringBuffer *sb);
 static bool generate_function(const FuncDefNode *node, StringBuffer *sb);
 
 static bool generate_statement(AstNode *node, StringBuffer *sb); // Use base AstNode type
+
 static bool generate_expression(AstNode *node, int *out_value); // Modified to return value via out-param
 
 // --- Main function ---
@@ -19,7 +20,7 @@ bool codegen_generate_program(StringBuffer *sb, ProgramNode *program) {
         return false; // Return false on error
     }
     // Ensure buffer is empty before generation
-    string_buffer_clear(sb);
+    // string_buffer_clear(sb); // Removed as per instructions
     // Start the generation process
     return generate_program(program, sb);
 }
@@ -59,7 +60,6 @@ static bool generate_function(const FuncDefNode *node, StringBuffer *sb) {
     }
 
     // Function Epilogue (Minimal example - often handled by return)
-    // string_buffer_append(sb, "    popq %%rbp\n");
     // Implicit 'retq' might be added by generate_statement for return, or needed here.
     // For now, the return statement adds `retq`.
     // string_buffer_append(sb, "    retq\n");
