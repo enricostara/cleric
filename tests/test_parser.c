@@ -56,7 +56,7 @@ void test_parse_valid_program(void) {
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
 
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
 
     ProgramNode *program_reworked = parse_program(&parser, &test_arena);
 
@@ -100,7 +100,7 @@ void test_parse_missing_semicolon(void) {
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
 
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
 
     ProgramNode *program = parse_program(&parser, &test_arena);
 
@@ -120,7 +120,7 @@ void test_parse_missing_brace(void) {
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
 
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
 
     ProgramNode *program = parse_program(&parser, &test_arena);
 
@@ -140,7 +140,7 @@ void test_parse_negation_operator(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     
@@ -176,7 +176,7 @@ void test_parse_complement_operator(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     
@@ -212,7 +212,7 @@ void test_parse_nested_unary_operators(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     
@@ -248,7 +248,7 @@ void test_parse_parenthesized_expression(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     
@@ -286,7 +286,7 @@ void test_parse_unary_with_parentheses(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     
@@ -322,7 +322,7 @@ void test_parse_complex_nested_expression(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     
@@ -378,7 +378,7 @@ void test_parse_invalid_unary_expression(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     
@@ -396,7 +396,7 @@ void test_parse_mismatched_parentheses(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     
@@ -415,7 +415,7 @@ void test_parse_integer_bounds(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena);
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     
@@ -452,7 +452,7 @@ void test_parse_integer_overflow(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
+    parser_init(&parser, &lexer);
     
     ProgramNode *program = parse_program(&parser, &test_arena);
     

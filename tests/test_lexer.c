@@ -33,10 +33,13 @@ static void run_single_lexer_test(const LexerTestCase *test_case, Arena *arena) 
     Lexer lexer;
     lexer_init(&lexer, test_case->source, arena); // Pass arena to initializer
     Token tok;
+    bool success; // To capture the return value
     size_t token_count = 0;
 
     for (size_t i = 0; i < test_case->num_expected_tokens; ++i) {
-        tok = lexer_next_token(&lexer); // Use lexer's internal arena
+        success = lexer_next_token(&lexer, &tok); // Use lexer's internal arena
+        snprintf(message, sizeof(message), "[%s] lexer_next_token failed unexpectedly (returned false) at token %zu", test_case->name, i + 1);
+        TEST_ASSERT_TRUE_MESSAGE(success, message); // Fail if lexer reported an error
         token_count++;
 
         // Prepare detailed message for assertion failures
@@ -59,12 +62,17 @@ static void run_single_lexer_test(const LexerTestCase *test_case, Arena *arena) 
     }
 
     // Check for EOF
-    tok = lexer_next_token(&lexer);
+    success = lexer_next_token(&lexer, &tok);
+    snprintf(message, sizeof(message), "[%s] lexer_next_token failed unexpectedly (returned false) when checking for EOF", test_case->name);
+    TEST_ASSERT_TRUE_MESSAGE(success, message); // Fail if lexer reported an error
+
     snprintf(message, sizeof(message), "[%s] Expected EOF after %zu tokens", test_case->name, test_case->num_expected_tokens);
     TEST_ASSERT_EQUAL_INT_MESSAGE(TOKEN_EOF, tok.type, message);
 
     // Check if any extra tokens were produced
-    tok = lexer_next_token(&lexer);
+    success = lexer_next_token(&lexer, &tok);
+    snprintf(message, sizeof(message), "[%s] lexer_next_token failed unexpectedly (returned false) when checking for extra tokens", test_case->name);
+    TEST_ASSERT_TRUE_MESSAGE(success, message); // Fail if lexer reported an error
     snprintf(message, sizeof(message), "[%s] Expected EOF, but got another token (%d)", test_case->name, tok.type);
     TEST_ASSERT_EQUAL_INT_MESSAGE(TOKEN_EOF, tok.type, message);
 }

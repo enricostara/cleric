@@ -63,11 +63,16 @@ static void skip_whitespace(Lexer *lexer) {
  * will be allocated within the lexer's arena.
  * If the end of input is reached, returns TOKEN_EOF.
  */
-Token lexer_next_token(Lexer *lexer) {
+bool lexer_next_token(Lexer *lexer, Token *out_token) {
+    // Initialize out_token to a safe default (e.g., UNKNOWN, NULL lexeme)
+    // Although if false is returned, its state is undefined per the header comment.
+    *out_token = (Token){TOKEN_UNKNOWN, NULL, lexer->pos};
+
     skip_whitespace(lexer);
     size_t start = lexer->pos;
     if (lexer->pos >= lexer->len) {
-        return (Token){TOKEN_EOF, NULL, lexer->pos};
+        *out_token = (Token){TOKEN_EOF, NULL, lexer->pos};
+        return true; // Successfully found EOF
     }
     const char c = lexer->src[lexer->pos];
     // Identifiers and keywords: [a-zA-Z_][a-zA-Z0-9_]*
@@ -80,19 +85,19 @@ Token lexer_next_token(Lexer *lexer) {
         TokenType type;
         if (is_keyword(lexer->src + id_start, id_len, &type)) {
             // For keywords, do not allocate a lexeme (set to NULL)
-            return (Token){type, NULL, id_start};
+            *out_token = (Token){type, NULL, id_start};
+            return true;
         }
         // Allocate lexeme in the arena
         char *lexeme = arena_alloc(lexer->arena, id_len + 1);
         if (!lexeme) {
             fprintf(stderr, "Lexer Error: Arena allocation failed for identifier lexeme.\n");
-            // Consider how to signal this error - maybe a specific TOKEN_ARENA_ERROR?
-            // For now, return UNKNOWN with NULL lexeme as a fallback.
-            return (Token){TOKEN_UNKNOWN, NULL, id_start};
+            return false; // Allocation failure
         }
         memcpy(lexeme, lexer->src + id_start, id_len);
         lexeme[id_len] = '\0'; // Null-terminate
-        return (Token){TOKEN_IDENTIFIER, lexeme, id_start};
+        *out_token = (Token){TOKEN_IDENTIFIER, lexeme, id_start};
+        return true;
     }
     // Integer constants: [0-9]+
     if (isdigit(c)) {
@@ -110,22 +115,24 @@ Token lexer_next_token(Lexer *lexer) {
             char *lexeme = arena_alloc(lexer->arena, 2); // 1 char + null terminator
             if (!lexeme) {
                 fprintf(stderr, "Lexer Error: Arena allocation failed for unknown token lexeme (suffix).\n");
-                return (Token){TOKEN_UNKNOWN, NULL, lexer->pos - 1};
+                return false; // Allocation failure
             }
             lexeme[0] = bad_char;
             lexeme[1] = '\0';
-            return (Token){TOKEN_UNKNOWN, lexeme, lexer->pos - 1}; // Position is where the bad char was
+            *out_token = (Token){TOKEN_UNKNOWN, lexeme, lexer->pos - 1}; // Position is where the bad char was
+            return true;
         }
         // If no invalid char followed, it's a valid constant.
         const size_t const_len = lexer->pos - const_start;
         char *lexeme = arena_alloc(lexer->arena, const_len + 1);
         if (!lexeme) {
             fprintf(stderr, "Lexer Error: Arena allocation failed for constant lexeme.\n");
-            return (Token){TOKEN_UNKNOWN, NULL, const_start};
+            return false; // Allocation failure
         }
         memcpy(lexeme, lexer->src + const_start, const_len);
         lexeme[const_len] = '\0';
-        return (Token){TOKEN_CONSTANT, lexeme, const_start};
+        *out_token = (Token){TOKEN_CONSTANT, lexeme, const_start};
+        return true;
     }
     // Single-character symbols and potential multi-character symbols
     TokenType sym_type = TOKEN_UNKNOWN;
@@ -147,7 +154,8 @@ Token lexer_next_token(Lexer *lexer) {
         {
             if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '-') {
                 lexer->pos += 2; // Consume both '-'
-                return (Token){TOKEN_SYMBOL_DECREMENT, NULL, start};
+                *out_token = (Token){TOKEN_SYMBOL_DECREMENT, NULL, start};
+                return true;
             }
             // Otherwise, it's just '-' (minus)
             sym_type = TOKEN_SYMBOL_MINUS;
@@ -158,7 +166,8 @@ Token lexer_next_token(Lexer *lexer) {
     if (sym_type != TOKEN_UNKNOWN) {
         lexer->pos++;
         // No need to allocate lexeme for symbols; type is sufficient
-        return (Token){sym_type, NULL, start};
+        *out_token = (Token){sym_type, NULL, start};
+        return true;
     }
     // Unknown/unrecognized character: return as TOKEN_UNKNOWN
     lexer->pos++;
@@ -166,11 +175,12 @@ Token lexer_next_token(Lexer *lexer) {
     char *lexeme = arena_alloc(lexer->arena, 2); // 1 char + null terminator
     if (!lexeme) {
          fprintf(stderr, "Lexer Error: Arena allocation failed for unknown token lexeme (char).\n");
-         return (Token){TOKEN_UNKNOWN, NULL, start};
+         return false; // Allocation failure
     }
     lexeme[0] = c;
     lexeme[1] = '\0';
-    return (Token){TOKEN_UNKNOWN, lexeme, start};
+    *out_token = (Token){TOKEN_UNKNOWN, lexeme, start};
+    return true;
 }
 
 // Function to create a string representation of a token

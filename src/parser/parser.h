@@ -25,9 +25,8 @@ typedef struct {
  *
  * @param parser Pointer to the Parser struct to initialize.
  * @param lexer Pointer to the Lexer struct to use for tokenization.
- * @param arena Pointer to the memory arena to use for AST node allocations.
  */
-void parser_init(Parser *parser, Lexer *lexer, Arena *arena);
+void parser_init(Parser *parser, Lexer *lexer);
 
 /**
  * @brief Parses the entire token stream from the lexer using the provided arena.
@@ -43,19 +42,6 @@ void parser_init(Parser *parser, Lexer *lexer, Arena *arena);
  *         or memory allocation fails. The memory is owned by the arena.
  */
 ProgramNode *parse_program(Parser *parser, Arena *arena);
-
-/**
- * @brief Cleans up resources used by the parser.
- *
- * Currently, this function doesn't have specific resources to free
- * within the Parser struct itself (like dynamically allocated buffers),
- * but it's good practice to have a destroy function paired with init.
- * It does NOT free the associated Lexer or the returned AST; that's the
- * responsibility of the caller.
- *
- * @param parser Pointer to the Parser struct to destroy.
- */
-void parser_destroy(const Parser *parser);
 
 // Note: We don't declare parser_advance, parser_consume, or the specific
 // parse_* grammar rule functions here because they are internal implementation

@@ -114,36 +114,45 @@ bool compile(const char *source_code,
 static bool run_lexer(Lexer *lexer, const bool print_tokens) {
     // Assumes lexer is already initialized
     Token tok;
-    int error = 0;
     printf("Lexing...\n");
-    while ((tok = lexer_next_token(lexer)).type != TOKEN_EOF) {
+    while (true) {
+        const bool success = lexer_next_token(lexer, &tok);
+        if (!success) {
+            // Error message already printed by lexer for allocation failure
+            fprintf(stderr, "Lexical error: Lexer failed (likely allocation error).\n");
+            return false; // Indicate failure
+        }
+
+        if (tok.type == TOKEN_EOF) {
+            break; // End of input reached successfully
+        }
+
         if (tok.type == TOKEN_UNKNOWN) {
             char token_str[128];
             token_to_string(tok, token_str, sizeof(token_str));
             fprintf(stderr, "Lexical error: unknown token %s at position %zu\n", token_str, tok.position);
             // No token_free needed; lexeme (if any) is in arena
-            error = 1; // Keep error flag
-            break;
+
+            // Decide whether to continue lexing or stop on first error.
+            // For now, stop on first lexical error.
+            return false; // Indicate failure
         }
+
         if (print_tokens) {
             char token_str[128];
             token_to_string(tok, token_str, sizeof(token_str));
-            printf("%s, pos=%zu\n", token_str, tok.position);
+            printf("Token: %s\n", token_str);
         }
-        // No token_free needed; lexeme (if any) is in arena
     }
-    if (error) {
-        printf("Lexing failed.\n");
-        return false; // Lexical error
-    }
-    printf("Lexing successful.\n");
-    return true;
+
+    printf("Lexing finished.\n");
+    return true; // Lexing completed successfully
 }
 
 static bool run_parser(Lexer *lexer, Arena *arena, const bool print_ast, ProgramNode **out_program) {
     // Assume lexer is already initialized and positioned at the start
     Parser parser;
-    parser_init(&parser, lexer, arena); // Pass arena to parser_init
+    parser_init(&parser, lexer); // Pass arena to parser_init
 
     printf("Parsing...\n");
     ProgramNode *ast_root_local = parse_program(&parser, arena);

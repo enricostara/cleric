@@ -27,14 +27,24 @@ static void parser_error(Parser *parser, const char *format, ...);
 static void parser_advance(Parser *parser, Arena *arena);
 
 // --- Public Parser Interface Implementation ---
-void parser_init(Parser *parser,  Lexer *lexer, Arena *arena)
+void parser_init(Parser *parser, Lexer *lexer)
 {
     parser->lexer = lexer;
     parser->error_flag = false;
     // Prime the parser: Fetch the first two tokens.
     // Use the provided arena for lexeme allocation.
-    parser->current_token = lexer_next_token(parser->lexer);
-    parser->peek_token = lexer_next_token(parser->lexer);
+    const bool success1 = lexer_next_token(parser->lexer, &parser->current_token);
+    const bool success2 = lexer_next_token(parser->lexer, &parser->peek_token);
+
+    if (!success1 || !success2) {
+        // If lexing failed (e.g., arena alloc error), set error flag
+        // No need for specific error message here as lexer prints one.
+        parser->error_flag = true;
+        // Set tokens to EOF to prevent further parsing attempts
+        parser->current_token.type = TOKEN_EOF;
+        parser->peek_token.type = TOKEN_EOF;
+        return;
+    }
 
     // Check for immediate errors (e.g., UNKNOWN token at start)
     if (parser->current_token.type == TOKEN_UNKNOWN) {
@@ -65,11 +75,6 @@ ProgramNode *parse_program(Parser *parser, Arena *arena) {
     return program_node;
 }
 
-void parser_destroy(const Parser *parser) {
-    // No explicit freeing needed for tokens as lexemes are in the arena.
-    // The arena itself is managed externally (e.g., by the compiler).
-}
-
 // --- Static Helper Function Implementation ---
 static void parser_advance(Parser *parser, Arena *arena) {
     // Important: Only advance if not already at EOF to avoid issues
@@ -80,7 +85,13 @@ static void parser_advance(Parser *parser, Arena *arena) {
     // No need to free current_token's lexeme; it's in the arena.
     parser->current_token = parser->peek_token;
     // Pass the arena to lexer_next_token
-    parser->peek_token = lexer_next_token(parser->lexer);
+    const bool success = lexer_next_token(parser->lexer, &parser->peek_token);
+    if (!success) {
+        // Lexer failed (e.g., arena error), set error flag and stop
+        parser->error_flag = true;
+        parser->peek_token.type = TOKEN_EOF; // Prevent further issues
+        return;
+    }
 
     // Check if the lexer encountered an unknown token
     if (parser->peek_token.type == TOKEN_UNKNOWN && !parser->error_flag) {

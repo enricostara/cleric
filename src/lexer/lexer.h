@@ -60,15 +60,20 @@ typedef struct {
 void lexer_init(Lexer *lexer, const char *src, Arena *arena);
 
 /**
- * Returns the next token from the input stream.
- * Skips whitespace and advances the lexer's position.
- * @param lexer A pointer to the Lexer instance.
- * @return The next Token recognized in the source code.
- * The returned token's lexeme (if applicable, e.g., identifiers, constants),
- * is allocated within the lexer's internal arena and should not be freed manually.
- * Memory will be reclaimed when the lexer's arena is destroyed.
+ * Retrieves the next token from the lexer's source string.
+ * Advances the lexer's position.
+ * The lexeme (if any) is allocated within the lexer's internal arena.
+ * Do not free the lexeme; it will be freed when the arena is destroyed.
+ *
+ * @param lexer Pointer to the initialized Lexer.
+ * @param out_token Pointer to a Token struct where the result will be stored.
+ * @return true if a token (including TOKEN_EOF) was successfully retrieved,
+ *         false if an error occurred (e.g., memory allocation failure).
+ *         If false is returned, the contents of out_token are undefined.
+ *         If true is returned and the token type is TOKEN_UNKNOWN, it indicates
+ *         an unrecognized character was encountered.
  */
-Token lexer_next_token(Lexer *lexer);
+bool lexer_next_token(Lexer *lexer, Token *out_token);
 
 /**
  * Resets the lexer's position to the beginning of the source string.
