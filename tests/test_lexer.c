@@ -3,6 +3,7 @@
 
 #include "../src/lexer/lexer.h"
 #include "unity/unity.h"
+#include "memory/arena.h"
 
 // --- Test Case Data Structures ---
 
@@ -20,7 +21,7 @@ typedef struct {
 
 // --- Helper Function to Run a Single Test Case ---
 
-static void run_single_lexer_test(const LexerTestCase *test_case) {
+static void run_single_lexer_test(const LexerTestCase *test_case, Arena *arena) {
     char message[256];
     snprintf(message, sizeof(message), "Test Case: %s", test_case->name);
     UNITY_TEST_ASSERT_NOT_NULL(test_case->source, __LINE__, "Test case source cannot be NULL.");
@@ -35,7 +36,7 @@ static void run_single_lexer_test(const LexerTestCase *test_case) {
     size_t token_count = 0;
 
     for (size_t i = 0; i < test_case->num_expected_tokens; ++i) {
-        tok = lexer_next_token(&lexer);
+        tok = lexer_next_token(&lexer, arena);
         token_count++;
 
         // Prepare detailed message for assertion failures
@@ -55,21 +56,17 @@ static void run_single_lexer_test(const LexerTestCase *test_case) {
             TEST_ASSERT_NOT_NULL_MESSAGE(tok.lexeme, assert_msg);
             TEST_ASSERT_EQUAL_STRING_MESSAGE(test_case->expected_tokens[i].lexeme, tok.lexeme, assert_msg);
         }
-
-        token_free(&tok); // Free the token after checking
     }
 
     // Check for EOF
-    tok = lexer_next_token(&lexer);
+    tok = lexer_next_token(&lexer, arena);
     snprintf(message, sizeof(message), "[%s] Expected EOF after %zu tokens", test_case->name, test_case->num_expected_tokens);
     TEST_ASSERT_EQUAL_INT_MESSAGE(TOKEN_EOF, tok.type, message);
-    token_free(&tok);
 
     // Check if any extra tokens were produced
-    tok = lexer_next_token(&lexer);
+    tok = lexer_next_token(&lexer, arena);
     snprintf(message, sizeof(message), "[%s] Expected EOF, but got another token (%d)", test_case->name, tok.type);
     TEST_ASSERT_EQUAL_INT_MESSAGE(TOKEN_EOF, tok.type, message);
-    token_free(&tok);
 }
 
 // --- Test Data ---
@@ -169,13 +166,18 @@ LexerTestCase test_cases[] = {
 
 // This function is called by Unity for each test case
 void test_lexer_runner(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(test_arena.start);
+
     size_t num_test_cases = sizeof(test_cases) / sizeof(LexerTestCase);
     for (size_t i = 0; i < num_test_cases; ++i) {
         // Use Unity's test case execution mechanism if needed, or just call directly
         // For simplicity here, we call directly. If using advanced Unity features,
         // you might register each test case name.
-        run_single_lexer_test(&test_cases[i]);
+        run_single_lexer_test(&test_cases[i], &test_arena);
     }
+
+    arena_destroy(&test_arena);
 }
 
 // --- Tests for token_to_string (can remain separate) ---

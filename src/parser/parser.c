@@ -31,21 +31,19 @@ void parser_init(Parser *parser,  Lexer *lexer, Arena *arena)
 {
     parser->lexer = lexer;
     parser->error_flag = false;
-    // Initialize current_token and peek_token safely
-    // Fetch first token into peek_token
+    // Prime the parser: Fetch the first two tokens.
+    // Use the provided arena for lexeme allocation.
+    parser->current_token = lexer_next_token(parser->lexer, arena);
     parser->peek_token = lexer_next_token(parser->lexer, arena);
-    // Initialize current_token to a known safe state (e.g., EOF or UNKNOWN with NULL lexeme)
-    // Using EOF is reasonable as it won't be freed by token_free
-    parser->current_token = (Token){TOKEN_EOF, NULL, 0};
 
-    // Now perform the first real advance to load current_token and the next peek_token
-    parser_advance(parser, arena);
+    // Check for immediate errors (e.g., UNKNOWN token at start)
+    if (parser->current_token.type == TOKEN_UNKNOWN) {
+        parser_error(parser, "Syntax Error: Unrecognized token at start");
+    }
+    // Note: parser_advance already checks peek_token for UNKNOWN
 }
 
 ProgramNode *parse_program(Parser *parser, Arena *arena) {
-    // Perform the initial advance now that we have the arena.
-    parser_advance(parser, arena); // Load current_token and peek_token
-
     // Parse the function definition
     FuncDefNode *func_def_node = parse_function_definition(parser, arena);
     if (parser->error_flag || !func_def_node) {
@@ -74,6 +72,11 @@ void parser_destroy(const Parser *parser) {
 
 // --- Static Helper Function Implementation ---
 static void parser_advance(Parser *parser, Arena *arena) {
+    // Important: Only advance if not already at EOF to avoid issues
+    if (parser->current_token.type == TOKEN_EOF) {
+        return; // Already at the end, don't advance further
+    }
+
     // No need to free current_token's lexeme; it's in the arena.
     parser->current_token = parser->peek_token;
     // Pass the arena to lexer_next_token
