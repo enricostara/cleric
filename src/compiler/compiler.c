@@ -152,14 +152,13 @@ static bool run_lexer(Lexer *lexer, const bool print_tokens) {
 static bool run_parser(Lexer *lexer, Arena *arena, const bool print_ast, ProgramNode **out_program) {
     // Assume lexer is already initialized and positioned at the start
     Parser parser;
-    parser_init(&parser, lexer); // Pass arena to parser_init
-
+    parser_init(&parser, lexer, arena); // Pass arena to parser_init
+ 
     printf("Parsing...\n");
-    ProgramNode *ast_root_local = parse_program(&parser, arena);
-    *out_program = ast_root_local; // Store AST root
-
-    if (parser.error_flag || !ast_root_local) {
-        fprintf(stderr, "Parsing failed.\n");
+    ProgramNode *ast_root_local = parse_program(&parser);
+ 
+    if (parser.error_flag) {
+        fprintf(stderr, "Parsing failed due to errors.\n");
         return false; // Parsing failed
     }
 
@@ -169,9 +168,9 @@ static bool run_parser(Lexer *lexer, Arena *arena, const bool print_ast, Program
         ast_pretty_print((AstNode *) ast_root_local, 0);
     }
 
-    const bool parse_error = parser.error_flag;
+    *out_program = ast_root_local; // Store AST root
 
-    return !parse_error;
+    return true;
 }
 
 // -----------------------------------------------------------------------------

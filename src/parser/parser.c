@@ -9,28 +9,29 @@
 #include <string.h> // For strlen, strcpy
 
 // Forward declarations for static helper functions (parsing rules)
-static FuncDefNode *parse_function_definition(Parser *parser, Arena *arena);
+static FuncDefNode *parse_function_definition(Parser *parser);
 
-static AstNode *parse_statement(Parser *parser, Arena *arena);
+static AstNode *parse_statement(Parser *parser);
 
-static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena);
+static ReturnStmtNode *parse_return_statement(Parser *parser);
 
-static AstNode *parse_exp(Parser *parser, Arena *arena); // Renamed from parse_primary_expression
+static AstNode *parse_exp(Parser *parser); // Renamed from parse_primary_expression
 
 // Helper function to consume a token and advance
-static bool parser_consume(Parser *parser, Arena *arena, TokenType expected_type);
+static bool parser_consume(Parser *parser, TokenType expected_type);
 
 // Helper function to report errors
 static void parser_error(Parser *parser, const char *format, ...);
 
 // Helper function to advance the parser state
-static void parser_advance(Parser *parser, Arena *arena);
+static void parser_advance(Parser *parser);
 
 // --- Public Parser Interface Implementation ---
-void parser_init(Parser *parser, Lexer *lexer)
+void parser_init(Parser *parser, Lexer *lexer, Arena *arena)
 {
     parser->lexer = lexer;
     parser->error_flag = false;
+    parser->arena = arena; // Store the arena pointer
     // Prime the parser: Fetch the first two tokens.
     // Use the provided arena for lexeme allocation.
     const bool success1 = lexer_next_token(parser->lexer, &parser->current_token);
@@ -53,9 +54,9 @@ void parser_init(Parser *parser, Lexer *lexer)
     // Note: parser_advance already checks peek_token for UNKNOWN
 }
 
-ProgramNode *parse_program(Parser *parser, Arena *arena) {
+ProgramNode *parse_program(Parser *parser) {
     // Parse the function definition
-    FuncDefNode *func_def_node = parse_function_definition(parser, arena);
+    FuncDefNode *func_def_node = parse_function_definition(parser);
     if (parser->error_flag || !func_def_node) {
         // No need to free_ast; arena handles cleanup
         return NULL;
@@ -71,12 +72,12 @@ ProgramNode *parse_program(Parser *parser, Arena *arena) {
     }
 
     // Create a ProgramNode from the FuncDefNode
-    ProgramNode *program_node = create_program_node(func_def_node, arena);
+    ProgramNode *program_node = create_program_node(func_def_node, parser->arena);
     return program_node;
 }
 
 // --- Static Helper Function Implementation ---
-static void parser_advance(Parser *parser, Arena *arena) {
+static void parser_advance(Parser *parser) {
     // Important: Only advance if not already at EOF to avoid issues
     if (parser->current_token.type == TOKEN_EOF) {
         return; // Already at the end, don't advance further
@@ -101,9 +102,9 @@ static void parser_advance(Parser *parser, Arena *arena) {
     }
 }
 
-static bool parser_consume(Parser *parser, Arena *arena, TokenType expected_type) {
+static bool parser_consume(Parser *parser, const TokenType expected_type) {
     if (parser->current_token.type == expected_type) {
-        parser_advance(parser, arena);
+        parser_advance(parser);
         // Check if parser_advance itself encountered an error (like TOKEN_UNKNOWN)
         return !parser->error_flag; // Return true if no error occurred during advance
     }
@@ -134,11 +135,11 @@ static void parser_error(Parser *parser, const char *format, ...) {
 // --- Recursive Descent Parsing Functions ---
 
 // FunctionDefinition: 'int' Identifier '(' 'void' ')' '{' Statement '}'
-static FuncDefNode *parse_function_definition(Parser *parser, Arena *arena) {
+static FuncDefNode *parse_function_definition(Parser *parser) {
     if (parser->error_flag) return NULL; // Don't proceed if an error already occurred
 
     // Expect 'int' keyword
-    if (!parser_consume(parser, arena, TOKEN_KEYWORD_INT)) {
+    if (!parser_consume(parser, TOKEN_KEYWORD_INT)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
@@ -151,40 +152,40 @@ static FuncDefNode *parse_function_definition(Parser *parser, Arena *arena) {
     }
     // Copy the lexeme into the arena
     const size_t name_len = strlen(parser->current_token.lexeme);
-    char *func_name = arena_alloc(arena, name_len + 1);
+    char *func_name = arena_alloc(parser->arena, name_len + 1);
     if (!func_name) {
         parser_error(parser, "Memory allocation failed for function name using arena");
         return NULL;
     }
     strcpy(func_name, parser->current_token.lexeme); // Copy the name
 
-    parser_advance(parser, arena); // Consume identifier
+    parser_advance(parser); // Consume identifier
     // ReSharper disable once CppDFAConstantConditions
     // ReSharper disable once CppDFAUnreachableCode
     if (parser->error_flag) return NULL; // Check error after explicit advance
 
     // Expect '('
-    if (!parser_consume(parser, arena, TOKEN_SYMBOL_LPAREN)) {
+    if (!parser_consume(parser, TOKEN_SYMBOL_LPAREN)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Simplified: Assume 'void' parameter for now
-    if (!parser_consume(parser, arena, TOKEN_KEYWORD_VOID)) {
+    if (!parser_consume(parser, TOKEN_KEYWORD_VOID)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Expect ')'
-    if (!parser_consume(parser, arena, TOKEN_SYMBOL_RPAREN)) {
+    if (!parser_consume(parser, TOKEN_SYMBOL_RPAREN)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Expect '{'
-    if (!parser_consume(parser, arena, TOKEN_SYMBOL_LBRACE)) {
+    if (!parser_consume(parser, TOKEN_SYMBOL_LBRACE)) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Parse the statement block (simplified to one statement)
-    AstNode *body_statement = parse_statement(parser, arena);
+    AstNode *body_statement = parse_statement(parser);
     if (!body_statement) {
         // Check if statement parsing failed (error flag should be set)
         // No need to free func_name, it's in the arena
@@ -192,25 +193,25 @@ static FuncDefNode *parse_function_definition(Parser *parser, Arena *arena) {
     }
 
     // Expect '}' after the statement
-    if (!parser_consume(parser, arena, TOKEN_SYMBOL_RBRACE)) {
+    if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
         // No need to free_ast or free func_name; arena handles cleanup
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Create the function definition node using the name from the arena
-    FuncDefNode *func_node = create_func_def_node(func_name, body_statement, arena);
+    FuncDefNode *func_node = create_func_def_node(func_name, body_statement, parser->arena);
     // No need to free func_name; it was allocated in the arena and create_func_def_node
     // now uses the pointer directly (or copies into the arena if it didn't before).
     return func_node;
 }
 
 // Statement: ReturnStatement | ... (more statement types later)
-static AstNode *parse_statement(Parser *parser, Arena *arena) {
+static AstNode *parse_statement(Parser *parser) {
     if (parser->error_flag) return NULL;
 
     switch (parser->current_token.type) {
         case TOKEN_KEYWORD_RETURN:
-            return (AstNode *) parse_return_statement(parser, arena);
+            return (AstNode *) parse_return_statement(parser);
         default: {
             char current_token_str[128];
             token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
@@ -221,31 +222,31 @@ static AstNode *parse_statement(Parser *parser, Arena *arena) {
 }
 
 // ReturnStatement: 'return' Expression ';'
-static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena) {
+static ReturnStmtNode *parse_return_statement(Parser *parser) {
     // ReSharper disable once CppDFAConstantConditions
     // ReSharper disable once CppDFAUnreachableCode
     if (parser->error_flag) return NULL;
 
     // Consume 'return' keyword
-    if (!parser_consume(parser, arena, TOKEN_KEYWORD_RETURN)) {
+    if (!parser_consume(parser, TOKEN_KEYWORD_RETURN)) {
         return NULL; // Error handled inside consume
     }
 
     // Parse the expression that follows using the new function
-    AstNode *expression_node = parse_exp(parser, arena);
+    AstNode *expression_node = parse_exp(parser);
     if (!expression_node) {
         // Error should have been reported by parse_exp or earlier
         return NULL;
     }
 
     // Expect ';' after the expression
-    if (!parser_consume(parser, arena, TOKEN_SYMBOL_SEMICOLON)) {
+    if (!parser_consume(parser, TOKEN_SYMBOL_SEMICOLON)) {
         // Error handled in parser_consume
         return NULL;
     }
 
     // Create the return statement node
-    ReturnStmtNode *return_node = create_return_stmt_node(expression_node, arena);
+    ReturnStmtNode *return_node = create_return_stmt_node(expression_node, parser->arena);
     if (!return_node) {
         parser_error(parser, "Memory allocation failed for return statement node");
         return NULL;
@@ -256,7 +257,7 @@ static ReturnStmtNode *parse_return_statement(Parser *parser, Arena *arena) {
 // Expression parsing: Handles Integers, Unary Ops (- ~), and Parentheses
 // <exp> ::= <int> | <unop> <exp> | "(" <exp> ")"
 // <unop> ::= "-" | "~"
-static AstNode *parse_exp(Parser *parser, Arena *arena) { // NOLINT(*-no-recursion)
+static AstNode *parse_exp(Parser *parser) { // NOLINT(*-no-recursion)
     if (parser->error_flag) return NULL;
 
     // Handle Unary Operators
@@ -265,17 +266,17 @@ static AstNode *parse_exp(Parser *parser, Arena *arena) { // NOLINT(*-no-recursi
                                       ? OPERATOR_NEGATE
                                       : OPERATOR_COMPLEMENT;
 
-        parser_advance(parser, arena); // Consume the operator ('-' or '~')
+        parser_advance(parser); // Consume the operator ('-' or '~')
         if (parser->error_flag) return NULL; // Check if advance caused an error
 
-        AstNode *operand_node = parse_exp(parser, arena); // Recursively parse the operand
+        AstNode *operand_node = parse_exp(parser); // Recursively parse the operand
         if (!operand_node) {
             // Error already reported by recursive call or advance
             return NULL;
         }
 
         // Create the UnaryOpNode
-        UnaryOpNode* unary_node = create_unary_op_node(op_type, operand_node, arena);
+        UnaryOpNode* unary_node = create_unary_op_node(op_type, operand_node, parser->arena);
         if (!unary_node) {
              parser_error(parser, "Memory allocation failed for unary operator node");
              return NULL;
@@ -304,28 +305,28 @@ static AstNode *parse_exp(Parser *parser, Arena *arena) { // NOLINT(*-no-recursi
         }
 
         const int value = (int) val_long;
-        IntLiteralNode* node = create_int_literal_node(value, arena);
+        IntLiteralNode* node = create_int_literal_node(value, parser->arena);
         if (!node) {
             parser_error(parser, "Memory allocation failed for integer literal node");
             return NULL;
         }
-        parser_advance(parser, arena); // Consume the constant token
+        parser_advance(parser); // Consume the constant token
         return (AstNode*)node;
     }
 
     // Handle Parenthesized Expressions
     if (parser->current_token.type == TOKEN_SYMBOL_LPAREN) {
-        parser_advance(parser, arena); // Consume '('
+        parser_advance(parser); // Consume '('
         if (parser->error_flag) return NULL;
 
-        AstNode *inner_exp_node = parse_exp(parser, arena); // Recursively parse the inner expression
+        AstNode *inner_exp_node = parse_exp(parser); // Recursively parse the inner expression
         if (!inner_exp_node) {
             // Error already reported
             return NULL;
         }
 
         // Consume ')'
-        if (!parser_consume(parser, arena, TOKEN_SYMBOL_RPAREN)) {
+        if (!parser_consume(parser, TOKEN_SYMBOL_RPAREN)) {
             // Error reported by parser_consume
             return NULL;
         }

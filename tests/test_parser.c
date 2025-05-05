@@ -56,9 +56,9 @@ void test_parse_valid_program(void) {
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
 
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
 
-    ProgramNode *program_reworked = parse_program(&parser, &test_arena);
+    ProgramNode *program_reworked = parse_program(&parser);
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program_reworked, "Parser returned NULL for valid input");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input");
@@ -100,9 +100,9 @@ void test_parse_missing_semicolon(void) {
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
 
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
 
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
 
     TEST_ASSERT_NULL_MESSAGE(program, "Parser did not return NULL for missing semicolon");
     TEST_ASSERT_TRUE_MESSAGE(parser.error_flag, "Parser error flag was not set for missing semicolon");
@@ -120,9 +120,9 @@ void test_parse_missing_brace(void) {
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
 
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
 
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
 
     TEST_ASSERT_NULL_MESSAGE(program, "Parser did not return NULL for missing brace");
     TEST_ASSERT_TRUE_MESSAGE(parser.error_flag, "Parser error flag was not set for missing brace");
@@ -140,9 +140,9 @@ void test_parse_negation_operator(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with negation");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with negation");
@@ -176,9 +176,9 @@ void test_parse_complement_operator(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with complement");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with complement");
@@ -212,9 +212,9 @@ void test_parse_nested_unary_operators(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with nested unary ops");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with nested unary ops");
@@ -248,9 +248,9 @@ void test_parse_parenthesized_expression(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with parentheses");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with parentheses");
@@ -286,9 +286,9 @@ void test_parse_unary_with_parentheses(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with unary op and parentheses");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with unary op and parentheses");
@@ -322,9 +322,9 @@ void test_parse_complex_nested_expression(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with complex nested expression");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with complex nested expression");
@@ -378,9 +378,9 @@ void test_parse_invalid_unary_expression(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NULL_MESSAGE(program, "Parser did not return NULL for invalid unary expression");
     TEST_ASSERT_TRUE_MESSAGE(parser.error_flag, "Parser error flag was not set for invalid unary expression");
@@ -396,9 +396,9 @@ void test_parse_mismatched_parentheses(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NULL_MESSAGE(program, "Parser did not return NULL for mismatched parentheses");
     TEST_ASSERT_TRUE_MESSAGE(parser.error_flag, "Parser error flag was not set for mismatched parentheses");
@@ -415,9 +415,9 @@ void test_parse_integer_bounds(void) {
     Lexer lexer;
     lexer_init(&lexer, input, &test_arena);
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with INT_MAX");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with INT_MAX");
@@ -452,9 +452,9 @@ void test_parse_integer_overflow(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     lexer_init(&lexer, input, &test_arena); // Init lexer with arena
     Parser parser;
-    parser_init(&parser, &lexer);
+    parser_init(&parser, &lexer, &test_arena);
     
-    ProgramNode *program = parse_program(&parser, &test_arena);
+    ProgramNode *program = parse_program(&parser);
     
     TEST_ASSERT_NULL_MESSAGE(program, "Parser did not return NULL for integer overflow");
     TEST_ASSERT_TRUE_MESSAGE(parser.error_flag, "Parser error flag was not set for integer overflow");
