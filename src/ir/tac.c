@@ -1,7 +1,9 @@
 #include "tac.h"
 #include <stdlib.h> // For NULL, realloc (though we'll use arena)
-#include <string.h> // For strcmp, strdup (use arena_alloc for strings)
-#include <stdio.h>  // For error printing if needed
+#include <string.h> // For strdup (used in create_tac_function)
+#include <stdio.h>  // For snprintf (can be used with string_buffer_append if needed, though often not directly)
+#include "../memory/arena.h"
+#include "../strings/strings.h" // Include StringBuffer header
 
 // Initial capacity for dynamic arrays
 #define INITIAL_CAPACITY 8
@@ -32,8 +34,8 @@ TacOperand create_tac_operand_temp(const int temp_id) {
 //------------------------------------------------------------------------------
 
 // Helper to create a generic instruction structure
-static TacInstruction* create_base_instruction(const TacInstructionType type, Arena* arena) {
-    TacInstruction* instr = arena_alloc(arena, sizeof(TacInstruction));
+static TacInstruction *create_base_instruction(const TacInstructionType type, Arena *arena) {
+    TacInstruction *instr = arena_alloc(arena, sizeof(TacInstruction));
     if (!instr) {
         // Handle allocation failure (e.g., return NULL, exit, depends on strategy)
         perror("Failed to allocate TAC instruction");
@@ -43,29 +45,29 @@ static TacInstruction* create_base_instruction(const TacInstructionType type, Ar
     return instr;
 }
 
-TacInstruction* create_tac_instruction_copy(const TacOperand dst, const TacOperand src, Arena* arena) {
-    TacInstruction* instr = create_base_instruction(TAC_INS_COPY, arena);
+TacInstruction *create_tac_instruction_copy(const TacOperand dst, const TacOperand src, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_COPY, arena);
     instr->operands.copy.dst = dst;
     instr->operands.copy.src = src;
     return instr;
 }
 
-TacInstruction* create_tac_instruction_negate(const TacOperand dst, const TacOperand src, Arena* arena) {
-    TacInstruction* instr = create_base_instruction(TAC_INS_NEGATE, arena);
+TacInstruction *create_tac_instruction_negate(const TacOperand dst, const TacOperand src, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_NEGATE, arena);
     instr->operands.unary_op.dst = dst;
     instr->operands.unary_op.src = src;
     return instr;
 }
 
-TacInstruction* create_tac_instruction_complement(const TacOperand dst, const TacOperand src, Arena* arena) {
-    TacInstruction* instr = create_base_instruction(TAC_INS_COMPLEMENT, arena);
+TacInstruction *create_tac_instruction_complement(const TacOperand dst, const TacOperand src, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_COMPLEMENT, arena);
     instr->operands.unary_op.dst = dst;
     instr->operands.unary_op.src = src;
     return instr;
 }
 
-TacInstruction* create_tac_instruction_return(const TacOperand src, Arena* arena) {
-    TacInstruction* instr = create_base_instruction(TAC_INS_RETURN, arena);
+TacInstruction *create_tac_instruction_return(const TacOperand src, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_RETURN, arena);
     instr->operands.ret.src = src;
     return instr;
 }
@@ -74,8 +76,8 @@ TacInstruction* create_tac_instruction_return(const TacOperand src, Arena* arena
 // Function and Program Manipulation
 //------------------------------------------------------------------------------
 
-TacFunction* create_tac_function(const char* name, Arena* arena) {
-    TacFunction* func = arena_alloc(arena, sizeof(TacFunction));
+TacFunction *create_tac_function(const char *name, Arena *arena) {
+    TacFunction *func = arena_alloc(arena, sizeof(TacFunction));
     if (!func) {
         perror("Failed to allocate TAC function");
         exit(EXIT_FAILURE);
@@ -83,17 +85,17 @@ TacFunction* create_tac_function(const char* name, Arena* arena) {
 
     // Allocate space for the name string in the arena and copy it
     size_t name_len = strlen(name) + 1;
-    char* name_copy = arena_alloc(arena, name_len);
+    char *name_copy = arena_alloc(arena, name_len);
     if (!name_copy) {
-         perror("Failed to allocate TAC function name");
-         exit(EXIT_FAILURE);
+        perror("Failed to allocate TAC function name");
+        exit(EXIT_FAILURE);
     }
     memcpy(name_copy, name, name_len);
     func->name = name_copy;
 
     func->instruction_count = 0;
     func->instruction_capacity = INITIAL_CAPACITY;
-    func->instructions = (TacInstruction*)arena_alloc(arena, func->instruction_capacity * sizeof(TacInstruction));
+    func->instructions = (TacInstruction *) arena_alloc(arena, func->instruction_capacity * sizeof(TacInstruction));
     if (!func->instructions) {
         perror("Failed to allocate initial TAC instructions array");
         exit(EXIT_FAILURE);
@@ -102,17 +104,17 @@ TacFunction* create_tac_function(const char* name, Arena* arena) {
     return func;
 }
 
-void add_instruction_to_function(TacFunction* func, const TacInstruction* instr, Arena* arena) {
+void add_instruction_to_function(TacFunction *func, const TacInstruction *instr, Arena *arena) {
     if (func->instruction_count >= func->instruction_capacity) {
         // Grow the array using the arena.
         // Note: Arena allocators typically don't support 'realloc'.
         // We allocate a new, larger block and copy the old data.
         // The old block remains allocated in the arena but is unused.
         const size_t new_capacity = func->instruction_capacity * 2;
-        TacInstruction* new_instructions = arena_alloc(arena, new_capacity * sizeof(TacInstruction));
+        TacInstruction *new_instructions = arena_alloc(arena, new_capacity * sizeof(TacInstruction));
         if (!new_instructions) {
-             perror("Failed to grow TAC instructions array");
-             exit(EXIT_FAILURE);
+            perror("Failed to grow TAC instructions array");
+            exit(EXIT_FAILURE);
         }
         // Copy existing instructions - *instr is a pointer, copy the struct itself*
         memcpy(new_instructions, func->instructions, func->instruction_count * sizeof(TacInstruction));
@@ -124,8 +126,8 @@ void add_instruction_to_function(TacFunction* func, const TacInstruction* instr,
     func->instructions[func->instruction_count++] = *instr;
 }
 
-TacProgram* create_tac_program(Arena* arena) {
-    TacProgram* prog = arena_alloc(arena, sizeof(TacProgram));
+TacProgram *create_tac_program(Arena *arena) {
+    TacProgram *prog = arena_alloc(arena, sizeof(TacProgram));
     if (!prog) {
         perror("Failed to allocate TAC program");
         exit(EXIT_FAILURE);
@@ -134,22 +136,22 @@ TacProgram* create_tac_program(Arena* arena) {
     prog->function_count = 0;
     prog->function_capacity = INITIAL_CAPACITY;
     // Allocate an array of *pointers* to TacFunction
-    prog->functions = (TacFunction**)arena_alloc(arena, prog->function_capacity * sizeof(TacFunction*));
+    prog->functions = (TacFunction **) arena_alloc(arena, prog->function_capacity * sizeof(TacFunction *));
     if (!prog->functions) {
-         perror("Failed to allocate initial TAC functions array");
-         exit(EXIT_FAILURE);
+        perror("Failed to allocate initial TAC functions array");
+        exit(EXIT_FAILURE);
     }
     return prog;
 }
 
-void add_function_to_program(TacProgram* prog, TacFunction* func, Arena* arena) {
+void add_function_to_program(TacProgram *prog, TacFunction *func, Arena *arena) {
     if (prog->function_count >= prog->function_capacity) {
         // Grow the array of function pointers
         size_t new_capacity = prog->function_capacity * 2;
-        TacFunction** new_functions = arena_alloc(arena, new_capacity * sizeof(TacFunction*));
-         if (!new_functions) {
-             perror("Failed to grow TAC functions array");
-             exit(EXIT_FAILURE);
+        TacFunction **new_functions = arena_alloc(arena, new_capacity * sizeof(TacFunction *));
+        if (!new_functions) {
+            perror("Failed to grow TAC functions array");
+            exit(EXIT_FAILURE);
         }
         // Copy existing function pointers
         memcpy(new_functions, prog->functions, prog->function_count * sizeof(TacFunction*));
@@ -158,4 +160,96 @@ void add_function_to_program(TacProgram* prog, TacFunction* func, Arena* arena) 
         prog->function_capacity = new_capacity;
     }
     prog->functions[prog->function_count++] = func;
+}
+
+//------------------------------------------------------------------------------
+// Pretty Printing Functions (Implementations)
+//------------------------------------------------------------------------------
+
+// Helper to print indentation
+static void print_tac_indent(StringBuffer *sb, const int level) {
+    for (int i = 0; i < level; ++i) {
+        string_buffer_append(sb, "  "); // Two spaces per level
+    }
+}
+
+void tac_print_operand(StringBuffer *sb, const TacOperand *operand) {
+    if (!operand) {
+        string_buffer_append(sb, "<null_op>");
+        return;
+    }
+    switch (operand->type) {
+        case TAC_OPERAND_CONST:
+            string_buffer_append(sb, "%d", operand->value.constant_value);
+            break;
+        case TAC_OPERAND_TEMP:
+            string_buffer_append(sb, "t%d", operand->value.temp_id);
+            break;
+        default:
+            string_buffer_append(sb, "<unk_op_type:%d>", operand->type);
+            break;
+    }
+}
+
+void tac_print_instruction(StringBuffer *sb, const TacInstruction *instruction) {
+    if (!instruction) {
+        string_buffer_append(sb, "<null_instr>\n");
+        return;
+    }
+
+    switch (instruction->type) {
+        case TAC_INS_COPY: // dst = src
+            tac_print_operand(sb, &instruction->operands.copy.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.copy.src);
+            break;
+        case TAC_INS_NEGATE: // dst = -src
+            tac_print_operand(sb, &instruction->operands.unary_op.dst);
+            string_buffer_append(sb, " = - ");
+            tac_print_operand(sb, &instruction->operands.unary_op.src);
+            break;
+        case TAC_INS_COMPLEMENT: // dst = ~src
+            tac_print_operand(sb, &instruction->operands.unary_op.dst);
+            string_buffer_append(sb, " = ~ ");
+            tac_print_operand(sb, &instruction->operands.unary_op.src);
+            break;
+        case TAC_INS_RETURN: // return src
+            string_buffer_append(sb, "return ");
+            tac_print_operand(sb, &instruction->operands.ret.src);
+            break;
+        default:
+            string_buffer_append(sb, "<unknown_instr_type:%d>", instruction->type);
+            break;
+    }
+    string_buffer_append_char(sb, '\n');
+}
+
+void tac_print_function(StringBuffer *sb, const TacFunction *function, const int indent_level) {
+    if (!function) {
+        print_tac_indent(sb, indent_level);
+        string_buffer_append(sb, "<null_function>\n");
+        return;
+    }
+    print_tac_indent(sb, indent_level);
+    string_buffer_append(sb, "Function %s:\n", function->name ? function->name : "<anonymous>");
+
+    for (size_t i = 0; i < function->instruction_count; ++i) {
+        print_tac_indent(sb, indent_level + 1);
+        tac_print_instruction(sb, &function->instructions[i]);
+    }
+}
+
+void tac_print_program(StringBuffer *sb, const TacProgram *program) {
+    if (!program) {
+        string_buffer_append(sb, "<null_tac_program>\n");
+        return;
+    }
+    string_buffer_append(sb, "--- TAC Program ---\n");
+    for (size_t i = 0; i < program->function_count; ++i) {
+        tac_print_function(sb, program->functions[i], 0);
+        if (i < program->function_count - 1) {
+            string_buffer_append_char(sb, '\n'); // Add a newline between functions
+        }
+    }
+    string_buffer_append(sb, "--- End TAC Program ---\n");
 }

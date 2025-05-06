@@ -1,9 +1,11 @@
 #include "unity.h"
 #include "../src/memory/arena.h" // For Arena allocator
 #include "../src/ir/tac.h"      // Header for the TAC module we are testing
+#include "../src/strings/strings.h" // For StringBuffer
 
 #include <stddef.h> // For size_t
-#include <stdio.h>  // Needed for sprintf in test_add_functions
+#include <string.h> // For strcmp
+#include <stdlib.h> // For general utilities (not strictly needed for free anymore with arena)
 
 // --- Test Cases ---
 
@@ -191,6 +193,66 @@ void test_add_functions(void) {
     arena_destroy(&test_arena);
 }
 
+// Test the TAC pretty printing functionality
+static void test_print_tac_program(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create arena for print test");
+
+    // 1. Initialize StringBuffer
+    StringBuffer sb;
+    string_buffer_init(&sb, &test_arena, 256); // Initial capacity 256, will grow if needed
+
+    // 2. Create a TacProgram
+    TacProgram *program = create_tac_program(&test_arena);
+    TEST_ASSERT_NOT_NULL(program);
+
+    // 3. Create a TacFunction
+    TacFunction *func1 = create_tac_function("main", &test_arena);
+    TEST_ASSERT_NOT_NULL(func1);
+
+    // 4. Create some TacOperands
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t1 = create_tac_operand_temp(1);
+    TacOperand const_val = create_tac_operand_const(42);
+    TacOperand const_val2 = create_tac_operand_const(10);
+
+    // 5. Create and add TacInstructions to the function
+    TacInstruction *instr1 = create_tac_instruction_copy(t0, const_val2, &test_arena);
+    TacInstruction *instr2 = create_tac_instruction_negate(t1, t0, &test_arena);
+    TacInstruction *instr3 = create_tac_instruction_return(t1, &test_arena);
+    TacInstruction *instr4 = create_tac_instruction_return(const_val, &test_arena); // Another return for variety
+
+    add_instruction_to_function(func1, instr1, &test_arena);
+    add_instruction_to_function(func1, instr2, &test_arena);
+    add_instruction_to_function(func1, instr3, &test_arena);
+    add_instruction_to_function(func1, instr4, &test_arena);
+
+    // 6. Add the function to the program
+    add_function_to_program(program, func1, &test_arena);
+
+    // 7. Print to StringBuffer
+    tac_print_program(&sb, program);
+
+    // 8. Define expected output
+    const char *expected_output =
+            "--- TAC Program ---\n"
+            "Function main:\n"
+            "  t0 = 10\n"
+            "  t1 = - t0\n"
+            "  return t1\n"
+            "  return 42\n"
+            "--- End TAC Program ---\n";
+
+    // 9. Compare
+    const char *actual_output = string_buffer_content_str(&sb);
+    // printf("\nExpected:\n%s\nActual:\n%s\nLength Expected: %zu, Actual: %zu\n", expected_output, actual_output, strlen(expected_output), sb.length);
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_output, actual_output,
+                                     "TAC program print output mismatch using StringBuffer.");
+
+    // 10. Cleanup - Arena destruction handles StringBuffer memory
+    arena_destroy(&test_arena);
+}
+
 // --- Test Runner ---
 
 void run_tac_tests(void) {
@@ -200,4 +262,5 @@ void run_tac_tests(void) {
     RUN_TEST(test_add_instructions);
     RUN_TEST(test_create_program);
     RUN_TEST(test_add_functions);
+    RUN_TEST(test_print_tac_program); // Add the new test to the runner
 }

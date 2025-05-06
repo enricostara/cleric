@@ -77,7 +77,6 @@ bool compile(const char *source_code,
 
     // If irgen_only is requested, stop here after successful IR generation
     if (irgen_only) {
-        // todo print tac
         return true;
     }
 
@@ -159,7 +158,7 @@ static bool run_parser(Parser *parser, Lexer *lexer, Arena *arena, bool print_as
 // -----------------------------------------------------------------------------
 // IR Generation (AST -> TAC)
 // -----------------------------------------------------------------------------
-static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_program, bool print_tac) {
+static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_program, const bool print_tac) {
     printf("Generating IR (TAC)...\n");
 
     // The ast_to_tac function uses the same arena provided for the AST

@@ -5,6 +5,7 @@
 #include <stdint.h> // For int values (though standard int might suffice)
 
 #include "../memory/arena.h" // For arena allocation
+#include "../strings/strings.h" // For StringBuffer
 
 //------------------------------------------------------------------------------
 // Operands
@@ -80,7 +81,6 @@ typedef struct {
     size_t function_capacity;        // Allocated capacity of the array
 } TacProgram;
 
-
 //------------------------------------------------------------------------------
 // Helper Functions (Declarations - Implementation in tac.c)
 //------------------------------------------------------------------------------
@@ -101,5 +101,38 @@ void add_instruction_to_function(TacFunction* func, const TacInstruction* instr,
 
 TacProgram* create_tac_program(Arena* arena);
 void add_function_to_program(TacProgram* prog, TacFunction* func, Arena* arena);
+
+//------------------------------------------------------------------------------
+// Pretty Printing Functions (Declarations - Implementation in tac.c)
+//------------------------------------------------------------------------------
+
+/**
+ * @brief Prints a single TAC operand to a StringBuffer.
+ * @param sb The StringBuffer to print to.
+ * @param operand The operand to print.
+ */
+void tac_print_operand(StringBuffer *sb, const TacOperand* operand);
+
+/**
+ * @brief Prints a single TAC instruction to a StringBuffer.
+ * @param sb The StringBuffer to print to.
+ * @param instruction The instruction to print.
+ */
+void tac_print_instruction(StringBuffer *sb, const TacInstruction* instruction);
+
+/**
+ * @brief Prints a TAC function (including its instructions) to a StringBuffer.
+ * @param sb The StringBuffer to print to.
+ * @param function The function to print.
+ * @param indent_level The current indentation level for pretty printing.
+ */
+void tac_print_function(StringBuffer *sb, const TacFunction* function, int indent_level);
+
+/**
+ * @brief Prints an entire TAC program to a StringBuffer.
+ * @param sb The StringBuffer to print to.
+ * @param program The program to print.
+ */
+void tac_print_program(StringBuffer *sb, const TacProgram* program);
 
 #endif // CLERIC_TAC_H
