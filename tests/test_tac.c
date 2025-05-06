@@ -235,16 +235,15 @@ static void test_print_tac_program(void) {
 
     // 8. Define expected output
     const char *expected_output =
-            "--- TAC Program ---\n"
-            "Function main:\n"
-            "  t0 = 10\n"
-            "  t1 = - t0\n"
-            "  return t1\n"
-            "  return 42\n"
-            "--- End TAC Program ---\n";
+        "Program\n"
+        "Function main:\n"
+        "  t0 = 10\n"
+        "  t1 = - t0\n"
+        "  return t1\n"
+        "  return 42\n";
 
     // 9. Compare
-    const char *actual_output = string_buffer_content_str(&sb);
+    const char* actual_output = string_buffer_content_str(&sb);
     // printf("\nExpected:\n%s\nActual:\n%s\nLength Expected: %zu, Actual: %zu\n", expected_output, actual_output, strlen(expected_output), sb.length);
     TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_output, actual_output,
                                      "TAC program print output mismatch using StringBuffer.");

@@ -4,6 +4,7 @@
 #include "../parser/ast.h" // Needed for AstNode, FuncDefNode etc.
 #include "../codegen/codegen.h"
 #include "../strings/strings.h"
+#include "../ir/tac.h"           // For TacProgram and tac_print_program
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -34,7 +35,6 @@ bool compile(const char *source_code,
              const bool codegen_only,
              StringBuffer *output_assembly_sb,
              Arena *arena) {
-
     Lexer lexer;
     // Initialize lexer with the arena
     lexer_init(&lexer, source_code, arena);
@@ -147,7 +147,9 @@ static bool run_parser(Parser *parser, Lexer *lexer, Arena *arena, bool print_as
     printf("Parsing successful.\n");
     if (print_ast) {
         printf("AST:\n");
+        printf("------------------------------------\n");
         ast_pretty_print((AstNode *) ast_root_local, 0);
+        printf("------------------------------------\n");
     }
 
     *out_program = ast_root_local; // Store AST root
@@ -172,17 +174,26 @@ static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_
     printf("IR generation successful.\n");
 
     if (print_tac) {
-        // TODO: Implement TAC printing function
-        printf("--- Generated TAC (stdout) ---\n");
-        printf("TAC printing not yet implemented.\n");
-        printf("------------------------------\n");
+        printf("TAC:\n");
+        StringBuffer sb;
+        // Initialize with a reasonable starting capacity, it will grow if needed.
+        // The arena passed to run_irgen (and thus to string_buffer_init)
+        // should be the same one used for tac_program to ensure proper lifecycle.
+        string_buffer_init(&sb, arena, 1024);
+        tac_print_program(&sb, tac_program);
+        printf("------------------------------------\n");
+        printf("%s", string_buffer_content_str(&sb));
+        // No need to explicitly destroy StringBuffer's buffer if arena handles it.
+        // If string_buffer_init allocates outside the arena, a string_buffer_destroy(&sb) would be needed.
+        // Based on string_buffer_init(..., Arena *arena, ...), it uses the arena.
+        printf("------------------------------------\n");
     }
 
     *out_tac_program = tac_program; // Assign to output parameter
     return true; // Return success status
 }
 
-static bool run_codegen(ProgramNode *program, StringBuffer *output_assembly_sb, const bool print_assembly) {
+static bool run_codegen(ProgramNode *program, StringBuffer *output_assembly_sb, bool print_assembly) {
     printf("Generating code...\n");
 
     string_buffer_reset(output_assembly_sb);
@@ -194,8 +205,9 @@ static bool run_codegen(ProgramNode *program, StringBuffer *output_assembly_sb, 
 
     printf("Code generation successful.\n");
     if (print_assembly) {
-        printf("--- Generated Assembly (stdout) ---\n");
+        printf("Assembly:\n");
         const char *assembly_code = string_buffer_content_str(output_assembly_sb);
+        printf("------------------------------------\n");
         printf("%s\n", assembly_code ? assembly_code : "<EMPTY>");
         printf("------------------------------------\n");
     }

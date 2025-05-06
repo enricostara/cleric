@@ -244,12 +244,11 @@ void tac_print_program(StringBuffer *sb, const TacProgram *program) {
         string_buffer_append(sb, "<null_tac_program>\n");
         return;
     }
-    string_buffer_append(sb, "--- TAC Program ---\n");
+    string_buffer_append(sb, "Program\n");
     for (size_t i = 0; i < program->function_count; ++i) {
         tac_print_function(sb, program->functions[i], 0);
         if (i < program->function_count - 1) {
             string_buffer_append_char(sb, '\n'); // Add a newline between functions
         }
     }
-    string_buffer_append(sb, "--- End TAC Program ---\n");
 }
