@@ -10,8 +10,6 @@ static bool generate_tac_function(const TacFunction *func, StringBuffer *sb);
 static bool generate_tac_instruction(const TacInstruction *instr, const TacFunction *current_function,
                                      StringBuffer *sb);
 
-static bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t buffer_size);
-
 // --- Main function ---
 
 bool codegen_generate_program(TacProgram *tac_program, StringBuffer *sb) {
@@ -111,15 +109,13 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
     // char op2_str[64]; // For binary operations, if needed
     // char dest_str[64]; // For destination operands, if needed
 
-    switch (instr->type) {
-        case TAC_INS_RETURN:
-            if (!instr->operands.ret.src) {
-                fprintf(stderr, "Codegen Error: RETURN instruction missing operand.\n");
-                return false;
-            }
-            if (!operand_to_assembly_string(&instr->operands.ret.src, op1_str, sizeof(op1_str))) {
-                fprintf(stderr, "Codegen Error: Could not convert operand for RETURN in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
+    switch (instr->type) { 
+        case TAC_INS_RETURN: 
+            // No direct null check on instr->operands.ret.src as it's a struct.
+            // create_tac_instruction_return ensures it's populated.
+            // Error handling in operand_to_assembly_string will catch issues with the operand itself.
+            if (!operand_to_assembly_string(&instr->operands.ret.src, op1_str, sizeof(op1_str))) { 
+                fprintf(stderr, "Codegen Error: Could not convert operand for RETURN in function %s.\n", current_function ? current_function->name : "<unknown>");
                 return false;
             }
         // Assuming integer return type, fits in %eax.
@@ -140,7 +136,8 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
     return true; // Placeholder
 }
 
-static bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t buffer_size) {
+// Convert a TAC operand to its assembly string representation.
+bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t buffer_size) {
     if (!op) {
         fprintf(stderr, "operand_to_assembly_string: NULL operand provided\n");
         if (buffer_size > 0) out_buffer[0] = '\0'; // Ensure null-terminated empty string
@@ -174,8 +171,3 @@ static bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, s
 
     return true;
 }
-
-// Old AST-based codegen functions (commented out, for reference if needed)
-/*
-
-
