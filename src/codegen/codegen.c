@@ -5,6 +5,59 @@
 #include <stdbool.h> // Needed for bool
 #include <string.h>
 
+// --- Helper function to calculate maximum temporary ID used in a function ---
+static int calculate_max_temp_id(const TacFunction *func) {
+    int max_id = -1;
+    if (!func || !func->instructions) {
+        return -1;
+    }
+
+    for (const TacInstructionNode *node = func->instructions; node; node = node->next) {
+        const TacInstruction *instr = &node->instruction;
+        // Array to hold operands of the current instruction that might be temporaries
+        const TacOperand* operands_to_inspect[3]; // Max 3 for binary ops (dst, src1, src2)
+        int num_ops_to_inspect = 0;
+
+        switch (instr->type) {
+            case TAC_INS_COPY:
+                operands_to_inspect[0] = &instr->operands.copy.dst;
+                operands_to_inspect[1] = &instr->operands.copy.src;
+                num_ops_to_inspect = 2;
+                break;
+            case TAC_INS_RETURN:
+                operands_to_inspect[0] = &instr->operands.ret.src;
+                num_ops_to_inspect = 1;
+                break;
+            case TAC_INS_NEGATE:
+            case TAC_INS_COMPLEMENT:
+                operands_to_inspect[0] = &instr->operands.unary_op.dst;
+                operands_to_inspect[1] = &instr->operands.unary_op.src;
+                num_ops_to_inspect = 2;
+                break;
+            // Future: Add cases for ADD, SUB, MULT, DIV, etc.
+            // Example for a binary operation:
+            // case TAC_INS_ADD:
+            //     operands_to_inspect[0] = &instr->operands.binary_op.dst;
+            //     operands_to_inspect[1] = &instr->operands.binary_op.op1;
+            //     operands_to_inspect[2] = &instr->operands.binary_op.op2;
+            //     num_ops_to_inspect = 3;
+            //     break;
+            default:
+                // Instructions like LABEL, JUMP, CALL might need different handling or no temp inspection here.
+                break;
+        }
+
+        for (int i = 0; i < num_ops_to_inspect; ++i) {
+            if (operands_to_inspect[i] && operands_to_inspect[i]->type == TAC_OPERAND_TEMP) {
+                if (operands_to_inspect[i]->value.temp_id > max_id) {
+                    max_id = operands_to_inspect[i]->value.temp_id;
+                }
+            }
+        }
+    }
+    return max_id;
+}
+
 // --- Forward declarations for static helper functions (TAC processors) ---
 static bool generate_tac_function(const TacFunction *func, StringBuffer *sb);
 
@@ -47,27 +100,22 @@ static bool generate_tac_function(const TacFunction *func, StringBuffer *sb) {
     string_buffer_append(sb, "    pushq %%rbp\n");
     string_buffer_append(sb, "    movq %%rsp, %%rbp\n");
 
-    // 3. Stack Allocation for locals/temporaries
-    // TODO: Calculate the actual stack space needed based on temporaries and local variables.
-    // For now, allocate a fixed small amount (e.g., 16 bytes) for initial testing.
-    // Each temporary might take 4 or 8 bytes depending on the system/types.
-    // If func->max_temp_id is available and represents the highest temp_id used (0-indexed),
-    // we might allocate (func->max_temp_id + 1) * 8 bytes (assuming 8-byte slots for simplicity for now).
-    // Let's use a fixed 32 bytes for now as a placeholder if max_temp_id is not yet populated or reliable.
-    unsigned int stack_space = 32; // Placeholder stack space
-    if (func->instruction_count > 0) {
-        // Only allocate if there are instructions (and thus potentially temporaries)
-        // Example if max_temp_id was a field in TacFunction:
-        // if (func->max_temp_id >= 0) { // Check if any temporaries are used
-        //    stack_space = (func->max_temp_id + 1) * 8; // 8 bytes per temporary for simplicity
-        //    stack_space = (stack_space + 15) & ~15; // Align to 16 bytes (optional but good practice)
-        // } else {
-        //    stack_space = 16; // Minimum if no temps but still want prologue/epilogue for consistency
-        // }
+    // Calculate stack space needed for temporaries
+    int max_temp_id = calculate_max_temp_id(func);
+    size_t bytes_for_temps = (max_temp_id == -1) ? 0 : (size_t)(max_temp_id + 1) * 8; // 8 bytes per temp
+    
+    // Round up to nearest multiple of 16 for stack alignment
+    size_t stack_allocation_size = (bytes_for_temps + 15) & ~15UL;
+
+    // Enforce a minimum stack frame size (e.g., 32 bytes for general ABI compliance/simplicity)
+    if (stack_allocation_size < 32) {
+        stack_allocation_size = 32;
     }
-    if (stack_space > 0) {
-        string_buffer_append(sb, "    subq $%u, %%rsp\n", stack_space);
-    }
+
+    // Allocate stack space if needed (it will always be at least 32 now)
+    string_buffer_append(sb, "    subq $%zu, %%rsp\n", stack_allocation_size);
+
+    // Save callee-saved registers if any (TODO: Implement this later)
 
     // 4. Iterate through instructions and call generate_tac_instruction
     for (size_t i = 0; i < func->instruction_count; ++i) {
@@ -82,7 +130,7 @@ static bool generate_tac_function(const TacFunction *func, StringBuffer *sb) {
     // string_buffer_append(sb, "    movq %%rbp, %%rsp\n");
     // string_buffer_append(sb, "    popq %%rbp\n");
     // Using leave is more concise if stack_space was allocated with subq.
-    if (stack_space > 0) {
+    if (stack_allocation_size > 0) {
         // If we modified rsp, restore it properly.
         string_buffer_append(sb, "    leave\n");
     } else {
