@@ -1,21 +1,22 @@
 #include "codegen.h"
-#include "../ir/tac.h"          // For TacProgram, TacFunction, TacInstruction, TacOperand
-#include "../strings/strings.h" // Use the new string buffer
+#include "../ir/tac.h" // Include TAC definitions for TacInstructionNode, TacFunction, etc.
+#include "../src/strings/strings.h" // Use the new string buffer
 #include <stdio.h>
 #include <stdbool.h> // Needed for bool
 #include <string.h>
 
 // --- Helper function to calculate maximum temporary ID used in a function ---
-static int calculate_max_temp_id(const TacFunction *func) {
+int calculate_max_temp_id(const TacFunction *func) {
     int max_id = -1;
     if (!func || !func->instructions) {
         return -1;
     }
 
-    for (const TacInstructionNode *node = func->instructions; node; node = node->next) {
-        const TacInstruction *instr = &node->instruction;
+    // Correct loop:
+    for (size_t i = 0; i < func->instruction_count; ++i) {
+        const TacInstruction *instr = &func->instructions[i];
         // Array to hold operands of the current instruction that might be temporaries
-        const TacOperand* operands_to_inspect[3]; // Max 3 for binary ops (dst, src1, src2)
+        const TacOperand *operands_to_inspect[3]; // Max 3 for binary ops (dst, src1, src2)
         int num_ops_to_inspect = 0;
 
         switch (instr->type) {
@@ -101,11 +102,17 @@ static bool generate_tac_function(const TacFunction *func, StringBuffer *sb) {
     string_buffer_append(sb, "    movq %%rsp, %%rbp\n");
 
     // Calculate stack space needed for temporaries
-    int max_temp_id = calculate_max_temp_id(func);
-    size_t bytes_for_temps = (max_temp_id == -1) ? 0 : (size_t)(max_temp_id + 1) * 8; // 8 bytes per temp
-    
-    // Round up to nearest multiple of 16 for stack alignment
-    size_t stack_allocation_size = (bytes_for_temps + 15) & ~15UL;
+    const int max_temp_id = calculate_max_temp_id(func);
+    const size_t bytes_for_temps = max_temp_id == -1 ? 0 : (size_t) (max_temp_id + 1) * 8; // 8 bytes per temp
+
+    // Round up to nearest multiple of 16 for stack alignment.
+    // Example: if bytes_for_temps = 0,  (0 + 15) & ~15UL = 15 & 0xFF..F0 = 0
+    //          if bytes_for_temps = 1,  (1 + 15) & ~15UL = 16 & 0xFF..F0 = 16
+    //          if bytes_for_temps = 15, (15 + 15) & ~15UL = 30 & 0xFF..F0 = 16
+    //          if bytes_for_temps = 16, (16 + 15) & ~15UL = 31 & 0xFF..F0 = 16
+    //          if bytes_for_temps = 17, (17 + 15) & ~15UL = 32 & 0xFF..F0 = 32
+    // ~15UL is a mask like ...1111111111110000, effectively clearing the last 4 bits.
+    size_t stack_allocation_size = bytes_for_temps + 15 & ~15UL;
 
     // Enforce a minimum stack frame size (e.g., 32 bytes for general ABI compliance/simplicity)
     if (stack_allocation_size < 32) {
@@ -192,7 +199,8 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
             break;
         }
 
-        case TAC_INS_NEGATE: { // dst = -src
+        case TAC_INS_NEGATE: {
+            // dst = -src
             char src_str[64];
             char dst_str[64];
 
@@ -223,14 +231,16 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
             break;
         }
 
-        case TAC_INS_COMPLEMENT: { // dst = ~src
+        case TAC_INS_COMPLEMENT: {
+            // dst = ~src
             char src_str[64];
             char dst_str[64];
 
             // Ensure destination is a temporary
             if (instr->operands.unary_op.dst.type != TAC_OPERAND_TEMP) {
-                fprintf(stderr, "Codegen Error: Destination for COMPLEMENT must be a temporary operand in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
+                fprintf(
+                    stderr, "Codegen Error: Destination for COMPLEMENT must be a temporary operand in function %s.\n",
+                    current_function ? current_function->name : "<unknown>");
                 return false;
             }
 

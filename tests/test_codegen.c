@@ -116,6 +116,109 @@ static void test_operand_to_assembly_string_unhandled_type(void) {
     TEST_ASSERT_EQUAL_STRING("<UNHANDLED_OPERAND_TYPE_99>", buffer);
 }
 
+// --- Unit Tests for calculate_max_temp_id ---
+
+static void test_calculate_max_temp_id_null_function(void) {
+    TEST_ASSERT_EQUAL_INT(-1, calculate_max_temp_id(NULL));
+}
+
+static void test_calculate_max_temp_id_no_instructions(void) {
+    // Arena not strictly needed here as func is stack-allocated and calculate_max_temp_id doesn't use an arena.
+    TacFunction func = {.name = "empty_func", .instructions = NULL, .instruction_count = 0, .instruction_capacity = 0};
+    TEST_ASSERT_EQUAL_INT(-1, calculate_max_temp_id(&func));
+}
+
+static void test_calculate_max_temp_id_no_temporaries(void) {
+    Arena arena = arena_create(512); // Increased from 256
+    TacFunction *func = create_tac_function("no_temps_func", &arena);
+
+    TacOperand const_op = create_tac_operand_const(5);
+    TacInstruction *ret_instr = create_tac_instruction_return(const_op, &arena);
+    add_instruction_to_function(func, ret_instr, &arena);
+
+    TEST_ASSERT_EQUAL_INT(-1, calculate_max_temp_id(func));
+    arena_destroy(&arena);
+}
+
+static void test_calculate_max_temp_id_one_temporary_dst(void) {
+    Arena arena = arena_create(512); // Increased from 256
+    TacFunction *func = create_tac_function("one_temp_dst_func", &arena);
+
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand const_op = create_tac_operand_const(5);
+    TacInstruction *copy_instr = create_tac_instruction_copy(t0, const_op, &arena);
+    add_instruction_to_function(func, copy_instr, &arena);
+    // Add a return to make it a valid function for codegen if we ever used it for that
+    TacInstruction *ret_instr = create_tac_instruction_return(t0, &arena);
+    add_instruction_to_function(func, ret_instr, &arena);
+
+    TEST_ASSERT_EQUAL_INT(0, calculate_max_temp_id(func));
+    arena_destroy(&arena);
+}
+
+static void test_calculate_max_temp_id_one_temporary_src(void) {
+    Arena arena = arena_create(512); // Increased from 256
+    TacFunction *func = create_tac_function("one_temp_src_func", &arena);
+
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t1 = create_tac_operand_temp(1);
+    TacOperand const_op = create_tac_operand_const(5);
+
+    // t0 = 5 (to have t0 defined)
+    TacInstruction *copy_instr1 = create_tac_instruction_copy(t0, const_op, &arena);
+    add_instruction_to_function(func, copy_instr1, &arena);
+
+    // t1 = t0
+    TacInstruction *copy_instr2 = create_tac_instruction_copy(t1, t0, &arena);
+    add_instruction_to_function(func, copy_instr2, &arena);
+
+    TacInstruction *ret_instr = create_tac_instruction_return(t1, &arena);
+    add_instruction_to_function(func, ret_instr, &arena);
+
+    TEST_ASSERT_EQUAL_INT(1, calculate_max_temp_id(func));
+    arena_destroy(&arena);
+}
+
+static void test_calculate_max_temp_id_mixed_operands(void) {
+    Arena arena = arena_create(512);
+    TacFunction *func = create_tac_function("mixed_ops_func", &arena);
+
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t1 = create_tac_operand_temp(1);
+    TacOperand t2 = create_tac_operand_temp(2);
+    TacOperand const10 = create_tac_operand_const(10);
+    TacOperand const20 = create_tac_operand_const(20);
+
+    // COPY t1, $10
+    add_instruction_to_function(func, create_tac_instruction_copy(t1, const10, &arena), &arena);
+    // COPY t0, $20
+    add_instruction_to_function(func, create_tac_instruction_copy(t0, const20, &arena), &arena);
+    // NEGATE t2, t1
+    add_instruction_to_function(func, create_tac_instruction_negate(t2, t1, &arena), &arena);
+    // RETURN t0
+    add_instruction_to_function(func, create_tac_instruction_return(t0, &arena), &arena);
+
+    TEST_ASSERT_EQUAL_INT(2, calculate_max_temp_id(func));
+    arena_destroy(&arena);
+}
+
+static void test_calculate_max_temp_id_temp_ids_not_sequential(void) {
+    Arena arena = arena_create(512); // Increased from 256
+    TacFunction *func = create_tac_function("non_seq_temps_func", &arena);
+
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t3 = create_tac_operand_temp(3);
+    TacOperand const1 = create_tac_operand_const(1);
+
+    // COPY t3, $1
+    add_instruction_to_function(func, create_tac_instruction_copy(t3, const1, &arena), &arena);
+    // RETURN t0 (t0 is used, max is still 3)
+    add_instruction_to_function(func, create_tac_instruction_return(t0, &arena), &arena);
+
+    TEST_ASSERT_EQUAL_INT(3, calculate_max_temp_id(func));
+    arena_destroy(&arena);
+}
+
 // Test for TAC_INS_COPY: const to temp, then return temp
 static void test_codegen_copy_const_to_temp_and_return(void) {
     Arena test_arena = arena_create(1024);
@@ -281,44 +384,107 @@ static void test_codegen_complement_of_negated_constant(void) {
     TEST_ASSERT_TRUE(success);
 
     const char *expected_asm =
-        ".globl _main\n"
-        "_main:\n"
-        "    pushq %rbp\n"
-        "    movq %rsp, %rbp\n"
-        "    subq $32, %rsp\n"            // Assuming 3 temps need 3*8=24, $32 is common min
-        "    movl $-2, -8(%rbp)\n"       // t0 = -2
-        "    movl -8(%rbp), -16(%rbp)\n"  // Prep for t1 = NEGATE t0
-        "    negl -16(%rbp)\n"           // t1 = -(-2) = 2
-        "    movl -16(%rbp), -24(%rbp)\n" // Prep for t2 = COMPLEMENT t1
-        "    notl -24(%rbp)\n"           // t2 = ~(2) = -3
-        "    movl -24(%rbp), %eax\n"   // return t2 (-3)
-        "    leave\n"
-        "    retq\n";
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n" // Assuming 3 temps need 3*8=24, $32 is common min
+            "    movl $-2, -8(%rbp)\n" // t0 = -2
+            "    movl -8(%rbp), -16(%rbp)\n" // Prep for t1 = NEGATE t0
+            "    negl -16(%rbp)\n" // t1 = -(-2) = 2
+            "    movl -16(%rbp), -24(%rbp)\n" // Prep for t2 = COMPLEMENT t1
+            "    notl -24(%rbp)\n" // t2 = ~(2) = -3
+            "    movl -24(%rbp), %eax\n" // return t2 (-3)
+            "    leave\n"
+            "    retq\n";
     TEST_ASSERT_EQUAL_STRING(expected_asm, string_buffer_content_str(&sb));
     arena_destroy(&arena);
 }
+
+// Test for stack allocation with multiple temporaries (t0-t4, expecting 48 bytes)
+static void test_codegen_stack_allocation_for_many_temps(void) {
+    Arena arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(arena.start);
+
+    TacProgram *prog = create_tac_program(&arena);
+    TacFunction *func = create_tac_function("main", &arena);
+    add_function_to_program(prog, func, &arena);
+
+    // Create 5 temporaries t0, t1, t2, t3, t4
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t1 = create_tac_operand_temp(1);
+    TacOperand t2 = create_tac_operand_temp(2);
+    TacOperand t3 = create_tac_operand_temp(3);
+    TacOperand t4 = create_tac_operand_temp(4);
+
+    // Create constants
+    TacOperand const0 = create_tac_operand_const(0);
+    TacOperand const1 = create_tac_operand_const(1);
+    TacOperand const2 = create_tac_operand_const(2);
+    TacOperand const3 = create_tac_operand_const(3);
+    TacOperand const4 = create_tac_operand_const(4);
+
+    // t0 = 0
+    add_instruction_to_function(func, create_tac_instruction_copy(t0, const0, &arena), &arena);
+    // t1 = 1
+    add_instruction_to_function(func, create_tac_instruction_copy(t1, const1, &arena), &arena);
+    // t2 = 2
+    add_instruction_to_function(func, create_tac_instruction_copy(t2, const2, &arena), &arena);
+    // t3 = 3
+    add_instruction_to_function(func, create_tac_instruction_copy(t3, const3, &arena), &arena);
+    // t4 = 4
+    add_instruction_to_function(func, create_tac_instruction_copy(t4, const4, &arena), &arena);
+    // return t4
+    add_instruction_to_function(func, create_tac_instruction_return(t4, &arena), &arena);
+
+    StringBuffer sb;
+    string_buffer_init(&sb, &arena, 512); // Increased buffer size for more instructions
+    bool success = codegen_generate_program(prog, &sb);
+    TEST_ASSERT_TRUE(success);
+
+    const char *expected_asm =
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $48, %rsp\n" // 5 temps (t0-t4) -> max_id=4 -> (4+1)*8=40 bytes -> aligned to 48
+            "    movl $0, -8(%rbp)\n" // t0 = 0
+            "    movl $1, -16(%rbp)\n" // t1 = 1
+            "    movl $2, -24(%rbp)\n" // t2 = 2
+            "    movl $3, -32(%rbp)\n" // t3 = 3
+            "    movl $4, -40(%rbp)\n" // t4 = 4
+            "    movl -40(%rbp), %eax\n" // return t4
+            "    leave\n"
+            "    retq\n";
+
+    const char *actual_asm = string_buffer_content_str(&sb);
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm,
+                                     "Generated assembly mismatch for many temps stack allocation");
+
+    arena_destroy(&arena);
+}
+
 
 // --- Test Runner ---
 
 void run_codegen_tests(void) {
     RUN_TEST(test_codegen_simple_return);
-    // Add more RUN_TEST calls for other codegen tests here
-
-    // Tests for operand_to_assembly_string
     RUN_TEST(test_operand_to_assembly_string_const_ok);
     RUN_TEST(test_operand_to_assembly_string_temp_ok);
     RUN_TEST(test_operand_to_assembly_string_null_operand);
     RUN_TEST(test_operand_to_assembly_string_small_buffer);
     RUN_TEST(test_operand_to_assembly_string_zero_buffer);
     RUN_TEST(test_operand_to_assembly_string_unhandled_type);
-
-    // Test for TAC_INS_COPY
+    RUN_TEST(test_calculate_max_temp_id_null_function);
+    RUN_TEST(test_calculate_max_temp_id_no_instructions);
+    RUN_TEST(test_calculate_max_temp_id_no_temporaries);
+    RUN_TEST(test_calculate_max_temp_id_one_temporary_dst);
+    RUN_TEST(test_calculate_max_temp_id_one_temporary_src);
+    RUN_TEST(test_calculate_max_temp_id_mixed_operands);
+    RUN_TEST(test_calculate_max_temp_id_temp_ids_not_sequential);
     RUN_TEST(test_codegen_copy_const_to_temp_and_return);
-
-    // Tests for TAC_INS_NEGATE and TAC_INS_COMPLEMENT
     RUN_TEST(test_codegen_negate_temp_from_temp);
     RUN_TEST(test_codegen_complement_temp_in_place);
     RUN_TEST(test_codegen_complement_of_negated_constant);
+    RUN_TEST(test_codegen_stack_allocation_for_many_temps); // Added new test
 }
-
-// Placeholder for the main function for running tests individually if needed

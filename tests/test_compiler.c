@@ -20,9 +20,9 @@ static void test_compile_return_4(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n"    // Standard prologue with stack allocation
-            "    movl $4, %eax\n"      // Return value
-            "    leave\n"             // Standard epilogue
+            "    subq $32, %rsp\n" // Standard prologue with stack allocation
+            "    movl $4, %eax\n" // Return value
+            "    leave\n" // Standard epilogue
             "    retq\n";
 
     StringBuffer sb;

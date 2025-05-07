@@ -25,4 +25,13 @@ bool codegen_generate_program(TacProgram *tac_program, StringBuffer *sb);
  */
 bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t buffer_size);
 
+// --- Helper function (exposed for testing) ---
+/**
+ * Calculates the maximum temporary ID used in a function.
+ *
+ * @param func Pointer to the TacFunction to analyze.
+ * @return The highest temporary ID used, or -1 if no temporaries are found or if func is NULL.
+ */
+int calculate_max_temp_id(const TacFunction *func);
+
 #endif // CODEGEN_H
