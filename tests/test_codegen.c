@@ -307,9 +307,10 @@ static void test_codegen_negate_temp_from_temp(void) {
             "    movq %rsp, %rbp\n"
             "    subq $32, %rsp\n"
             "    movl $5, -8(%rbp)\n" // t0 = 5
-            "    movl -8(%rbp), -16(%rbp)\n" // t1 = t0 (implicit due to negate)
-            "    negl -16(%rbp)\n" // t1 = -t1
-            "    movl -16(%rbp), %eax\n" // return t1
+            "    movl -8(%rbp), %eax\n" // Load t0 into %eax
+            "    negl %eax\n" // Negate %eax
+            "    movl %eax, -16(%rbp)\n" // Store result in t1
+            "    movl -16(%rbp), %eax\n" // Load t1 into %eax for return
             "    leave\n"
             "    retq\n";
     TEST_ASSERT_EQUAL_STRING(expected_asm, string_buffer_content_str(&sb));
@@ -388,13 +389,15 @@ static void test_codegen_complement_of_negated_constant(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n" // Assuming 3 temps need 3*8=24, $32 is common min
+            "    subq $32, %rsp\n" // Stack frame for t0, t1, t2
             "    movl $-2, -8(%rbp)\n" // t0 = -2
-            "    movl -8(%rbp), -16(%rbp)\n" // Prep for t1 = NEGATE t0
-            "    negl -16(%rbp)\n" // t1 = -(-2) = 2
-            "    movl -16(%rbp), -24(%rbp)\n" // Prep for t2 = COMPLEMENT t1
-            "    notl -24(%rbp)\n" // t2 = ~(2) = -3
-            "    movl -24(%rbp), %eax\n" // return t2 (-3)
+            "    movl -8(%rbp), %eax\n" // eax = t0
+            "    negl %eax\n" // eax = -eax (eax = 2)
+            "    movl %eax, -16(%rbp)\n" // t1 = eax (t1 = 2)
+            "    movl -16(%rbp), %eax\n" // eax = t1
+            "    notl %eax\n" // eax = ~eax (eax = ~2)
+            "    movl %eax, -24(%rbp)\n" // t2 = eax (t2 = ~2)
+            "    movl -24(%rbp), %eax\n" // eax = t2 (for return)
             "    leave\n"
             "    retq\n";
     TEST_ASSERT_EQUAL_STRING(expected_asm, string_buffer_content_str(&sb));
@@ -464,7 +467,6 @@ static void test_codegen_stack_allocation_for_many_temps(void) {
     arena_destroy(&arena);
 }
 
-
 // Test for: int main(void) { return -((((10)))); }
 // Expected TAC: t0 = 10; t1 = -t0; return t1;
 // Expected stack: 2 temps (t0,t1) -> max_id=1 -> (1+1)*8=16 -> aligned to 16 -> min 32 bytes.
@@ -474,9 +476,9 @@ static void test_codegen_return_negated_parenthesized_constant(void) {
 
     // 1. Create AST: ProgramNode -> FuncDefNode("main") -> ReturnStmtNode -> UnaryOpNode(NEGATE_OP) -> IntLiteralNode(10)
     IntLiteralNode *int_node = create_int_literal_node(10, &arena);
-    UnaryOpNode *neg_op_node = create_unary_op_node(OPERATOR_NEGATE, (AstNode *)int_node, &arena);
-    ReturnStmtNode *ret_stmt_node = create_return_stmt_node((AstNode *)neg_op_node, &arena);
-    FuncDefNode *func_def_node = create_func_def_node("main", (AstNode *)ret_stmt_node, &arena);
+    UnaryOpNode *neg_op_node = create_unary_op_node(OPERATOR_NEGATE, (AstNode *) int_node, &arena);
+    ReturnStmtNode *ret_stmt_node = create_return_stmt_node((AstNode *) neg_op_node, &arena);
+    FuncDefNode *func_def_node = create_func_def_node("main", (AstNode *) ret_stmt_node, &arena);
     ProgramNode *program_node = create_program_node(func_def_node, &arena);
 
     // 2. Convert AST to TAC
@@ -502,19 +504,20 @@ static void test_codegen_return_negated_parenthesized_constant(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n"   // t0 -> max_id=0 -> (0+1)*8=8 bytes -> aligned 16 -> min 32 bytes
-            "    movl $10, -8(%rbp)\n" // t0 = 10
-            "    negl -8(%rbp)\n"      // t0 = -t0 (negation in place)
-            "    movl -8(%rbp), %eax\n"// return t0 (which is -10)
+            "    subq $32, %rsp\n" // Stack frame for t0
+            "    movl $10, %eax\n" // eax = 10 (from const operand of negate)
+            "    negl %eax\n" // eax = -eax
+            "    movl %eax, -8(%rbp)\n" // t0 = eax (result of negation)
+            "    movl -8(%rbp), %eax\n" // return t0
             "    leave\n"
             "    retq\n";
 
     const char *actual_asm = string_buffer_content_str(&asm_sb);
-    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch for negated parenthesized constant");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm,
+                                     "Generated assembly mismatch for negated parenthesized constant");
 
     arena_destroy(&arena);
 }
-
 
 // --- Test Runner ---
 

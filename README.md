@@ -7,7 +7,8 @@ Cleric demonstrates the basic stages of compiling a subset of C code:
 - **Preprocessing**: Uses `gcc -E` to handle includes, macros, and comments, converting `.c` files to `.i` files.
 - **Lexing**: Breaks the source code into a stream of tokens.
 - **Parsing**: Constructs an Abstract Syntax Tree (AST) from the token stream, verifying the code's structure.
-- **Code Generation**: Translates the AST into assembly code (currently targeting x86-64 AT&T syntax).
+- **Intermediate Representation (IR)**: Converts the AST into Three-Address Code (TAC), a simpler, machine-independent representation. This step facilitates optimizations and simplifies the final code generation.
+- **Code Generation**: Translates the TAC into assembly code (currently targeting x86-64 AT&T syntax).
 - **Assembly & Linking**: Uses the system assembler (e.g., `as`) and linker (e.g., `ld`) to produce an executable file from the generated assembly.
 
 ## Features
@@ -16,10 +17,12 @@ Cleric demonstrates the basic stages of compiling a subset of C code:
 - **Intermediate Stage Inspection**: Allows viewing the output of different stages:
     - `--lex`: Print the token stream.
     - `--parse`: Print the generated Abstract Syntax Tree.
+    - `--tac`: Print the generated Three-Address Code.
     - `--codegen`: Print the generated assembly code to standard output.
 - **Arena Allocator**: Efficiently manages memory for AST nodes using a custom arena allocator, simplifying cleanup.
 - **Testable Core Logic**: The core compilation pipeline (lexing, parsing, codegen) is handled by the `compile` function, which is testable.
 - **Comprehensive Testing**: Includes both unit tests (for individual modules) and integration tests (verifying the core string-to-string compilation).
+- **Three-Address Code (TAC)**: Employs TAC as an intermediate representation, simplifying the translation from the high-level AST to low-level assembly, and paving the way for future optimizations.
 
 ## Usage
 
@@ -52,7 +55,8 @@ cd .. # Return to project root if desired
 **Options:**
 - `--lex`: Lex the input, print tokens to stdout, and exit.
 - `--parse`: Lex and parse the input, print the AST to stdout, and exit.
-- `--codegen`: Lex, parse, and generate assembly; print assembly to stdout, and exit.
+- `--tac`  : Lex, parse, and generate Three-Address Code; print TAC to stdout, and exit.
+- `--codegen`: Lex, parse, generate TAC, and then assembly; print assembly to stdout, and exit.
 - *(No options)*: Run the full pipeline (preprocess, lex, parse, codegen, assemble, link) to create an executable in the same directory as the input file.
 
 **Examples:**
@@ -62,6 +66,9 @@ cd .. # Return to project root if desired
 
 # View AST for example.c
 ./build/cleric --parse examples/example.c
+
+# View generated Three-Address Code for example.c
+./build/cleric --tac examples/example.c
 
 # View generated assembly for example.c
 ./build/cleric --codegen examples/example.c

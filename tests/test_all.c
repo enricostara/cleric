@@ -71,7 +71,7 @@ int main(void) {
     printf("\n--- Running Codegen Tests --- \n");
     run_codegen_tests();
 
-    // integration tests
+    /* -- integration tests -- */
     printf("\n--- Running Compiler Tests --- \n");
     run_compiler_tests();
 
