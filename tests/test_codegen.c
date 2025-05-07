@@ -252,6 +252,52 @@ static void test_codegen_complement_temp_in_place(void) {
     arena_destroy(&arena);
 }
 
+// Test for return ~(-2);  (Should be -3)
+static void test_codegen_complement_of_negated_constant(void) {
+    Arena arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(arena.start);
+
+    TacProgram *prog = create_tac_program(&arena);
+    TacFunction *func = create_tac_function("main", &arena);
+    add_function_to_program(prog, func, &arena);
+
+    TacOperand t0 = create_tac_operand_temp(0); // Will hold -2
+    TacOperand t1 = create_tac_operand_temp(1); // Will hold -t0 = 2
+    TacOperand t2 = create_tac_operand_temp(2); // Will hold ~t1 = ~2 = -3
+    TacOperand const_neg_2 = create_tac_operand_const(-2);
+
+    // 1. t0 = -2
+    add_instruction_to_function(func, create_tac_instruction_copy(t0, const_neg_2, &arena), &arena);
+    // 2. t1 = -t0  (t1 = -(-2) = 2)
+    add_instruction_to_function(func, create_tac_instruction_negate(t1, t0, &arena), &arena);
+    // 3. t2 = ~t1  (t2 = ~(2) = -3)
+    add_instruction_to_function(func, create_tac_instruction_complement(t2, t1, &arena), &arena);
+    // 4. return t2
+    add_instruction_to_function(func, create_tac_instruction_return(t2, &arena), &arena);
+
+    StringBuffer sb;
+    string_buffer_init(&sb, &arena, 512); // Increased buffer size a bit
+    bool success = codegen_generate_program(prog, &sb);
+    TEST_ASSERT_TRUE(success);
+
+    const char *expected_asm =
+        ".globl _main\n"
+        "_main:\n"
+        "    pushq %rbp\n"
+        "    movq %rsp, %rbp\n"
+        "    subq $32, %rsp\n"            // Assuming 3 temps need 3*8=24, $32 is common min
+        "    movl $-2, -8(%rbp)\n"       // t0 = -2
+        "    movl -8(%rbp), -16(%rbp)\n"  // Prep for t1 = NEGATE t0
+        "    negl -16(%rbp)\n"           // t1 = -(-2) = 2
+        "    movl -16(%rbp), -24(%rbp)\n" // Prep for t2 = COMPLEMENT t1
+        "    notl -24(%rbp)\n"           // t2 = ~(2) = -3
+        "    movl -24(%rbp), %eax\n"   // return t2 (-3)
+        "    leave\n"
+        "    retq\n";
+    TEST_ASSERT_EQUAL_STRING(expected_asm, string_buffer_content_str(&sb));
+    arena_destroy(&arena);
+}
+
 // --- Test Runner ---
 
 void run_codegen_tests(void) {
@@ -272,6 +318,7 @@ void run_codegen_tests(void) {
     // Tests for TAC_INS_NEGATE and TAC_INS_COMPLEMENT
     RUN_TEST(test_codegen_negate_temp_from_temp);
     RUN_TEST(test_codegen_complement_temp_in_place);
+    RUN_TEST(test_codegen_complement_of_negated_constant);
 }
 
 // Placeholder for the main function for running tests individually if needed
