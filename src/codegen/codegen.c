@@ -6,7 +6,10 @@
 
 // --- Forward declarations for static helper functions (TAC processors) ---
 static bool generate_tac_function(const TacFunction *func, StringBuffer *sb);
-static bool generate_tac_instruction(const TacInstruction *instr, const TacFunction *current_function, StringBuffer *sb);
+
+static bool generate_tac_instruction(const TacInstruction *instr, const TacFunction *current_function,
+                                     StringBuffer *sb);
+
 static bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t buffer_size);
 
 // --- Main function ---
@@ -53,14 +56,15 @@ static bool generate_tac_function(const TacFunction *func, StringBuffer *sb) {
     // we might allocate (func->max_temp_id + 1) * 8 bytes (assuming 8-byte slots for simplicity for now).
     // Let's use a fixed 32 bytes for now as a placeholder if max_temp_id is not yet populated or reliable.
     unsigned int stack_space = 32; // Placeholder stack space
-    if (func->instruction_count > 0) { // Only allocate if there are instructions (and thus potentially temporaries)
-         // Example if max_temp_id was a field in TacFunction:
-         // if (func->max_temp_id >= 0) { // Check if any temporaries are used
-         //    stack_space = (func->max_temp_id + 1) * 8; // 8 bytes per temporary for simplicity
-         //    stack_space = (stack_space + 15) & ~15; // Align to 16 bytes (optional but good practice)
-         // } else {
-         //    stack_space = 16; // Minimum if no temps but still want prologue/epilogue for consistency
-         // }
+    if (func->instruction_count > 0) {
+        // Only allocate if there are instructions (and thus potentially temporaries)
+        // Example if max_temp_id was a field in TacFunction:
+        // if (func->max_temp_id >= 0) { // Check if any temporaries are used
+        //    stack_space = (func->max_temp_id + 1) * 8; // 8 bytes per temporary for simplicity
+        //    stack_space = (stack_space + 15) & ~15; // Align to 16 bytes (optional but good practice)
+        // } else {
+        //    stack_space = 16; // Minimum if no temps but still want prologue/epilogue for consistency
+        // }
     }
     if (stack_space > 0) {
         string_buffer_append(sb, "    subq $%u, %%rsp\n", stack_space);
@@ -79,9 +83,11 @@ static bool generate_tac_function(const TacFunction *func, StringBuffer *sb) {
     // string_buffer_append(sb, "    movq %%rbp, %%rsp\n");
     // string_buffer_append(sb, "    popq %%rbp\n");
     // Using leave is more concise if stack_space was allocated with subq.
-    if (stack_space > 0) { // If we modified rsp, restore it properly.
+    if (stack_space > 0) {
+        // If we modified rsp, restore it properly.
         string_buffer_append(sb, "    leave\n");
-    } else { // If no stack space was allocated, rbp is still rsp, so just pop rbp.
+    } else {
+        // If no stack space was allocated, rbp is still rsp, so just pop rbp.
         // This case might be rare or indicate an empty function that doesn't need full prologue/epilogue.
         // However, for a standard function call structure, even empty ones might have the push/mov/pop/ret.
         // Let's assume for now that if we pushed rbp, we pop it.
@@ -93,14 +99,44 @@ static bool generate_tac_function(const TacFunction *func, StringBuffer *sb) {
     return true;
 }
 
-static bool generate_tac_instruction(const TacInstruction *instr, const TacFunction *current_function, StringBuffer *sb) {
+static bool generate_tac_instruction(const TacInstruction *instr, const TacFunction *current_function,
+                                     StringBuffer *sb) {
     if (!instr) {
         fprintf(stderr, "Codegen Error: Cannot generate code for NULL TacInstruction.\n");
         return false;
     }
-    // Placeholder: Print instruction type (useful for debugging)
-    // string_buffer_append(sb, "# Generating instruction type: %d\n", instr->type);
-    fprintf(stdout, "Placeholder: generate_tac_instruction for type %d (not implemented)\n", instr->type);
+
+    // Buffer for operand string representations
+    char op1_str[64];
+    // char op2_str[64]; // For binary operations, if needed
+    // char dest_str[64]; // For destination operands, if needed
+
+    switch (instr->type) {
+        case TAC_INS_RETURN:
+            if (!instr->operands.ret.src) {
+                fprintf(stderr, "Codegen Error: RETURN instruction missing operand.\n");
+                return false;
+            }
+            if (!operand_to_assembly_string(&instr->operands.ret.src, op1_str, sizeof(op1_str))) {
+                fprintf(stderr, "Codegen Error: Could not convert operand for RETURN in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
+                return false;
+            }
+        // Assuming integer return type, fits in %eax.
+        // The actual retq instruction is handled by the function epilogue.
+            string_buffer_append(sb, "    movl %s, %%eax\n", op1_str);
+            break;
+
+        // TODO: Add cases for other TAC operations (ASSIGN, ADD, SUB, etc.)
+
+        default:
+            fprintf(stderr, "Codegen Error: Unhandled TAC operation type %d in function %s.\n",
+                    instr->type, current_function ? current_function->name : "<unknown>");
+        // For debugging, append a comment indicating the unhandled instruction
+            string_buffer_append(sb, "    # Unhandled TAC Op: %d\n", instr->type);
+            return false; // For now, consider unhandled operations as an error
+    }
+
     return true; // Placeholder
 }
 
@@ -108,11 +144,11 @@ static bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, s
     if (!op) {
         fprintf(stderr, "operand_to_assembly_string: NULL operand provided\n");
         if (buffer_size > 0) out_buffer[0] = '\0'; // Ensure null-terminated empty string
-        return false; 
+        return false;
     }
     if (buffer_size == 0) {
         fprintf(stderr, "operand_to_assembly_string: Output buffer size is zero\n");
-        return false; 
+        return false;
     }
 
     int written = 0;
@@ -129,10 +165,10 @@ static bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, s
             return false; // Indicate failure for unhandled types
     }
 
-    if (written < 0 || (size_t)written >= buffer_size) {
+    if (written < 0 || (size_t) written >= buffer_size) {
         fprintf(stderr, "operand_to_assembly_string: snprintf error or buffer too small.\n");
         // Ensure buffer is null-terminated even on error if possible
-        out_buffer[buffer_size - 1] = '\0'; 
+        out_buffer[buffer_size - 1] = '\0';
         return false; // Error or truncation
     }
 
@@ -141,3 +177,5 @@ static bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, s
 
 // Old AST-based codegen functions (commented out, for reference if needed)
 /*
+
+

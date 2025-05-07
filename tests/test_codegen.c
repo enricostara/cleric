@@ -34,16 +34,14 @@ static void test_codegen_simple_return(void) {
     // 5. Assertions
     TEST_ASSERT_TRUE_MESSAGE(success, "codegen_generate_program from TAC failed");
 
-    // Expected assembly for a function with prologue/epilogue and stubbed instructions
-    // (generate_tac_instruction currently just prints a placeholder)
+    // Expected assembly for: func main() { return 42; }
     const char *expected_asm =
             ".globl _main\n"
             "_main:\n"
             "    pushq %%rbp\n"
             "    movq %%rsp, %%rbp\n"
-            "    subq $32, %%rsp\n" // Placeholder stack allocation
-            // Placeholder for actual instruction (e.g., return 42)
-            // "    movl    $42, %%eax\n"
+            "    subq $32, %%rsp\n"       // Placeholder stack allocation
+            "    movl $42, %%eax\n"      // Return 42
             "    leave\n"
             "    retq\n";
 
