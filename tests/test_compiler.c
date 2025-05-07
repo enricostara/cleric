@@ -18,7 +18,11 @@ static void test_compile_return_4(void) {
     const char *expected_asm =
             ".globl _main\n"
             "_main:\n"
-            "    movl    $4, %eax\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n"    // Standard prologue with stack allocation
+            "    movl $4, %eax\n"      // Return value
+            "    leave\n"             // Standard epilogue
             "    retq\n";
 
     StringBuffer sb;
