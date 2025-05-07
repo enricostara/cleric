@@ -16,15 +16,15 @@
 // -----------------------------------------------------------------------------
 
 // Forward declarations for static helper functions
-static bool run_lexer(Lexer *lexer, Arena *arena, const char *source_code, bool print_tokens);
+static bool run_lexer(Lexer *lexer, bool print_tokens);
 
 // Takes an initialized lexer
 
-static bool run_parser(Parser *parser, Lexer *lexer, Arena *arena, bool print_ast, ProgramNode **out_program);
+static bool run_parser(Parser *parser, bool print_ast, ProgramNode **out_program);
 
 static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_program, bool print_tac);
 
-static bool run_codegen(ProgramNode *program, StringBuffer *output_assembly_sb, bool print_assembly);
+static bool run_codegen(TacProgram *tac_program, StringBuffer *output_assembly_sb, bool print_assembly);
 
 // Add IRGen step
 
@@ -41,7 +41,7 @@ bool compile(const char *source_code,
 
     // --- Lexing Phase ---
     // Pass the arena, even if just lexing, as lexemes are allocated into it.
-    bool const lex_success = run_lexer(&lexer, arena, source_code, (lex_only || parse_only || codegen_only));
+    bool const lex_success = run_lexer(&lexer, (lex_only || parse_only || codegen_only));
     if (!lex_success) {
         return false; // Lexical error
     }
@@ -58,7 +58,7 @@ bool compile(const char *source_code,
 
     // --- Parsing Phase ---
     ProgramNode *program;
-    const bool parse_success = run_parser(&parser, &lexer, arena, parse_only || codegen_only, &program);
+    const bool parse_success = run_parser(&parser, parse_only || codegen_only, &program);
     if (!parse_success) {
         return false;
     }
@@ -87,7 +87,7 @@ bool compile(const char *source_code,
         return false;
     }
 
-    const bool codegen_success = run_codegen(program, output_assembly_sb, codegen_only);
+    const bool codegen_success = run_codegen(tac_program, output_assembly_sb, codegen_only);
 
     return codegen_success; // Return success status of the final stage
 }
@@ -96,7 +96,7 @@ bool compile(const char *source_code,
 // Helper Functions for Compilation Stages
 // -----------------------------------------------------------------------------
 
-static bool run_lexer(Lexer *lexer, Arena *arena, const char *source_code, bool print_tokens) {
+static bool run_lexer(Lexer *lexer, const bool print_tokens) {
     // Assumes lexer is already initialized
     Token tok;
     printf("Lexing...\n");
@@ -134,7 +134,7 @@ static bool run_lexer(Lexer *lexer, Arena *arena, const char *source_code, bool 
     return true; // Lexing completed successfully
 }
 
-static bool run_parser(Parser *parser, Lexer *lexer, Arena *arena, bool print_ast, ProgramNode **out_program) {
+static bool run_parser(Parser *parser, const bool print_ast, ProgramNode **out_program) {
     // Assume lexer is already initialized and positioned at the start
     printf("Parsing...\n");
     ProgramNode *ast_root_local = parse_program(parser);
@@ -193,12 +193,18 @@ static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_
     return true; // Return success status
 }
 
-static bool run_codegen(ProgramNode *program, StringBuffer *output_assembly_sb, bool print_assembly) {
+static bool run_codegen(TacProgram *tac_program, StringBuffer *output_assembly_sb, bool print_assembly) {
     printf("Generating code...\n");
 
     string_buffer_reset(output_assembly_sb);
 
-    if (!codegen_generate_program(output_assembly_sb, program)) {
+    // Ensure tac_program is not NULL before proceeding
+    if (!tac_program) {
+        fprintf(stderr, "Codegen Error: Cannot generate assembly from NULL TAC program input to run_codegen.\n");
+        return false;
+    }
+
+    if (!codegen_generate_program(tac_program, output_assembly_sb)) {
         fprintf(stderr, "Code generation failed.\n");
         return false; // Codegen failed
     }
