@@ -172,6 +172,86 @@ static void test_codegen_copy_const_to_temp_and_return(void) {
     arena_destroy(&test_arena);
 }
 
+// Test for TAC_INS_NEGATE: t0 = 5; t1 = -t0; return t1;
+static void test_codegen_negate_temp_from_temp(void) {
+    Arena arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(arena.start);
+
+    TacProgram *prog = create_tac_program(&arena);
+    TacFunction *func = create_tac_function("main", &arena);
+    add_function_to_program(prog, func, &arena);
+
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t1 = create_tac_operand_temp(1);
+    TacOperand const5 = create_tac_operand_const(5);
+
+    // t0 = 5
+    add_instruction_to_function(func, create_tac_instruction_copy(t0, const5, &arena), &arena);
+    // t1 = -t0
+    add_instruction_to_function(func, create_tac_instruction_negate(t1, t0, &arena), &arena);
+    // return t1
+    add_instruction_to_function(func, create_tac_instruction_return(t1, &arena), &arena);
+
+    StringBuffer sb;
+    string_buffer_init(&sb, &arena, 256);
+    bool success = codegen_generate_program(prog, &sb);
+    TEST_ASSERT_TRUE(success);
+
+    const char *expected_asm =
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n"
+            "    movl $5, -8(%rbp)\n" // t0 = 5
+            "    movl -8(%rbp), -16(%rbp)\n" // t1 = t0 (implicit due to negate)
+            "    negl -16(%rbp)\n" // t1 = -t1
+            "    movl -16(%rbp), %eax\n" // return t1
+            "    leave\n"
+            "    retq\n";
+    TEST_ASSERT_EQUAL_STRING(expected_asm, string_buffer_content_str(&sb));
+    arena_destroy(&arena);
+}
+
+// Test for TAC_INS_COMPLEMENT: t0 = 10; t0 = ~t0; return t0;
+static void test_codegen_complement_temp_in_place(void) {
+    Arena arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(arena.start);
+
+    TacProgram *prog = create_tac_program(&arena);
+    TacFunction *func = create_tac_function("main", &arena);
+    add_function_to_program(prog, func, &arena);
+
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand const10 = create_tac_operand_const(10);
+
+    // t0 = 10
+    add_instruction_to_function(func, create_tac_instruction_copy(t0, const10, &arena), &arena);
+    // t0 = ~t0
+    add_instruction_to_function(func, create_tac_instruction_complement(t0, t0, &arena), &arena);
+    // return t0
+    add_instruction_to_function(func, create_tac_instruction_return(t0, &arena), &arena);
+
+    StringBuffer sb;
+    string_buffer_init(&sb, &arena, 256);
+    bool success = codegen_generate_program(prog, &sb);
+    TEST_ASSERT_TRUE(success);
+
+    const char *expected_asm =
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n"
+            "    movl $10, -8(%rbp)\n" // t0 = 10
+            "    notl -8(%rbp)\n" // t0 = ~t0 (in-place)
+            "    movl -8(%rbp), %eax\n" // return t0
+            "    leave\n"
+            "    retq\n";
+    TEST_ASSERT_EQUAL_STRING(expected_asm, string_buffer_content_str(&sb));
+    arena_destroy(&arena);
+}
+
 // --- Test Runner ---
 
 void run_codegen_tests(void) {
@@ -188,6 +268,10 @@ void run_codegen_tests(void) {
 
     // Test for TAC_INS_COPY
     RUN_TEST(test_codegen_copy_const_to_temp_and_return);
+
+    // Tests for TAC_INS_NEGATE and TAC_INS_COMPLEMENT
+    RUN_TEST(test_codegen_negate_temp_from_temp);
+    RUN_TEST(test_codegen_complement_temp_in_place);
 }
 
 // Placeholder for the main function for running tests individually if needed
