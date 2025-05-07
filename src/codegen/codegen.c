@@ -109,19 +109,39 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
     // char op2_str[64]; // For binary operations, if needed
     // char dest_str[64]; // For destination operands, if needed
 
-    switch (instr->type) { 
-        case TAC_INS_RETURN: 
+    switch (instr->type) {
+        case TAC_INS_RETURN:
             // No direct null check on instr->operands.ret.src as it's a struct.
             // create_tac_instruction_return ensures it's populated.
             // Error handling in operand_to_assembly_string will catch issues with the operand itself.
-            if (!operand_to_assembly_string(&instr->operands.ret.src, op1_str, sizeof(op1_str))) { 
-                fprintf(stderr, "Codegen Error: Could not convert operand for RETURN in function %s.\n", current_function ? current_function->name : "<unknown>");
+            if (!operand_to_assembly_string(&instr->operands.ret.src, op1_str, sizeof(op1_str))) {
+                fprintf(stderr, "Codegen Error: Could not convert operand for RETURN in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
                 return false;
             }
         // Assuming integer return type, fits in %eax.
         // The actual retq instruction is handled by the function epilogue.
             string_buffer_append(sb, "    movl %s, %%eax\n", op1_str);
             break;
+
+        case TAC_INS_COPY: {
+            // Scoped for local vars src_str, dst_str
+            char src_str[64];
+            char dst_str[64];
+
+            if (!operand_to_assembly_string(&instr->operands.copy.src, src_str, sizeof(src_str))) {
+                fprintf(stderr, "Codegen Error: Could not convert source operand for COPY in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
+                return false;
+            }
+            if (!operand_to_assembly_string(&instr->operands.copy.dst, dst_str, sizeof(dst_str))) {
+                fprintf(stderr, "Codegen Error: Could not convert destination operand for COPY in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
+                return false;
+            }
+            string_buffer_append(sb, "    movl %s, %s\n", src_str, dst_str);
+            break;
+        }
 
         // TODO: Add cases for other TAC operations (ASSIGN, ADD, SUB, etc.)
 
