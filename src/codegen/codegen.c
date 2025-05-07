@@ -3,6 +3,7 @@
 #include "../strings/strings.h" // Use the new string buffer
 #include <stdio.h>
 #include <stdbool.h> // Needed for bool
+#include <string.h>
 
 // --- Forward declarations for static helper functions (TAC processors) ---
 static bool generate_tac_function(const TacFunction *func, StringBuffer *sb);
@@ -143,7 +144,65 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
             break;
         }
 
-        // TODO: Add cases for other TAC operations (ASSIGN, ADD, SUB, etc.)
+        case TAC_INS_NEGATE: { // dst = -src
+            char src_str[64];
+            char dst_str[64];
+
+            // Ensure destination is a temporary
+            if (instr->operands.unary_op.dst.type != TAC_OPERAND_TEMP) {
+                fprintf(stderr, "Codegen Error: Destination for NEGATE must be a temporary operand in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
+                return false;
+            }
+
+            if (!operand_to_assembly_string(&instr->operands.unary_op.src, src_str, sizeof(src_str))) {
+                fprintf(stderr, "Codegen Error: Could not convert source operand for NEGATE in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
+                return false;
+            }
+            if (!operand_to_assembly_string(&instr->operands.unary_op.dst, dst_str, sizeof(dst_str))) {
+                fprintf(stderr, "Codegen Error: Could not convert destination operand for NEGATE in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
+                return false;
+            }
+
+            // If src and dst are not the same temporary, mov src to dst first.
+            // A simple string comparison works if both are temps mapped to stack locations.
+            if (strcmp(src_str, dst_str) != 0) {
+                string_buffer_append(sb, "    movl %s, %s\n", src_str, dst_str);
+            }
+            string_buffer_append(sb, "    negl %s\n", dst_str);
+            break;
+        }
+
+        case TAC_INS_COMPLEMENT: { // dst = ~src
+            char src_str[64];
+            char dst_str[64];
+
+            // Ensure destination is a temporary
+            if (instr->operands.unary_op.dst.type != TAC_OPERAND_TEMP) {
+                fprintf(stderr, "Codegen Error: Destination for COMPLEMENT must be a temporary operand in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
+                return false;
+            }
+
+            if (!operand_to_assembly_string(&instr->operands.unary_op.src, src_str, sizeof(src_str))) {
+                fprintf(stderr, "Codegen Error: Could not convert source operand for COMPLEMENT in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
+                return false;
+            }
+            if (!operand_to_assembly_string(&instr->operands.unary_op.dst, dst_str, sizeof(dst_str))) {
+                fprintf(stderr, "Codegen Error: Could not convert destination operand for COMPLEMENT in function %s.\n",
+                        current_function ? current_function->name : "<unknown>");
+                return false;
+            }
+
+            if (strcmp(src_str, dst_str) != 0) {
+                string_buffer_append(sb, "    movl %s, %s\n", src_str, dst_str);
+            }
+            string_buffer_append(sb, "    notl %s\n", dst_str);
+            break;
+        }
 
         default:
             fprintf(stderr, "Codegen Error: Unhandled TAC operation type %d in function %s.\n",
