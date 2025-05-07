@@ -195,21 +195,26 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
                         current_function ? current_function->name : "<unknown>");
                 return false;
             }
-            string_buffer_append(sb, "    movl %s, %s\n", src_str, dst_str);
+
+            // Check if src and dst are both memory operands (stack temporaries)
+            // A simple check: if they both start with '-' (e.g., "-8(%rbp)")
+            // This is a heuristic; a robust solution would involve inspecting operand types more deeply
+            // or having operand_to_assembly_string return more type info.
+            if (src_str[0] == '-' && dst_str[0] == '-') {
+                // Memory-to-memory movl: use %eax as intermediate
+                string_buffer_append(sb, "    movl %s, %%eax\n", src_str);
+                string_buffer_append(sb, "    movl %%eax, %s\n", dst_str);
+            } else {
+                // At least one is not a direct stack temporary string (e.g., constant, or already a register if we supported that)
+                string_buffer_append(sb, "    movl %s, %s\n", src_str, dst_str);
+            }
             break;
         }
 
-        case TAC_INS_NEGATE: {
-            // dst = -src
+        case TAC_INS_NEGATE:
+        case TAC_INS_COMPLEMENT: {
             char src_str[64];
             char dst_str[64];
-
-            // Ensure destination is a temporary
-            if (instr->operands.unary_op.dst.type != TAC_OPERAND_TEMP) {
-                fprintf(stderr, "Codegen Error: Destination for NEGATE must be a temporary operand in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
-                return false;
-            }
 
             if (!operand_to_assembly_string(&instr->operands.unary_op.src, src_str, sizeof(src_str))) {
                 fprintf(stderr, "Codegen Error: Could not convert source operand for NEGATE in function %s.\n",
@@ -222,43 +227,29 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
                 return false;
             }
 
-            // If src and dst are not the same temporary, mov src to dst first.
-            // A simple string comparison works if both are temps mapped to stack locations.
-            if (strcmp(src_str, dst_str) != 0) {
-                string_buffer_append(sb, "    movl %s, %s\n", src_str, dst_str);
-            }
-            string_buffer_append(sb, "    negl %s\n", dst_str);
-            break;
-        }
+            const char *op_mnemonic = (instr->type == TAC_INS_NEGATE) ? "negl" : "notl";
 
-        case TAC_INS_COMPLEMENT: {
-            // dst = ~src
-            char src_str[64];
-            char dst_str[64];
-
-            // Ensure destination is a temporary
-            if (instr->operands.unary_op.dst.type != TAC_OPERAND_TEMP) {
-                fprintf(
-                    stderr, "Codegen Error: Destination for COMPLEMENT must be a temporary operand in function %s.\n",
-                    current_function ? current_function->name : "<unknown>");
-                return false;
+            if (instr->operands.unary_op.src.type == TAC_OPERAND_TEMP &&
+                instr->operands.unary_op.dst.type == TAC_OPERAND_TEMP &&
+                instr->operands.unary_op.src.value.temp_id == instr->operands.unary_op.dst.value.temp_id) {
+                // Source and destination are the same temporary: operate in place.
+                // Example: t0 = -t0  -> negl -8(%rbp)
+                string_buffer_append(sb, "    %s %s\n", op_mnemonic, dst_str); // dst_str is same as src_str
+            } else {
+                // Source and destination are different, or source is not a temp that can be operated on in place.
+                // Use %eax as a scratch register.
+                // Example: t1 = -t0 (t0 at -8(%rbp), t1 at -16(%rbp))
+                //   movl -8(%rbp), %eax
+                //   negl %eax
+                //   movl %eax, -16(%rbp)
+                // Example: t0 = -5 (constant 5, t0 at -8(%rbp))
+                //   movl $5, %eax
+                //   negl %eax
+                //   movl %eax, -8(%rbp)
+                string_buffer_append(sb, "    movl %s, %%eax\n", src_str);       // Load source into %eax
+                string_buffer_append(sb, "    %s %%eax\n", op_mnemonic);          // Operate on %eax
+                string_buffer_append(sb, "    movl %%eax, %s\n", dst_str);       // Store result from %eax to destination
             }
-
-            if (!operand_to_assembly_string(&instr->operands.unary_op.src, src_str, sizeof(src_str))) {
-                fprintf(stderr, "Codegen Error: Could not convert source operand for COMPLEMENT in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
-                return false;
-            }
-            if (!operand_to_assembly_string(&instr->operands.unary_op.dst, dst_str, sizeof(dst_str))) {
-                fprintf(stderr, "Codegen Error: Could not convert destination operand for COMPLEMENT in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
-                return false;
-            }
-
-            if (strcmp(src_str, dst_str) != 0) {
-                string_buffer_append(sb, "    movl %s, %s\n", src_str, dst_str);
-            }
-            string_buffer_append(sb, "    notl %s\n", dst_str);
             break;
         }
 

@@ -59,9 +59,6 @@ int main(void) {
     printf("\n--- Running Strings Tests --- \n");
     run_strings_tests();
 
-    printf("\n--- Running Compiler Tests --- \n");
-    run_compiler_tests();
-
     printf("\n--- Running Arena Tests --- \n");
     run_arena_tests();
 
@@ -73,6 +70,10 @@ int main(void) {
 
     printf("\n--- Running Codegen Tests --- \n");
     run_codegen_tests();
+
+    // integration tests
+    printf("\n--- Running Compiler Tests --- \n");
+    run_compiler_tests();
 
     return UNITY_END(); // Use UNITY_END() in the main runner
 }

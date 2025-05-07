@@ -465,6 +465,57 @@ static void test_codegen_stack_allocation_for_many_temps(void) {
 }
 
 
+// Test for: int main(void) { return -((((10)))); }
+// Expected TAC: t0 = 10; t1 = -t0; return t1;
+// Expected stack: 2 temps (t0,t1) -> max_id=1 -> (1+1)*8=16 -> aligned to 16 -> min 32 bytes.
+static void test_codegen_return_negated_parenthesized_constant(void) {
+    Arena arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(arena.start);
+
+    // 1. Create AST: ProgramNode -> FuncDefNode("main") -> ReturnStmtNode -> UnaryOpNode(NEGATE_OP) -> IntLiteralNode(10)
+    IntLiteralNode *int_node = create_int_literal_node(10, &arena);
+    UnaryOpNode *neg_op_node = create_unary_op_node(OPERATOR_NEGATE, (AstNode *)int_node, &arena);
+    ReturnStmtNode *ret_stmt_node = create_return_stmt_node((AstNode *)neg_op_node, &arena);
+    FuncDefNode *func_def_node = create_func_def_node("main", (AstNode *)ret_stmt_node, &arena);
+    ProgramNode *program_node = create_program_node(func_def_node, &arena);
+
+    // 2. Convert AST to TAC
+    TacProgram *tac_program = ast_to_tac(program_node, &arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(tac_program, "AST to TAC conversion failed for negated parenthesized constant");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(1, tac_program->function_count, "Expected 1 function in TAC program");
+    // Optional: Print TAC for debugging if needed
+    // StringBuffer tac_sb;
+    // string_buffer_init(&tac_sb, &arena, 256);
+    // tac_print_program(&tac_sb, tac_program);
+    // printf("TAC for test_codegen_return_negated_parenthesized_constant:\n%s\n", string_buffer_content_str(&tac_sb));
+
+
+    // 3. Generate Assembly
+    StringBuffer asm_sb;
+    string_buffer_init(&asm_sb, &arena, 512);
+    bool success = codegen_generate_program(tac_program, &asm_sb);
+    TEST_ASSERT_TRUE_MESSAGE(success, "codegen_generate_program failed for negated parenthesized constant");
+
+    // 4. Assertions
+    const char *expected_asm =
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n"   // t0 -> max_id=0 -> (0+1)*8=8 bytes -> aligned 16 -> min 32 bytes
+            "    movl $10, -8(%rbp)\n" // t0 = 10
+            "    negl -8(%rbp)\n"      // t0 = -t0 (negation in place)
+            "    movl -8(%rbp), %eax\n"// return t0 (which is -10)
+            "    leave\n"
+            "    retq\n";
+
+    const char *actual_asm = string_buffer_content_str(&asm_sb);
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch for negated parenthesized constant");
+
+    arena_destroy(&arena);
+}
+
+
 // --- Test Runner ---
 
 void run_codegen_tests(void) {
@@ -487,4 +538,5 @@ void run_codegen_tests(void) {
     RUN_TEST(test_codegen_complement_temp_in_place);
     RUN_TEST(test_codegen_complement_of_negated_constant);
     RUN_TEST(test_codegen_stack_allocation_for_many_temps); // Added new test
+    RUN_TEST(test_codegen_return_negated_parenthesized_constant); // Added new test
 }
