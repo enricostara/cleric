@@ -7,7 +7,7 @@
 // --- Forward declarations for static helper functions (TAC processors) ---
 static bool generate_tac_function(const TacFunction *func, StringBuffer *sb);
 static bool generate_tac_instruction(const TacInstruction *instr, const TacFunction *current_function, StringBuffer *sb);
-static void operand_to_assembly_string(const TacOperand *operand, char *buffer, size_t buffer_size, const TacFunction *current_function);
+static bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t buffer_size);
 
 // --- Main function ---
 
@@ -104,12 +104,40 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
     return true; // Placeholder
 }
 
-// Placeholder for operand to assembly string conversion
-static void operand_to_assembly_string(const TacOperand *operand, char *buffer, size_t buffer_size, const TacFunction *current_function) {
-    if (!operand) {
-        snprintf(buffer, buffer_size, "<null_operand>");
-        return;
+static bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t buffer_size) {
+    if (!op) {
+        fprintf(stderr, "operand_to_assembly_string: NULL operand provided\n");
+        if (buffer_size > 0) out_buffer[0] = '\0'; // Ensure null-terminated empty string
+        return false; 
     }
-    // This will be complex, mapping temporaries to stack/registers, constants to immediates, etc.
-    snprintf(buffer, buffer_size, "<operand_type_%d_val_%lld>", operand->type, operand->value.constant_value); // Example placeholder
+    if (buffer_size == 0) {
+        fprintf(stderr, "operand_to_assembly_string: Output buffer size is zero\n");
+        return false; 
+    }
+
+    int written = 0;
+    switch (op->type) {
+        case TAC_OPERAND_CONST:
+            written = snprintf(out_buffer, buffer_size, "$%d", op->value.constant_value);
+            break;
+        case TAC_OPERAND_TEMP:
+            written = snprintf(out_buffer, buffer_size, "-%d(%%rbp)", (op->value.temp_id + 1) * 8);
+            break;
+        default:
+            fprintf(stderr, "operand_to_assembly_string: Unhandled operand type %d\n", op->type);
+            snprintf(out_buffer, buffer_size, "<UNHANDLED_OPERAND_TYPE_%d>", op->type);
+            return false; // Indicate failure for unhandled types
+    }
+
+    if (written < 0 || (size_t)written >= buffer_size) {
+        fprintf(stderr, "operand_to_assembly_string: snprintf error or buffer too small.\n");
+        // Ensure buffer is null-terminated even on error if possible
+        out_buffer[buffer_size - 1] = '\0'; 
+        return false; // Error or truncation
+    }
+
+    return true;
 }
+
+// Old AST-based codegen functions (commented out, for reference if needed)
+/*
