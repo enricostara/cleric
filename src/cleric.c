@@ -5,15 +5,27 @@
  * the integration of the preprocessor, compiler, and assembler/linker stages.
  *
  * Pipeline:
- *   1. Preprocess: Converts <input>.c to <input>.i using the system's C preprocessor (gcc -E).
- *   2. Compile:    Converts <input>.i to <input>.s (mocked, with optional lex-only mode).
- *   3. Assemble & Link: Converts <input>.s to an executable (unless in lex-only mode).
+ *   1. Preprocess: Converts <input>.c to <input>.i using the system's C preprocessor (e.g., gcc -E).
+ *   2. Compile Core: Processes the preprocessed <input>.i file. This stage involves:
+ *      - Lexing: Converts the source text into a stream of tokens.
+ *      - Parsing: Builds an Abstract Syntax Tree (AST) from the tokens, verifying syntax.
+ *                 Currently supports expressions with operator precedence and provides detailed error reporting.
+ *      - [Planned] Intermediate Representation (IR): Converts the AST to Three-Address Code (TAC).
+ *      - [Planned] Code Generation: Translates TAC into <input>.s (assembly code).
+ *      (The compiler can be instructed to stop and output after lexing, parsing, TAC generation, or assembly via options.)
+ *   3. Assemble & Link: Converts <input>.s to an executable (if the full compilation pipeline is run, i.e.,
+ *                       no --lex, --parse, --tac, or --codegen options are used).
  *
  * Usage:
- *   cleric [--lex] <input_file.c>
- *     --lex  : Only lex the input and print tokens (no codegen or linking)
+ *   cleric [<options>] <input_file.c>
+ *     --lex      : Lex the input, print tokens to stdout, and exit.
+ *     --parse    : Lex and parse the input, print the AST to stdout, and exit.
+ *     --tac      : Lex, parse, and generate Three-Address Code; print TAC to stdout, and exit.
+ *     --codegen  : Lex, parse, generate TAC, and then assembly; print assembly to stdout, and exit.
+ *     (No options): Run the full pipeline to create an executable.
  *
- * This main file delegates file manipulation to src/files/files.c and uses driver logic in src/driver/driver.c.
+ * This main file delegates file manipulation to src/files/files.c, argument parsing to src/args/args.c,
+ * and uses driver logic in src/driver/driver.c.
  *
  * Test suites are provided in tests/ for each module.
  */
