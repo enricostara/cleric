@@ -13,6 +13,7 @@ typedef struct {
     Token peek_token;       // The next token (lookahead)
     Arena *arena;           // Pointer to the arena for AST allocations
     bool error_flag;        // Flag to indicate if a syntax error occurred
+    char *error_message;    // Buffer to store the first error message encountered
     // Add more fields later if needed (e.g., symbol table, error messages buffer)
 } Parser;
 

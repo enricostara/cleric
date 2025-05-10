@@ -71,6 +71,7 @@ void parser_init(Parser *parser, Lexer *lexer, Arena *arena)
 {
     parser->lexer = lexer;
     parser->error_flag = false;
+    parser->error_message = NULL; // Initialize error_message
     parser->arena = arena; // Store the arena pointer
     // Prime the parser: Fetch the first two tokens.
     // Use the provided arena for lexeme allocation.
@@ -160,15 +161,47 @@ static bool parser_consume(Parser *parser, const TokenType expected_type) {
 }
 
 static void parser_error(Parser *parser, const char *format, ...) {
-    if (!parser->error_flag) {
-        // Report only the first error
-        parser->error_flag = true;
-        fprintf(stderr, "Parse Error (near pos %zu): ", parser->current_token.position);
-        va_list args;
-        va_start(args, format);
-        vfprintf(stderr, format, args);
-        va_end(args);
-        fprintf(stderr, "\n");
+    if (parser->error_flag) return; // Only report the first error
+
+    parser->error_flag = true;
+    // Static fallback message in case arena allocation fails for the detailed message.
+    static const char *ALLOC_FAILURE_MSG = "Parser Internal Error: Could not allocate memory for error message.";
+    // Also, a fallback for general formatting issues.
+    static const char *FORMATTING_FAILURE_MSG = "Parser Internal Error: Failed to format error message.";
+
+    char temp_buffer[1024]; // Assuming errors won't exceed this
+    int prefix_len = snprintf(temp_buffer, sizeof(temp_buffer),
+                              "Parse Error (near pos %zu): ", parser->current_token.position);
+
+    if (prefix_len < 0 || (size_t)prefix_len >= sizeof(temp_buffer)) {
+        // snprintf error for prefix or buffer too small (highly unlikely for prefix alone)
+        parser->error_message = (char *)FORMATTING_FAILURE_MSG;
+        return;
+    }
+
+    va_list args;
+    va_start(args, format);
+    int msg_len = vsnprintf(temp_buffer + prefix_len, sizeof(temp_buffer) - prefix_len,
+                            format, args);
+    va_end(args);
+
+    if (msg_len < 0) {
+        // vsnprintf error for the main message part
+        parser->error_message = (char *)FORMATTING_FAILURE_MSG;
+        return;
+    }
+
+    // Total length for arena allocation
+    size_t total_len = (size_t)prefix_len + (size_t)msg_len;
+
+    // Allocate memory from the arena for the complete message and copy it
+    char *allocated_message = arena_alloc(parser->arena, total_len + 1); // +1 for null terminator
+    if (allocated_message) {
+        strcpy(allocated_message, temp_buffer);
+        parser->error_message = allocated_message;
+    } else {
+        // Arena allocation failed
+        parser->error_message = (char *)ALLOC_FAILURE_MSG;
     }
 }
 

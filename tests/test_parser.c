@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "unity.h"
 #include "../src/lexer/lexer.h" // Include Lexer for tokenization
 #include "../src/parser/parser.h" // Include Parser for parsing
@@ -56,6 +58,22 @@ static void verify_binary_op_node(AstNode *node, BinaryOperatorType expected_op,
     TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, bin_node->right->type, "Right operand is not NODE_INT_LITERAL");
     IntLiteralNode *right_int_node = (IntLiteralNode *) bin_node->right;
     TEST_ASSERT_EQUAL_INT_MESSAGE(expected_right_val, right_int_node->value, "Right operand value mismatch");
+}
+
+// --- Helper for Error Tests ---
+void verify_parser_error(const char *input, const char *expected_error_substring) {
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser); // This will trigger the parsing
+
+    TEST_ASSERT_TRUE_MESSAGE(parser.error_flag, "Parser did not report an error as expected.");
+    if (expected_error_substring) {
+        TEST_ASSERT_NOT_NULL(parser.error_message); // This is where it was failing
+        TEST_ASSERT_NOT_NULL_MESSAGE(strstr(parser.error_message, expected_error_substring), "Error message mismatch or expected substring not found.");
+    }
+    // ProgramNode might be NULL or partially formed, which is okay for error tests
+    arena_destroy(&test_arena);
 }
 
 // --- Test Cases ---
@@ -390,7 +408,7 @@ void test_parse_complex_nested_expression(void) {
     arena_destroy(&test_arena);
 }
 
-// Test parsing a program with invalid unary expression (missing operand)
+// Test parsing an invalid unary expression (missing operand)
 void test_parse_invalid_unary_expression(void) {
     const char *input = "int main(void) { return -; }"; // Missing operand
     Lexer lexer;
@@ -426,7 +444,7 @@ void test_parse_mismatched_parentheses(void) {
     arena_destroy(&test_arena);
 }
 
-// Test parsing a program with integer at the boundary of what's representable
+// Test parsing an integer at the boundary of what's representable
 void test_parse_integer_bounds(void) {
     const char *input = "int main(void) { return 2147483647; }"; // INT_MAX for 32-bit int
     Arena test_arena = arena_create(1024);
@@ -464,7 +482,7 @@ void test_parse_integer_bounds(void) {
     arena_destroy(&test_arena);
 }
 
-// Test parsing a program with integer exceeding the representable range
+// Test parsing an integer exceeding the representable range
 void test_parse_integer_overflow(void) {
     const char *input = "int main(void) { return 2147483648; }"; // One more than INT_MAX
     Lexer lexer;
@@ -772,6 +790,26 @@ void test_parse_unary_on_parenthesized_expr(void) {
     arena_destroy(&test_arena);
 }
 
+// --- Error Test Cases ---
+void test_parse_error_missing_rhs_after_binary_op(void) {
+    const char *input = "int main(void) { return 1 + ; }";
+    // We'll refine the expected error message once implemented in the parser.
+    // For now, just checking error_flag is fine, or a generic part of the message.
+    verify_parser_error(input, "Expected expression (integer, unary op, or '(')");
+}
+
+void test_parse_error_consecutive_binary_operators(void) {
+    const char *input = "int main(void) { return 1 + / 2; }";
+    // Error should come from parse_primary_expression when it sees '/' instead of an operand for RHS of '+'
+    verify_parser_error(input, "Expected expression (integer, unary op, or '('), but got '/'");
+}
+
+void test_parse_error_missing_closing_paren(void) {
+    const char *input = "int main(void) { return (1 + 2 * 3; }";
+    // Error should come from parser_consume within parse_parenthesized_expression
+    // when it expects ')' but finds ';'.
+    verify_parser_error(input, "Expected token ')', but got ';'");
+}
 
 // --- Test Runner ---
 // Group parser tests into a single runner function
@@ -809,4 +847,9 @@ void run_parser_tests(void)
     // Unary with Binary
     RUN_TEST(test_parse_unary_with_binary_simple);
     RUN_TEST(test_parse_unary_on_parenthesized_expr);
+
+    // Error Handling Tests
+    RUN_TEST(test_parse_error_missing_rhs_after_binary_op);
+    RUN_TEST(test_parse_error_consecutive_binary_operators);
+    RUN_TEST(test_parse_error_missing_closing_paren);
 }
