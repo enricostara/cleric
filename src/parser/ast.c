@@ -78,6 +78,19 @@ UnaryOpNode *create_unary_op_node(const UnaryOperatorType op, AstNode *operand, 
     return node;
 }
 
+// Function to create a binary operation node
+BinaryOpNode *create_binary_op_node(const BinaryOperatorType op, AstNode *left, AstNode *right, Arena *arena) {
+    BinaryOpNode *node = arena_alloc(arena, sizeof(BinaryOpNode));
+    if (!node) {
+        return NULL; // Allocation failed
+    }
+    node->base.type = NODE_BINARY_OP;
+    node->op = op;
+    node->left = left;   // Left operand node allocated previously
+    node->right = right; // Right operand node allocated previously
+    return node;
+}
+
 // Helper function to print indentation
 static void print_indent(int level) {
     for (int i = 0; i < level; ++i) {
@@ -130,6 +143,28 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
                                 "UnknownOp";
             printf("UnaryOp(op=%s,\n", op_str);
             ast_pretty_print(unary_node->operand, indent_level + 1);
+            print_indent(indent_level);
+            printf(")\n");
+            break;
+        }
+        case NODE_BINARY_OP: {
+            const BinaryOpNode *bin_node = (BinaryOpNode *) node;
+            const char *op_str;
+            switch (bin_node->op) {
+                case OPERATOR_ADD: op_str = "Add"; break;
+                case OPERATOR_SUBTRACT: op_str = "Subtract"; break;
+                case OPERATOR_MULTIPLY: op_str = "Multiply"; break;
+                case OPERATOR_DIVIDE: op_str = "Divide"; break;
+                case OPERATOR_MODULO: op_str = "Modulo"; break;
+                default: op_str = "UnknownBinaryOp"; break;
+            }
+            printf("BinaryOp(op=%s,\n", op_str);
+            print_indent(indent_level + 1);
+            printf("left=\n");
+            ast_pretty_print(bin_node->left, indent_level + 2);
+            print_indent(indent_level + 1);
+            printf("right=\n");
+            ast_pretty_print(bin_node->right, indent_level + 2);
             print_indent(indent_level);
             printf(")\n");
             break;

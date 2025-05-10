@@ -9,7 +9,8 @@ typedef enum {
     NODE_FUNC_DEF, // Represents a function definition
     NODE_RETURN_STMT, // Represents a return statement
     NODE_INT_LITERAL, // Represents an integer literal constant
-    NODE_UNARY_OP // Represents a unary operation (e.g., -, ~)
+    NODE_UNARY_OP, // Represents a unary operation (e.g., -, ~)
+    NODE_BINARY_OP // Represents a binary operation (e.g., +, -, *, /, %)
 } NodeType;
 
 // Define the types of Unary Operators
@@ -17,6 +18,15 @@ typedef enum {
     OPERATOR_NEGATE, // - (Arithmetic negation)
     OPERATOR_COMPLEMENT // ~ (Bitwise complement)
 } UnaryOperatorType;
+
+// Define the types of Binary Operators
+typedef enum {
+    OPERATOR_ADD,         // +
+    OPERATOR_SUBTRACT,    // - (binary)
+    OPERATOR_MULTIPLY,    // *
+    OPERATOR_DIVIDE,      // /
+    OPERATOR_MODULO       // %
+} BinaryOperatorType;
 
 // Base structure for all AST nodes
 typedef struct AstNode {
@@ -36,10 +46,18 @@ typedef struct {
     AstNode *operand; // The expression the operator applies to
 } UnaryOpNode;
 
+// Structure for a binary operation node
+typedef struct {
+    AstNode base; // type = NODE_BINARY_OP
+    BinaryOperatorType op; // The specific binary operator
+    AstNode *left;  // Left-hand side operand
+    AstNode *right; // Right-hand side operand
+} BinaryOpNode;
+
 // Structure for a return statement node
 typedef struct {
     AstNode base; // type = NODE_RETURN_STMT
-    AstNode *expression; // The expression being returned (e.g., an IntLiteralNode, a UnaryOpNode)
+    AstNode *expression; // The expression being returned (e.g., an IntLiteralNode, a UnaryOpNode, a BinaryOpNode)
 } ReturnStmtNode;
 
 // Structure for a function definition node
@@ -62,6 +80,9 @@ IntLiteralNode *create_int_literal_node(int value, Arena* arena);
 
 // Function to create a unary operation node (convenience constructor)
 UnaryOpNode *create_unary_op_node(UnaryOperatorType op, AstNode *operand, Arena *arena);
+
+// Function to create a binary operation node (convenience constructor)
+BinaryOpNode *create_binary_op_node(BinaryOperatorType op, AstNode *left, AstNode *right, Arena* arena);
 
 // Function to create a return statement node (convenience constructor)
 ReturnStmtNode *create_return_stmt_node(AstNode *expression, Arena* arena);

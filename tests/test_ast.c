@@ -90,25 +90,66 @@ static void test_create_unary_op_complement(void) {
     arena_destroy(&test_arena);
 }
 
+// Test case for creating a binary ADD operation node
+static void test_create_binary_op_add(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for binary_op_add");
+
+    IntLiteralNode *left_operand = create_int_literal_node(10, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(left_operand, "Failed to create left operand for binary_op_add");
+
+    IntLiteralNode *right_operand = create_int_literal_node(5, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(right_operand, "Failed to create right operand for binary_op_add");
+
+    BinaryOpNode *binary_node = create_binary_op_node(OPERATOR_ADD, (AstNode *)left_operand, (AstNode *)right_operand, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(binary_node, "Failed to create binary_op_node for ADD");
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, binary_node->base.type);
+    TEST_ASSERT_EQUAL(OPERATOR_ADD, binary_node->op);
+    TEST_ASSERT_EQUAL_PTR(left_operand, binary_node->left);
+    TEST_ASSERT_EQUAL_PTR(right_operand, binary_node->right);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, binary_node->left->type); // Check operand types too
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, binary_node->right->type);
+
+    arena_destroy(&test_arena);
+}
+
 // Test case that calls ast_pretty_print (visual inspection needed)
 static void test_ast_pretty_print_output(void) {
-    Arena test_arena = arena_create(1024);
-    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    Arena test_arena = arena_create(2048); // Slightly increased arena size
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for pretty_print");
 
-    // Build AST for: int main(void) { return ~5; } 
-    IntLiteralNode *operand = create_int_literal_node(5, &test_arena);
-    UnaryOpNode *unary_op = create_unary_op_node(OPERATOR_COMPLEMENT, (AstNode *) operand, &test_arena);
-    ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode *) unary_op, &test_arena);
+    // Build AST for: int main(void) { return (10 + 5) * 2; } 
+    IntLiteralNode *val10 = create_int_literal_node(10, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(val10, "Failed to create val10 for pretty_print");
+    IntLiteralNode *val5 = create_int_literal_node(5, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(val5, "Failed to create val5 for pretty_print");
+
+    BinaryOpNode *sum_op = create_binary_op_node(OPERATOR_ADD, (AstNode *)val10, (AstNode *)val5, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(sum_op, "Failed to create sum_op for pretty_print");
+
+    IntLiteralNode *val2 = create_int_literal_node(2, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(val2, "Failed to create val2 for pretty_print");
+
+    BinaryOpNode *mul_op = create_binary_op_node(OPERATOR_MULTIPLY, (AstNode *)sum_op, (AstNode *)val2, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(mul_op, "Failed to create mul_op for pretty_print");
+    
+    ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode *) mul_op, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(ret_stmt, "Failed to create ret_stmt for pretty_print");
+
     AstNode *func_body = (AstNode *) ret_stmt;
     FuncDefNode *func_def = create_func_def_node("main", func_body, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(func_def, "Failed to create func_def for pretty_print");
+
     ProgramNode *program_node = create_program_node(func_def, &test_arena);
-    TEST_ASSERT_NOT_NULL(program_node);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program_node, "Failed to create program_node for pretty_print");
 
     printf("\n--- AST Pretty Print Output Start ---\n");
     ast_pretty_print((AstNode *) program_node, 0);
     printf("--- AST Pretty Print Output End ---\n");
+    
     arena_destroy(&test_arena);
-    TEST_PASS(); // Visual inspection required for correctness
+    TEST_PASS_MESSAGE("AST Pretty Print test executed. Visually inspect output.");
 }
 
 // Runner function for AST tests
@@ -117,6 +158,7 @@ void run_ast_tests(void) {
     RUN_TEST(test_create_return_stmt);
     RUN_TEST(test_create_unary_op_negate);
     RUN_TEST(test_create_unary_op_complement);
+    RUN_TEST(test_create_binary_op_add);
     RUN_TEST(test_create_func_def);
     RUN_TEST(test_create_program);
     RUN_TEST(test_ast_pretty_print_output);
