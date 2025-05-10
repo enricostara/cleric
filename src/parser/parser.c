@@ -8,14 +8,54 @@
 #include <limits.h>
 #include <string.h> // For strlen, strcpy
 
+// --- Precedence Climbing: Operator Properties ---
+#define LOWEST_BINARY_PRECEDENCE 1
+#define UNARY_OPERATOR_PRECEDENCE 3 // Higher than any binary operator we have
+
+// Returns precedence level (0 if not a relevant binary operator)
+static int get_token_precedence(TokenType type) {
+    switch (type) {
+        case TOKEN_SYMBOL_PLUS:
+        case TOKEN_SYMBOL_MINUS: // Binary minus
+            return 1;
+        case TOKEN_SYMBOL_STAR:
+        case TOKEN_SYMBOL_SLASH:
+        case TOKEN_SYMBOL_PERCENT:
+            return 2;
+        default:
+            return 0; // Not a binary operator we handle with precedence climbing here
+    }
+}
+
+static BinaryOperatorType token_to_binary_operator_type(TokenType type) {
+    switch (type) {
+        case TOKEN_SYMBOL_PLUS:
+            return OPERATOR_ADD;
+        case TOKEN_SYMBOL_MINUS: // Binary minus
+            return OPERATOR_SUBTRACT;
+        case TOKEN_SYMBOL_STAR:
+            return OPERATOR_MULTIPLY;
+        case TOKEN_SYMBOL_SLASH:
+            return OPERATOR_DIVIDE;
+        case TOKEN_SYMBOL_PERCENT:
+            return OPERATOR_MODULO;
+        default:
+            // Should not happen if called correctly
+            fprintf(stderr, "Parser Internal Error: Invalid token type for binary operator conversion: %d\n", type);
+            // Potentially set an error flag on parser or return a specific error type if AST allows
+            return (BinaryOperatorType)-1; // Indicate error
+    }
+}
+
+// --- End Precedence Climbing Helpers ---
+
 // Forward declarations for static helper functions (parsing rules)
 static FuncDefNode *parse_function_definition(Parser *parser);
-
 static AstNode *parse_statement(Parser *parser);
-
 static ReturnStmtNode *parse_return_statement(Parser *parser);
-
-static AstNode *parse_exp(Parser *parser); // Renamed from parse_primary_expression
+static AstNode *parse_expression(Parser *parser);
+static AstNode *parse_primary_expression(Parser *parser);
+static AstNode *parse_expression_recursive(Parser *parser, int min_precedence);
 
 // Helper function to consume a token and advance
 static bool parser_consume(Parser *parser, TokenType expected_type);
@@ -232,10 +272,10 @@ static ReturnStmtNode *parse_return_statement(Parser *parser) {
         return NULL; // Error handled inside consume
     }
 
-    // Parse the expression that follows using the new function
-    AstNode *expression_node = parse_exp(parser);
-    if (!expression_node) {
-        // Error should have been reported by parse_exp or earlier
+    // Parse the expression to be returned
+    AstNode *expression = parse_expression(parser);
+    if (!expression) {
+        // Error flag should be set by the expression parser if something went wrong
         return NULL;
     }
 
@@ -246,7 +286,7 @@ static ReturnStmtNode *parse_return_statement(Parser *parser) {
     }
 
     // Create the return statement node
-    ReturnStmtNode *return_node = create_return_stmt_node(expression_node, parser->arena);
+    ReturnStmtNode *return_node = create_return_stmt_node(expression, parser->arena);
     if (!return_node) {
         parser_error(parser, "Memory allocation failed for return statement node");
         return NULL;
@@ -257,26 +297,34 @@ static ReturnStmtNode *parse_return_statement(Parser *parser) {
 // Expression parsing: Handles Integers, Unary Ops (- ~), and Parentheses
 // <exp> ::= <int> | <unop> <exp> | "(" <exp> ")"
 // <unop> ::= "-" | "~"
-static AstNode *parse_exp(Parser *parser) { // NOLINT(*-no-recursion)
+static AstNode *parse_expression(Parser *parser) {
+    if (parser->error_flag) return NULL;
+    return parse_expression_recursive(parser, LOWEST_BINARY_PRECEDENCE);
+}
+
+static AstNode *parse_primary_expression(Parser *parser) { // NOLINT(*-no-recursion) // Retaining for now, can remove if linter is fine
     if (parser->error_flag) return NULL;
 
     // Handle Unary Operators
     if (parser->current_token.type == TOKEN_SYMBOL_MINUS || parser->current_token.type == TOKEN_SYMBOL_TILDE) {
-        const UnaryOperatorType op_type = parser->current_token.type == TOKEN_SYMBOL_MINUS
-                                      ? OPERATOR_NEGATE
-                                      : OPERATOR_COMPLEMENT;
-
+        UnaryOperatorType un_op_type;
+        if (parser->current_token.type == TOKEN_SYMBOL_MINUS) {
+            un_op_type = OPERATOR_NEGATE;
+        } else { // TOKEN_SYMBOL_TILDE
+            un_op_type = OPERATOR_COMPLEMENT;
+        }
         parser_advance(parser); // Consume the operator ('-' or '~')
         if (parser->error_flag) return NULL; // Check if advance caused an error
 
-        AstNode *operand_node = parse_exp(parser); // Recursively parse the operand
+        // This ensures that -a * b is parsed as (-a) * b
+        AstNode *operand_node = parse_expression_recursive(parser, UNARY_OPERATOR_PRECEDENCE); // Recursively parse the operand with high precedence
         if (!operand_node) {
             // Error already reported by recursive call or advance
             return NULL;
         }
 
         // Create the UnaryOpNode
-        UnaryOpNode* unary_node = create_unary_op_node(op_type, operand_node, parser->arena);
+        UnaryOpNode* unary_node = create_unary_op_node(un_op_type, operand_node, parser->arena);
         if (!unary_node) {
              parser_error(parser, "Memory allocation failed for unary operator node");
              return NULL;
@@ -319,7 +367,7 @@ static AstNode *parse_exp(Parser *parser) { // NOLINT(*-no-recursion)
         parser_advance(parser); // Consume '('
         if (parser->error_flag) return NULL;
 
-        AstNode *inner_exp_node = parse_exp(parser); // Recursively parse the inner expression
+        AstNode *inner_exp_node = parse_expression(parser); // Recursively parse the inner expression
         if (!inner_exp_node) {
             // Error already reported
             return NULL;
@@ -338,4 +386,57 @@ static AstNode *parse_exp(Parser *parser) { // NOLINT(*-no-recursion)
     token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
     parser_error(parser, "Expected expression (integer, unary op, or '('), but got %s", current_token_str);
     return NULL;
+}
+
+static AstNode *parse_expression_recursive(Parser *parser, int min_precedence) {
+    if (parser->error_flag) return NULL;
+    AstNode *left_node = parse_primary_expression(parser);
+    if (!left_node) {
+        // Error already reported
+        return NULL;
+    }
+
+    while (true) { // Loop while there are operators with sufficient precedence
+        // Peek at the current token to decide if it's an operator we should handle
+        TokenType current_op_token_type = parser->current_token.type;
+        int current_op_actual_precedence = get_token_precedence(current_op_token_type);
+
+        // If token is not an operator or its precedence is less than min_precedence, stop.
+        if (current_op_actual_precedence == 0 || current_op_actual_precedence < min_precedence) {
+            break;
+        }
+
+        // We have an operator to process
+        BinaryOperatorType bin_op_enum = token_to_binary_operator_type(current_op_token_type);
+        if (bin_op_enum == (BinaryOperatorType)-1) { // Error from conversion
+            // token_to_binary_operator_type should have set an error or printed one.
+            // If not, we might need to set parser->error_flag here.
+            // For now, assume it handles its own error reporting if type is unexpected.
+            parser_error(parser, "Internal parser error: Unexpected token for binary operator.");
+            return NULL;
+        }
+
+        parser_advance(parser); // Consume the operator
+        if (parser->error_flag) return NULL;
+
+        // For left-associative operators, the next minimum precedence for the RHS is current_op_precedence + 1
+        // For right-associative (not used here yet), it would be current_op_precedence
+        // This ensures expressions like a - b - c are grouped as (a - b) - c
+        const int next_min_precedence_for_rhs = current_op_actual_precedence + 1;
+        AstNode *right_node = parse_expression_recursive(parser, next_min_precedence_for_rhs);
+        if (!right_node) {
+            // Error already reported
+            return NULL;
+        }
+
+        // Create the BinaryOpNode
+        BinaryOpNode* binary_node = create_binary_op_node(bin_op_enum, left_node, right_node, parser->arena);
+        if (!binary_node) {
+             parser_error(parser, "Memory allocation failed for binary operator node");
+             return NULL;
+        }
+        left_node = (AstNode*)binary_node; // The result becomes the new left_node for the next iteration
+    }
+
+    return left_node;
 }

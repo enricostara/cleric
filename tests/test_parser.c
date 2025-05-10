@@ -39,6 +39,25 @@ static void verify_nested_unary_op(AstNode *node, UnaryOperatorType outer_op, Un
     TEST_ASSERT_EQUAL_INT(value, int_node->value);
 }
 
+// Helper function to verify a binary operation node where both operands are int literals
+static void verify_binary_op_node(AstNode *node, BinaryOperatorType expected_op, int expected_left_val, int expected_right_val) {
+    TEST_ASSERT_NOT_NULL_MESSAGE(node, "BinaryOpNode is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, node->type, "Node type is not NODE_BINARY_OP");
+
+    BinaryOpNode *bin_node = (BinaryOpNode *) node;
+    TEST_ASSERT_EQUAL_MESSAGE(expected_op, bin_node->op, "Binary operator type mismatch");
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(bin_node->left, "Left operand is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, bin_node->left->type, "Left operand is not NODE_INT_LITERAL");
+    IntLiteralNode *left_int_node = (IntLiteralNode *) bin_node->left;
+    TEST_ASSERT_EQUAL_INT_MESSAGE(expected_left_val, left_int_node->value, "Left operand value mismatch");
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(bin_node->right, "Right operand is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, bin_node->right->type, "Right operand is not NODE_INT_LITERAL");
+    IntLiteralNode *right_int_node = (IntLiteralNode *) bin_node->right;
+    TEST_ASSERT_EQUAL_INT_MESSAGE(expected_right_val, right_int_node->value, "Right operand value mismatch");
+}
+
 // --- Test Cases ---
 
 // Test parsing a simple valid program: "int main(void) { return 42; }"
@@ -89,7 +108,6 @@ void test_parse_valid_program(void) {
     arena_destroy(&test_arena);
     // free_ast((AstNode *) program_reworked); // Assuming arena handles cleanup
 }
-
 
 // Test parsing an invalid program (missing semicolon)
 void test_parse_missing_semicolon(void) {
@@ -464,15 +482,304 @@ void test_parse_integer_overflow(void) {
     arena_destroy(&test_arena);
 }
 
+// --- Binary Operation Tests ---
+void test_parse_simple_addition(void) {
+    const char *input = "int main(void) { return 1 + 2; }";
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
+
+    ProgramNode *program = parse_program(&parser);
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for simple addition");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for simple addition");
+
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    TEST_ASSERT_NOT_NULL_MESSAGE(return_stmt, "Return statement is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, return_stmt->base.type, "Body is not a return statement");
+
+    verify_binary_op_node(return_stmt->expression, OPERATOR_ADD, 1, 2);
+
+    arena_destroy(&test_arena);
+}
+
+void test_parse_simple_subtraction(void) {
+    const char *input = "int main(void) { return 5 - 3; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(return_stmt->expression, OPERATOR_SUBTRACT, 5, 3);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_simple_multiplication(void) {
+    const char *input = "int main(void) { return 4 * 6; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(return_stmt->expression, OPERATOR_MULTIPLY, 4, 6);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_simple_division(void) {
+    const char *input = "int main(void) { return 10 / 2; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(return_stmt->expression, OPERATOR_DIVIDE, 10, 2);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_simple_modulo(void) {
+    const char *input = "int main(void) { return 7 % 3; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(return_stmt->expression, OPERATOR_MODULO, 7, 3);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_precedence_add_mul(void) {
+    // AST should be: (1 + (2 * 3)) ->  ADD(1, MUL(2,3))
+    const char *input = "int main(void) { return 1 + 2 * 3; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    AstNode *expr_node = return_stmt->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
+    BinaryOpNode *add_op = (BinaryOpNode*)expr_node;
+    TEST_ASSERT_EQUAL(OPERATOR_ADD, add_op->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_op->left->type);
+    TEST_ASSERT_EQUAL_INT(1, ((IntLiteralNode*)add_op->left)->value);
+
+    // Right child of ADD should be MUL(2,3)
+    verify_binary_op_node(add_op->right, OPERATOR_MULTIPLY, 2, 3);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_precedence_mul_add(void) {
+    // AST should be: ((1 * 2) + 3) -> ADD(MUL(1,2), 3)
+    const char *input = "int main(void) { return 1 * 2 + 3; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    AstNode *expr_node = return_stmt->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
+    BinaryOpNode *add_op = (BinaryOpNode*)expr_node;
+    TEST_ASSERT_EQUAL(OPERATOR_ADD, add_op->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_op->right->type);
+    TEST_ASSERT_EQUAL_INT(3, ((IntLiteralNode*)add_op->right)->value);
+
+    // Left child of ADD should be MUL(1,2)
+    verify_binary_op_node(add_op->left, OPERATOR_MULTIPLY, 1, 2);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_associativity_subtract(void) {
+    // AST should be: ((10 - 3) - 2) -> SUBTRACT(SUBTRACT(10,3), 2)
+    const char *input = "int main(void) { return 10 - 3 - 2; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    AstNode *expr_node = return_stmt->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
+    BinaryOpNode *outer_sub_op = (BinaryOpNode*)expr_node;
+    TEST_ASSERT_EQUAL(OPERATOR_SUBTRACT, outer_sub_op->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, outer_sub_op->right->type);
+    TEST_ASSERT_EQUAL_INT(2, ((IntLiteralNode*)outer_sub_op->right)->value);
+
+    // Left child of outer SUBTRACT should be SUBTRACT(10,3)
+    verify_binary_op_node(outer_sub_op->left, OPERATOR_SUBTRACT, 10, 3);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_associativity_divide(void) {
+    // AST should be: ((100 / 10) / 2) -> DIVIDE(DIVIDE(100,10), 2)
+    const char *input = "int main(void) { return 100 / 10 / 2; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    AstNode *expr_node = return_stmt->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
+    BinaryOpNode *outer_div_op = (BinaryOpNode*)expr_node;
+    TEST_ASSERT_EQUAL(OPERATOR_DIVIDE, outer_div_op->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, outer_div_op->right->type);
+    TEST_ASSERT_EQUAL_INT(2, ((IntLiteralNode*)outer_div_op->right)->value);
+
+    // Left child of outer DIVIDE should be DIVIDE(100,10)
+    verify_binary_op_node(outer_div_op->left, OPERATOR_DIVIDE, 100, 10);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_parentheses_simple(void) {
+    // AST should be: ((1 + 2) * 3) -> MULTIPLY(ADD(1,2), 3)
+    const char *input = "int main(void) { return (1 + 2) * 3; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    AstNode *expr_node = return_stmt->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
+    BinaryOpNode *mul_op = (BinaryOpNode*)expr_node;
+    TEST_ASSERT_EQUAL(OPERATOR_MULTIPLY, mul_op->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mul_op->right->type);
+    TEST_ASSERT_EQUAL_INT(3, ((IntLiteralNode*)mul_op->right)->value);
+
+    // Left child of MULTIPLY should be ADD(1,2)
+    verify_binary_op_node(mul_op->left, OPERATOR_ADD, 1, 2);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_parentheses_nested(void) {
+    // AST: 1 * (2 + 3) % 4 -> MODULO(MULTIPLY(1, ADD(2,3)), 4)
+    const char *input = "int main(void) { return 1 * (2 + 3) % 4; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    AstNode *expr_node = return_stmt->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type); // MODULO is root
+    BinaryOpNode *mod_op = (BinaryOpNode*)expr_node;
+    TEST_ASSERT_EQUAL(OPERATOR_MODULO, mod_op->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mod_op->right->type);
+    TEST_ASSERT_EQUAL_INT(4, ((IntLiteralNode*)mod_op->right)->value);
+
+    // Left child of MODULO is MULTIPLY(1, ADD(2,3))
+    AstNode *mul_node = mod_op->left;
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, mul_node->type);
+    BinaryOpNode *mul_op = (BinaryOpNode*)mul_node;
+    TEST_ASSERT_EQUAL(OPERATOR_MULTIPLY, mul_op->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mul_op->left->type);
+    TEST_ASSERT_EQUAL_INT(1, ((IntLiteralNode*)mul_op->left)->value);
+
+    // Right child of MULTIPLY is ADD(2,3)
+    verify_binary_op_node(mul_op->right, OPERATOR_ADD, 2, 3);
+    arena_destroy(&test_arena);
+}
+
+void test_parse_unary_with_binary_simple(void) {
+    // Test -1 + 5 -> ADD(NEGATE(1), 5)
+    const char *input1 = "int main(void) { return -1 + 5; }";
+    Arena arena1 = arena_create(1024);
+    Lexer lexer1; lexer_init(&lexer1, input1, &arena1);
+    Parser parser1; parser_init(&parser1, &lexer1, &arena1);
+    ProgramNode *program1 = parse_program(&parser1);
+    TEST_ASSERT_NOT_NULL(program1);
+    TEST_ASSERT_FALSE(parser1.error_flag);
+    ReturnStmtNode *return_stmt1 = (ReturnStmtNode *)program1->function->body;
+    AstNode *expr1 = return_stmt1->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr1->type);
+    BinaryOpNode *add_op1 = (BinaryOpNode*)expr1;
+    TEST_ASSERT_EQUAL(OPERATOR_ADD, add_op1->op);
+    verify_unary_op_node(add_op1->left, OPERATOR_NEGATE, 1);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_op1->right->type);
+    TEST_ASSERT_EQUAL_INT(5, ((IntLiteralNode*)add_op1->right)->value);
+    arena_destroy(&arena1);
+
+    // Test 10 * -2 -> MULTIPLY(10, NEGATE(2))
+    const char *input2 = "int main(void) { return 10 * -2; }";
+    Arena arena2 = arena_create(1024);
+    Lexer lexer2; lexer_init(&lexer2, input2, &arena2);
+    Parser parser2; parser_init(&parser2, &lexer2, &arena2);
+    ProgramNode *program2 = parse_program(&parser2);
+    TEST_ASSERT_NOT_NULL(program2);
+    TEST_ASSERT_FALSE(parser2.error_flag);
+    ReturnStmtNode *return_stmt2 = (ReturnStmtNode *)program2->function->body;
+    AstNode *expr2 = return_stmt2->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr2->type);
+    BinaryOpNode *mul_op2 = (BinaryOpNode*)expr2;
+    TEST_ASSERT_EQUAL(OPERATOR_MULTIPLY, mul_op2->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mul_op2->left->type);
+    TEST_ASSERT_EQUAL_INT(10, ((IntLiteralNode*)mul_op2->left)->value);
+    verify_unary_op_node(mul_op2->right, OPERATOR_NEGATE, 2);
+    arena_destroy(&arena2);
+}
+
+void test_parse_unary_on_parenthesized_expr(void) {
+    // Test -(1 + 2) * 3 -> MULTIPLY(NEGATE(ADD(1,2)), 3)
+    const char *input = "int main(void) { return -(1 + 2) * 3; }";
+    Arena test_arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL(program);
+    TEST_ASSERT_FALSE(parser.error_flag);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    AstNode *expr_node = return_stmt->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type); // MULTIPLY is root
+    BinaryOpNode *mul_op = (BinaryOpNode*)expr_node;
+    TEST_ASSERT_EQUAL(OPERATOR_MULTIPLY, mul_op->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mul_op->right->type);
+    TEST_ASSERT_EQUAL_INT(3, ((IntLiteralNode*)mul_op->right)->value);
+
+    // Left child of MULTIPLY is NEGATE(ADD(1,2))
+    AstNode *unary_node_ast = mul_op->left;
+    TEST_ASSERT_EQUAL(NODE_UNARY_OP, unary_node_ast->type);
+    UnaryOpNode *unary_op = (UnaryOpNode*)unary_node_ast;
+    TEST_ASSERT_EQUAL(OPERATOR_NEGATE, unary_op->op);
+    verify_binary_op_node(unary_op->operand, OPERATOR_ADD, 1, 2);
+    arena_destroy(&test_arena);
+}
+
+
 // --- Test Runner ---
 // Group parser tests into a single runner function
-void run_parser_tests(void) {
-    printf("\n--- Parser Tests ---\n");
+void run_parser_tests(void)
+{
     RUN_TEST(test_parse_valid_program);
     RUN_TEST(test_parse_missing_semicolon);
     RUN_TEST(test_parse_missing_brace);
-
-    // New tests for unary operations and expressions
     RUN_TEST(test_parse_negation_operator);
     RUN_TEST(test_parse_complement_operator);
     RUN_TEST(test_parse_nested_unary_operators);
@@ -481,6 +788,25 @@ void run_parser_tests(void) {
     RUN_TEST(test_parse_complex_nested_expression);
     RUN_TEST(test_parse_invalid_unary_expression);
     RUN_TEST(test_parse_mismatched_parentheses);
-    RUN_TEST(test_parse_integer_bounds);
-    RUN_TEST(test_parse_integer_overflow);
+    RUN_TEST(test_parse_integer_bounds); // Test with INT_MAX and INT_MIN
+    RUN_TEST(test_parse_integer_overflow); // Test integer overflow scenario
+
+    // Add new binary operation tests here
+    RUN_TEST(test_parse_simple_addition);
+    RUN_TEST(test_parse_simple_subtraction);
+    RUN_TEST(test_parse_simple_multiplication);
+    RUN_TEST(test_parse_simple_division);
+    RUN_TEST(test_parse_simple_modulo);
+    RUN_TEST(test_parse_precedence_add_mul);
+    RUN_TEST(test_parse_precedence_mul_add);
+
+    // Associativity and Parentheses
+    RUN_TEST(test_parse_associativity_subtract);
+    RUN_TEST(test_parse_associativity_divide);
+    RUN_TEST(test_parse_parentheses_simple);
+    RUN_TEST(test_parse_parentheses_nested);
+
+    // Unary with Binary
+    RUN_TEST(test_parse_unary_with_binary_simple);
+    RUN_TEST(test_parse_unary_on_parenthesized_expr);
 }
