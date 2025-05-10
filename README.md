@@ -13,7 +13,8 @@ Cleric demonstrates the basic stages of compiling a subset of C code:
 
 ## Features
 - **Modular Design**: Clear separation between lexer, parser, code generator, and compiler driver components.
-- **Abstract Syntax Tree (AST)**: Uses an AST to represent the code's structure internally.
+- **Abstract Syntax Tree (AST)**: Uses an AST to represent the code's structure, built by a parser that understands operator precedence.
+- **Robust Parsing & Error Handling**: Implements Precedence Climbing for parsing expressions and provides detailed error messages for syntax issues.
 - **Intermediate Stage Inspection**: Allows viewing the output of different stages:
     - `--lex`: Print the token stream.
     - `--parse`: Print the generated Abstract Syntax Tree.
