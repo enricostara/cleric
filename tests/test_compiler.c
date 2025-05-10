@@ -9,7 +9,7 @@
 // --- Test Cases ---
 
 static void test_compile_return_4(void) {
-    Arena test_arena = arena_create(1024 * 4); // Arena for compilation
+    Arena test_arena = arena_create(1024 * 8); // Arena for compilation
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
 
     const char *input_c = "int main(void) { return 4; }";
@@ -44,7 +44,7 @@ static void test_compile_return_4(void) {
 }
 
 static void test_compile_return_negated_parenthesized_constant(void) {
-    Arena test_arena = arena_create(1024 * 4);
+    Arena test_arena = arena_create(1024 * 8);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for negated parenthesized constant test");
 
     const char *input_c = "int main(void) { return -((((10)))); }";
@@ -78,7 +78,7 @@ static void test_compile_return_negated_parenthesized_constant(void) {
 }
 
 static void test_compile_return_double_negation(void) {
-    Arena test_arena = arena_create(1024 * 4);
+    Arena test_arena = arena_create(1024 * 8);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for double negation test");
 
     const char *input_c = "int main(void) { return -(-4); }";

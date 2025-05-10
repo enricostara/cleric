@@ -16,6 +16,9 @@ static void test_return_unary_complement(void);
 // Test returning a complemented negated integer literal
 static void test_return_unary_complement_negate(void);
 
+// Test returning the result of a binary addition of two literals
+static void test_return_binary_add_literals(void);
+
 // Add more test function declarations here...
 
 
@@ -186,6 +189,51 @@ static void test_return_unary_complement_negate(void) {
     arena_destroy(&test_arena);
 }
 
+// Test for: int main() { return 5 + 3; }
+static void test_return_binary_add_literals(void) {
+    // Create arena for this test
+    Arena test_arena = arena_create(2048); // Increased from 1024 to 2048
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for binary add test");
+
+    // 1. Construct AST for: int main() { return 5 + 3; }
+    IntLiteralNode *lhs_literal = create_int_literal_node(5, &test_arena);
+    IntLiteralNode *rhs_literal = create_int_literal_node(3, &test_arena);
+    BinaryOpNode *binary_add_node = create_binary_op_node(OPERATOR_ADD, (AstNode *)lhs_literal, (AstNode *)rhs_literal, &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)binary_add_node, &test_arena);
+    FuncDefNode *func_node = create_func_def_node("main", (AstNode *)return_node, &test_arena);
+    ProgramNode *ast = create_program_node(func_node, &test_arena);
+
+    // 2. Translate AST to TAC
+    TacProgram *tac_program = ast_to_tac(ast, &test_arena);
+
+    // 3. Assertions
+    TEST_ASSERT_NOT_NULL(tac_program);
+    TEST_ASSERT_EQUAL_INT(1, tac_program->function_count);
+    TacFunction *func = tac_program->functions[0];
+    TEST_ASSERT_NOT_NULL(func);
+    TEST_ASSERT_EQUAL_STRING("main", func->name);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(2, func->instruction_count, "Expected 2 TAC instructions for 5 + 3");
+
+    // Check the ADD instruction (t0 = 5 + 3)
+    const TacInstruction *instr0 = &func->instructions[0];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_ADD, instr0->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr0->operands.binary_op.dst.type);
+    TEST_ASSERT_EQUAL_INT(0, instr0->operands.binary_op.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr0->operands.binary_op.src1.type);
+    TEST_ASSERT_EQUAL_INT(5, instr0->operands.binary_op.src1.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr0->operands.binary_op.src2.type);
+    TEST_ASSERT_EQUAL_INT(3, instr0->operands.binary_op.src2.value.constant_value);
+
+    // Check the RETURN instruction (RETURN t0)
+    const TacInstruction *instr1 = &func->instructions[1];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_RETURN, instr1->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr1->operands.ret.src.type);
+    TEST_ASSERT_EQUAL_INT(0, instr1->operands.ret.src.value.temp_id); // t0
+
+    // Clean up arena
+    arena_destroy(&test_arena);
+}
+
 
 // --- Test Runner ---
 
@@ -194,4 +242,5 @@ void run_ast_to_tac_tests(void) {
     RUN_TEST(test_return_unary_negate);
     RUN_TEST(test_return_unary_complement);
     RUN_TEST(test_return_unary_complement_negate); // Add new test to runner
+    RUN_TEST(test_return_binary_add_literals);
 }

@@ -406,7 +406,7 @@ static void test_codegen_complement_of_negated_constant(void) {
 
 // Test for stack allocation with multiple temporaries (t0-t4, expecting 48 bytes)
 static void test_codegen_stack_allocation_for_many_temps(void) {
-    Arena arena = arena_create(1024);
+    Arena arena = arena_create(1024 * 4);
     TEST_ASSERT_NOT_NULL(arena.start);
 
     TacProgram *prog = create_tac_program(&arena);
@@ -467,11 +467,13 @@ static void test_codegen_stack_allocation_for_many_temps(void) {
     arena_destroy(&arena);
 }
 
+// --- Test Runner ---
+
 // Test for: int main(void) { return -((((10)))); }
 // Expected TAC: t0 = 10; t1 = -t0; return t1;
 // Expected stack: 2 temps (t0,t1) -> max_id=1 -> (1+1)*8=16 -> aligned to 16 -> min 32 bytes.
 static void test_codegen_return_negated_parenthesized_constant(void) {
-    Arena arena = arena_create(1024);
+    Arena arena = arena_create(1024 * 4);
     TEST_ASSERT_NOT_NULL(arena.start);
 
     // 1. Create AST: ProgramNode -> FuncDefNode("main") -> ReturnStmtNode -> UnaryOpNode(NEGATE_OP) -> IntLiteralNode(10)
@@ -519,8 +521,6 @@ static void test_codegen_return_negated_parenthesized_constant(void) {
     arena_destroy(&arena);
 }
 
-// --- Test Runner ---
-
 void run_codegen_tests(void) {
     RUN_TEST(test_codegen_simple_return);
     RUN_TEST(test_operand_to_assembly_string_const_ok);
@@ -540,6 +540,6 @@ void run_codegen_tests(void) {
     RUN_TEST(test_codegen_negate_temp_from_temp);
     RUN_TEST(test_codegen_complement_temp_in_place);
     RUN_TEST(test_codegen_complement_of_negated_constant);
-    RUN_TEST(test_codegen_stack_allocation_for_many_temps); // Added new test
-    RUN_TEST(test_codegen_return_negated_parenthesized_constant); // Added new test
+    RUN_TEST(test_codegen_stack_allocation_for_many_temps);
+    RUN_TEST(test_codegen_return_negated_parenthesized_constant);
 }
