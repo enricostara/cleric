@@ -72,6 +72,47 @@ TacInstruction *create_tac_instruction_return(const TacOperand src, Arena *arena
     return instr;
 }
 
+// --- Binary Instruction Creation ---
+TacInstruction *create_tac_instruction_add(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_ADD, arena);
+    instr->operands.binary_op.dst = dst;
+    instr->operands.binary_op.src1 = src1;
+    instr->operands.binary_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_sub(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_SUB, arena);
+    instr->operands.binary_op.dst = dst;
+    instr->operands.binary_op.src1 = src1;
+    instr->operands.binary_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_mul(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_MUL, arena);
+    instr->operands.binary_op.dst = dst;
+    instr->operands.binary_op.src1 = src1;
+    instr->operands.binary_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_div(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_DIV, arena);
+    instr->operands.binary_op.dst = dst;
+    instr->operands.binary_op.src1 = src1;
+    instr->operands.binary_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_mod(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_MOD, arena);
+    instr->operands.binary_op.dst = dst;
+    instr->operands.binary_op.src1 = src1;
+    instr->operands.binary_op.src2 = src2;
+    return instr;
+}
+
 //------------------------------------------------------------------------------
 // Function and Program Manipulation
 //------------------------------------------------------------------------------
@@ -198,30 +239,74 @@ void tac_print_instruction(StringBuffer *sb, const TacInstruction *instruction) 
     }
 
     switch (instruction->type) {
-        case TAC_INS_COPY: // dst = src
+        case TAC_INS_COPY:
             tac_print_operand(sb, &instruction->operands.copy.dst);
             string_buffer_append(sb, " = ");
             tac_print_operand(sb, &instruction->operands.copy.src);
+            string_buffer_append(sb, "\n");
             break;
-        case TAC_INS_NEGATE: // dst = -src
+        case TAC_INS_NEGATE:
             tac_print_operand(sb, &instruction->operands.unary_op.dst);
             string_buffer_append(sb, " = - ");
             tac_print_operand(sb, &instruction->operands.unary_op.src);
+            string_buffer_append(sb, "\n");
             break;
-        case TAC_INS_COMPLEMENT: // dst = ~src
+        case TAC_INS_COMPLEMENT:
             tac_print_operand(sb, &instruction->operands.unary_op.dst);
             string_buffer_append(sb, " = ~ ");
             tac_print_operand(sb, &instruction->operands.unary_op.src);
+            string_buffer_append(sb, "\n");
             break;
-        case TAC_INS_RETURN: // return src
+        case TAC_INS_RETURN:
             string_buffer_append(sb, "return ");
             tac_print_operand(sb, &instruction->operands.ret.src);
+            string_buffer_append(sb, "\n");
+            break;
+        // Binary Operations
+        case TAC_INS_ADD:
+            tac_print_operand(sb, &instruction->operands.binary_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src1);
+            string_buffer_append(sb, " + ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_SUB:
+            tac_print_operand(sb, &instruction->operands.binary_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src1);
+            string_buffer_append(sb, " - ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_MUL:
+            tac_print_operand(sb, &instruction->operands.binary_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src1);
+            string_buffer_append(sb, " * ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_DIV:
+            tac_print_operand(sb, &instruction->operands.binary_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src1);
+            string_buffer_append(sb, " / ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_MOD:
+            tac_print_operand(sb, &instruction->operands.binary_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src1);
+            string_buffer_append(sb, " %% "); // Use %% for literal %
+            tac_print_operand(sb, &instruction->operands.binary_op.src2);
+            string_buffer_append(sb, "\n");
             break;
         default:
-            string_buffer_append(sb, "<unknown_instr_type:%d>", instruction->type);
+            string_buffer_append(sb, "<unknown_instr_type:%d>\n", instruction->type);
             break;
     }
-    string_buffer_append_char(sb, '\n');
 }
 
 void tac_print_function(StringBuffer *sb, const TacFunction *function, const int indent_level) {

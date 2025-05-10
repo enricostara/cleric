@@ -37,7 +37,15 @@ typedef enum {
     TAC_INS_NEGATE,     // dst = -src
     TAC_INS_COMPLEMENT, // dst = ~src
     TAC_INS_RETURN,     // return src
-    // Future instructions: ADD, SUB, MUL, DIV, GOTO, IFZ, CALL, PARAM, LABEL, etc.
+
+    // Binary Operations
+    TAC_INS_ADD,        // dst = src1 + src2
+    TAC_INS_SUB,        // dst = src1 - src2
+    TAC_INS_MUL,        // dst = src1 * src2
+    TAC_INS_DIV,        // dst = src1 / src2
+    TAC_INS_MOD,        // dst = src1 % src2
+
+    // Future instructions: GOTO, IFZ, CALL, PARAM, LABEL, etc.
 } TacInstructionType;
 
 // Forward declare TacInstruction for use in struct definitions if needed (not strictly necessary here)
@@ -52,10 +60,11 @@ typedef struct {
         struct { TacOperand dst; TacOperand src; } unary_op; // Used for NEGATE, COMPLEMENT
         // return src
         struct { TacOperand src; } ret;
-        // Future: struct { TacOperand dst; TacOperand src1; TacOperand src2; } binary_op;
+        // dst = src1 op src2
+        struct { TacOperand dst; TacOperand src1; TacOperand src2; } binary_op; // For ADD, SUB, MUL, DIV, MOD
+
         // Future: struct { const char* label; } label;
         // Future: struct { const char* label; TacOperand condition; } conditional_jump; // e.g., ifz condition goto label
-        // Future: struct { const char* label; } unconditional_jump; // goto label
         // Future: struct { const char* func_name; TacOperand result; } call;
         // Future: struct { TacOperand param; } param;
     } operands;
@@ -94,6 +103,13 @@ TacInstruction* create_tac_instruction_copy(TacOperand dst, TacOperand src, Aren
 TacInstruction* create_tac_instruction_negate(TacOperand dst, TacOperand src, Arena* arena);
 TacInstruction* create_tac_instruction_complement(TacOperand dst, TacOperand src, Arena* arena);
 TacInstruction* create_tac_instruction_return(TacOperand src, Arena* arena);
+
+// Binary instruction creation
+TacInstruction* create_tac_instruction_add(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_sub(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_mul(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_div(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_mod(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
 
 // Function and Program manipulation
 TacFunction* create_tac_function(const char* name, Arena* arena);

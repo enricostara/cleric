@@ -161,7 +161,61 @@ static TacOperand visit_expression(AstNode *node, TacFunction *current_function,
             // 5. The result of this expression is the destination temporary
             return dest_temp;
         }
-        // Add cases for other expressions (BinaryOp, FunctionCall, etc.)
+        case NODE_BINARY_OP: {
+            const BinaryOpNode *binary_node = (BinaryOpNode *) node;
+
+            // 1. Visit left and right operands
+            const TacOperand left_operand = visit_expression(binary_node->left, current_function, arena, next_temp_id_ptr);
+            if (!is_valid_operand(left_operand)) {
+                fprintf(stderr, "Error: Binary operator's left operand did not yield a valid result.\n");
+                return create_invalid_operand();
+            }
+
+            const TacOperand right_operand = visit_expression(binary_node->right, current_function, arena, next_temp_id_ptr);
+            if (!is_valid_operand(right_operand)) {
+                fprintf(stderr, "Error: Binary operator's right operand did not yield a valid result.\n");
+                return create_invalid_operand();
+            }
+
+            // 2. Create a new temporary to store the result
+            const TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
+
+            // 3. Create the specific TAC instruction based on the operator
+            const TacInstruction *binary_instr = NULL;
+            switch (binary_node->op) {
+                case OPERATOR_ADD:
+                    binary_instr = create_tac_instruction_add(dest_temp, left_operand, right_operand, arena);
+                    break;
+                case OPERATOR_SUBTRACT:
+                    binary_instr = create_tac_instruction_sub(dest_temp, left_operand, right_operand, arena);
+                    break;
+                case OPERATOR_MULTIPLY:
+                    binary_instr = create_tac_instruction_mul(dest_temp, left_operand, right_operand, arena);
+                    break;
+                case OPERATOR_DIVIDE:
+                    binary_instr = create_tac_instruction_div(dest_temp, left_operand, right_operand, arena);
+                    break;
+                case OPERATOR_MODULO:
+                    binary_instr = create_tac_instruction_mod(dest_temp, left_operand, right_operand, arena);
+                    break;
+                default:
+                    fprintf(stderr, "Error: Unsupported binary operator type %d.\n", binary_node->op);
+                    return create_invalid_operand();
+            }
+
+            // 4. Add the instruction to the function
+            if (binary_instr) {
+                add_instruction_to_function(current_function, binary_instr, arena);
+            } else {
+                // This case might not be reached if create_tac_instruction_* functions exit on failure
+                fprintf(stderr, "Error: Failed to create TAC instruction for binary operator %d.\n", binary_node->op);
+                return create_invalid_operand();
+            }
+
+            // 5. The result of this expression is the destination temporary
+            return dest_temp;
+        }
+        // Add cases for other expressions (FunctionCall, etc.)
         default:
             fprintf(stderr, "Error: Unexpected AST node type %d in visit_expression.\n", node->type);
             return create_invalid_operand();
