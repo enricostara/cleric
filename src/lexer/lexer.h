@@ -20,6 +20,10 @@ typedef enum {
     TOKEN_SYMBOL_SEMICOLON, // ';'
     TOKEN_SYMBOL_TILDE, // '~'
     TOKEN_SYMBOL_MINUS, // '-'
+    TOKEN_SYMBOL_PLUS, // '+'
+    TOKEN_SYMBOL_STAR, // '*'
+    TOKEN_SYMBOL_SLASH, // '/'
+    TOKEN_SYMBOL_PERCENT, // '%'
     TOKEN_SYMBOL_DECREMENT, // '--'
     TOKEN_EOF, // End of input
     TOKEN_UNKNOWN // Unrecognized character/token

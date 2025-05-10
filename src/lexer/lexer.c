@@ -151,16 +151,22 @@ bool lexer_next_token(Lexer *lexer, Token *out_token) {
             break;
         case '-':
             // Check for '--' (decrement)
-        {
             if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '-') {
                 lexer->pos += 2; // Consume both '-'
                 *out_token = (Token){TOKEN_SYMBOL_DECREMENT, NULL, start};
                 return true;
             }
-            // Otherwise, it's just '-' (minus)
+        // Otherwise, it's just '-' (minus)
             sym_type = TOKEN_SYMBOL_MINUS;
-        }
-        break;
+            break;
+        case '+': sym_type = TOKEN_SYMBOL_PLUS;
+            break;
+        case '*': sym_type = TOKEN_SYMBOL_STAR;
+            break;
+        case '/': sym_type = TOKEN_SYMBOL_SLASH;
+            break;
+        case '%': sym_type = TOKEN_SYMBOL_PERCENT;
+            break;
         default: break;
     }
     if (sym_type != TOKEN_UNKNOWN) {
@@ -174,8 +180,8 @@ bool lexer_next_token(Lexer *lexer, Token *out_token) {
     // Allocate space for the single unknown character in the arena
     char *lexeme = arena_alloc(lexer->arena, 2); // 1 char + null terminator
     if (!lexeme) {
-         fprintf(stderr, "Lexer Error: Arena allocation failed for unknown token lexeme (char).\n");
-         return false; // Allocation failure
+        fprintf(stderr, "Lexer Error: Arena allocation failed for unknown token lexeme (char).\n");
+        return false; // Allocation failure
     }
     lexeme[0] = c;
     lexeme[1] = '\0';
@@ -224,6 +230,14 @@ void token_to_string(Token token, char *buffer, size_t buffer_size) {
         case TOKEN_SYMBOL_MINUS: type_str = "'-'";
             break;
         case TOKEN_SYMBOL_DECREMENT: type_str = "'--'";
+            break;
+        case TOKEN_SYMBOL_PLUS: type_str = "'+'";
+            break;
+        case TOKEN_SYMBOL_STAR: type_str = "'*'";
+            break;
+        case TOKEN_SYMBOL_SLASH: type_str = "'/'";
+            break;
+        case TOKEN_SYMBOL_PERCENT: type_str = "'%'";
             break;
         // Add other symbols here...
 

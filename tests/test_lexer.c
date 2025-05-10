@@ -132,6 +132,14 @@ ExpectedToken operators_expected[] = {
     {TOKEN_SYMBOL_MINUS, NULL}
 };
 
+// Expected tokens for "+ * / %"
+ExpectedToken binary_ops_expected[] = {
+    {TOKEN_SYMBOL_PLUS, NULL},
+    {TOKEN_SYMBOL_STAR, NULL},
+    {TOKEN_SYMBOL_SLASH, NULL},
+    {TOKEN_SYMBOL_PERCENT, NULL}
+};
+
 // Define an empty array for tests that expect zero tokens
 ExpectedToken no_tokens_expected[] = {};
 
@@ -160,6 +168,12 @@ LexerTestCase test_cases[] = {
         "~ -- - ",
         operators_expected,
         sizeof(operators_expected) / sizeof(ExpectedToken)
+    },
+    {
+        "Binary Operators + * / %",
+        "+ * / %",
+        binary_ops_expected,
+        sizeof(binary_ops_expected) / sizeof(ExpectedToken)
     },
     // Add more test cases here easily
     {
