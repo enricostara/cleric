@@ -281,7 +281,14 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
             }
             string_buffer_append(sb, "    movl %s, %%eax\n", op1_str); // Move dividend (src1) into eax
             string_buffer_append(sb, "    cltd\n"); // Sign-extend eax into edx:eax (cdq for 32-bit)
-            string_buffer_append(sb, "    idivl %s\n", op2_str);
+
+            // Handle divisor (src2): if it's a constant, move to register first
+            if (instr->operands.binary_op.src2.type == TAC_OPERAND_CONST) {
+                string_buffer_append(sb, "    movl %s, %%ecx\n", op2_str); // movl $const_val, %ecx
+                string_buffer_append(sb, "    idivl %%ecx\n");          // idivl %ecx
+            } else {
+                string_buffer_append(sb, "    idivl %s\n", op2_str);     // idivl temp_var_on_stack
+            }
             // Divide edx:eax by src2. Quotient in eax, Remainder in edx.
 
             if (instr->type == TAC_INS_DIV) {
