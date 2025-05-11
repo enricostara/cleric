@@ -69,6 +69,12 @@ void arena_reset(Arena *arena) {
     }
 }
 
+// Custom memset implementation.
+// Uses a volatile pointer to try and ensure that the memory zeroing operation
+// is not optimized away by the compiler. This is a common technique for
+// attempting to securely clear sensitive data, as standard memset might be
+// removed if the compiler deems the buffer unused afterwards.
+// See SEI CERT C Coding Standard: MSC06-C.
 static void arena_memset(void *ptr, int c, size_t n) {
     volatile unsigned char *p = ptr;
     while (n--) {
