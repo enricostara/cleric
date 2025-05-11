@@ -14,6 +14,8 @@ static size_t align_up(size_t size, const size_t alignment) {
     return (size + alignment - 1) & ~(alignment - 1);
 }
 
+static void arena_memset(void *ptr, int c, size_t n);
+
 Arena arena_create(const size_t initial_size) {
     Arena arena = {0}; // Initialize all fields to zero/NULL
     arena.start = (char *) malloc(initial_size);
@@ -63,6 +65,19 @@ void arena_reset(Arena *arena) {
     if (arena) {
         arena->offset = 0;
         // Zero out the memory for security/debugging
-        memset(arena->start, 0, arena->total_size);
+        arena_memset(arena->start, 0, arena->total_size);
+    }
+}
+
+// Custom memset implementation.
+// Uses a volatile pointer to try and ensure that the memory zeroing operation
+// is not optimized away by the compiler. This is a common technique for
+// attempting to securely clear sensitive data, as standard memset might be
+// removed if the compiler deems the buffer unused afterwards.
+// See SEI CERT C Coding Standard: MSC06-C.
+static void arena_memset(void *ptr, int c, size_t n) {
+    volatile unsigned char *p = ptr;
+    while (n--) {
+        *p++ = c;
     }
 }
