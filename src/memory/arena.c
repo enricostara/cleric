@@ -14,6 +14,8 @@ static size_t align_up(size_t size, const size_t alignment) {
     return (size + alignment - 1) & ~(alignment - 1);
 }
 
+static void arena_memset(void *ptr, int c, size_t n);
+
 Arena arena_create(const size_t initial_size) {
     Arena arena = {0}; // Initialize all fields to zero/NULL
     arena.start = (char *) malloc(initial_size);
@@ -63,6 +65,13 @@ void arena_reset(Arena *arena) {
     if (arena) {
         arena->offset = 0;
         // Zero out the memory for security/debugging
-        memset(arena->start, 0, arena->total_size);
+        arena_memset(arena->start, 0, arena->total_size);
+    }
+}
+
+static void arena_memset(void *ptr, int c, size_t n) {
+    volatile unsigned char *p = ptr;
+    while (n--) {
+        *p++ = c;
     }
 }
