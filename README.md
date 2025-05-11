@@ -20,7 +20,7 @@ Cleric demonstrates the basic stages of compiling a subset of C code:
     - `--parse`: Print the generated Abstract Syntax Tree.
     - `--tac`: Print the generated Three-Address Code.
     - `--codegen`: Print the generated assembly code to standard output.
-- **Arena Allocator**: Efficiently manages memory for AST nodes using a custom arena allocator, simplifying cleanup.
+- **Arena Allocator**: Utilizes a custom arena allocator for efficient memory management across multiple compilation stages. It handles allocations for lexer tokens, Abstract Syntax Tree (AST) nodes, Three-Address Code (TAC) structures, and other dynamic data within the parser and code generation phases, simplifying cleanup and potentially improving allocation performance.
 - **Testable Core Logic**: The core compilation pipeline (lexing, parsing, codegen) is handled by the `compile` function, which is testable.
 - **Comprehensive Testing**: Includes both unit tests (for individual modules) and integration tests (verifying the core string-to-string compilation).
 - **Three-Address Code (TAC)**: Employs TAC as an intermediate representation, simplifying the translation from the high-level AST to low-level assembly, and paving the way for future optimizations.
