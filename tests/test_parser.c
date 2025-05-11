@@ -167,6 +167,38 @@ void test_parse_missing_brace(void) {
     arena_destroy(&test_arena);
 }
 
+// Test parsing a function with an empty body: "int main(void) {}"
+void test_parse_function_empty_body(void) {
+    const char *input = "int main(void) {}";
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
+
+    ProgramNode *program = parse_program(&parser);
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with empty function body");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with empty function body");
+
+    // --- AST Structure Verification ---
+    // Program -> FuncDef
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_PROGRAM, program->base.type, "Program node type mismatch");
+    TEST_ASSERT_NOT_NULL_MESSAGE(program->function, "ProgramNode has no function");
+    FuncDefNode *func_def = program->function;
+
+    // FuncDef name and body
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_FUNC_DEF, func_def->base.type, "Function definition node type mismatch");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE("main", func_def->name, "Function name mismatch");
+    
+    // Crucial check: The body of an empty function should be NULL
+    TEST_ASSERT_NULL_MESSAGE(func_def->body, "Function body is not NULL for an empty function");
+
+    arena_destroy(&test_arena);
+}
+
 // Test parsing a program with a negation unary operator
 void test_parse_negation_operator(void) {
     const char *input = "int main(void) { return -42; }";
@@ -818,6 +850,7 @@ void run_parser_tests(void)
     RUN_TEST(test_parse_valid_program);
     RUN_TEST(test_parse_missing_semicolon);
     RUN_TEST(test_parse_missing_brace);
+    RUN_TEST(test_parse_function_empty_body);
     RUN_TEST(test_parse_negation_operator);
     RUN_TEST(test_parse_complement_operator);
     RUN_TEST(test_parse_nested_unary_operators);

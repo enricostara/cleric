@@ -257,21 +257,27 @@ static FuncDefNode *parse_function_definition(Parser *parser) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
-    // Parse the statement block (simplified to one statement)
-    AstNode *body_statement = parse_statement(parser);
-    if (!body_statement) {
-        // Check if statement parsing failed (error flag should be set)
-        // No need to free func_name, it's in the arena
-        return NULL;
-    }
+    AstNode *body_statement = NULL; // Initialize to NULL, representing an empty body.
 
-    // Expect '}' after the statement
+    // If the next token is not '}', then we try to parse a statement.
+    // This allows for an empty body {}
+    if (parser->current_token.type != TOKEN_SYMBOL_RBRACE) {
+        body_statement = parse_statement(parser);
+        if (!body_statement) {
+            // parse_statement failed (and should have set the error flag).
+            return NULL;
+        }
+    }
+    // Now, body_statement is either NULL (for an empty body) or a parsed statement.
+
+    // Expect '}' to close the function body
     if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
-        // No need to free_ast or free func_name; arena handles cleanup
+        // Error handled by parser_consume.
         return NULL; // Error handled and flag set inside parser_consume
     }
 
     // Create the function definition node using the name from the arena
+    // create_func_def_node and FuncDefNode must be able to handle body_statement being NULL.
     FuncDefNode *func_node = create_func_def_node(func_name, body_statement, parser->arena);
     // No need to free func_name; it was allocated in the arena and create_func_def_node
     // now uses the pointer directly (or copies into the arena if it didn't before).
