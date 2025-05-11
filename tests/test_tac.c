@@ -225,8 +225,8 @@ void test_add_functions(void) {
 
     // Add functions up to initial capacity
     for (size_t i = 0; i < initial_capacity; ++i) {
-        char func_name[20];
-        sprintf(func_name, "func_%zu", i);
+        char func_name[32];
+        snprintf(func_name, sizeof(func_name), "func_%zu", i);
         TacFunction *func = create_tac_function(func_name, &test_arena);
         add_function_to_program(prog, func, &test_arena);
         TEST_ASSERT_EQUAL(i + 1, prog->function_count);
