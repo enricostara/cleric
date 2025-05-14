@@ -42,7 +42,8 @@ static void verify_nested_unary_op(AstNode *node, UnaryOperatorType outer_op, Un
 }
 
 // Helper function to verify a binary operation node where both operands are int literals
-static void verify_binary_op_node(AstNode *node, BinaryOperatorType expected_op, int expected_left_val, int expected_right_val) {
+static void verify_binary_op_node(AstNode *node, BinaryOperatorType expected_op, int expected_left_val,
+                                  int expected_right_val) {
     TEST_ASSERT_NOT_NULL_MESSAGE(node, "BinaryOpNode is NULL");
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, node->type, "Node type is not NODE_BINARY_OP");
 
@@ -63,14 +64,17 @@ static void verify_binary_op_node(AstNode *node, BinaryOperatorType expected_op,
 // --- Helper for Error Tests ---
 void verify_parser_error(const char *input, const char *expected_error_substring) {
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser); // This will trigger the parsing
 
     TEST_ASSERT_TRUE_MESSAGE(parser.error_flag, "Parser did not report an error as expected.");
     if (expected_error_substring) {
         TEST_ASSERT_NOT_NULL(parser.error_message); // This is where it was failing
-        TEST_ASSERT_NOT_NULL_MESSAGE(strstr(parser.error_message, expected_error_substring), "Error message mismatch or expected substring not found.");
+        TEST_ASSERT_NOT_NULL_MESSAGE(strstr(parser.error_message, expected_error_substring),
+                                     "Error message mismatch or expected substring not found.");
     }
     // ProgramNode might be NULL or partially formed, which is okay for error tests
     arena_destroy(&test_arena);
@@ -192,7 +196,7 @@ void test_parse_function_empty_body(void) {
     // FuncDef name and body
     TEST_ASSERT_EQUAL_MESSAGE(NODE_FUNC_DEF, func_def->base.type, "Function definition node type mismatch");
     TEST_ASSERT_EQUAL_STRING_MESSAGE("main", func_def->name, "Function name mismatch");
-    
+
     // Crucial check: The body of an empty function should be NULL
     TEST_ASSERT_NULL_MESSAGE(func_def->body, "Function body is not NULL for an empty function");
 
@@ -516,8 +520,10 @@ void test_parse_mismatched_parentheses(void) {
 void test_parse_integer_bounds(void) {
     const char *input = "int main(void) { return 2147483647; }"; // INT_MAX for 32-bit int
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with INT_MAX");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with INT_MAX");
@@ -566,13 +572,15 @@ void test_parse_integer_overflow(void) {
 void test_parse_simple_addition(void) {
     const char *input = "int main(void) { return 1 + 2; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for simple addition");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for simple addition");
 
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     TEST_ASSERT_NOT_NULL_MESSAGE(return_stmt, "Return statement is NULL");
     TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, return_stmt->base.type, "Body is not a return statement");
 
@@ -584,12 +592,14 @@ void test_parse_simple_addition(void) {
 void test_parse_simple_subtraction(void) {
     const char *input = "int main(void) { return 5 - 3; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(return_stmt->expression, OPERATOR_SUBTRACT, 5, 3);
     arena_destroy(&test_arena);
 }
@@ -597,12 +607,14 @@ void test_parse_simple_subtraction(void) {
 void test_parse_simple_multiplication(void) {
     const char *input = "int main(void) { return 4 * 6; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(return_stmt->expression, OPERATOR_MULTIPLY, 4, 6);
     arena_destroy(&test_arena);
 }
@@ -610,12 +622,14 @@ void test_parse_simple_multiplication(void) {
 void test_parse_simple_division(void) {
     const char *input = "int main(void) { return 10 / 2; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(return_stmt->expression, OPERATOR_DIVIDE, 10, 2);
     arena_destroy(&test_arena);
 }
@@ -623,12 +637,14 @@ void test_parse_simple_division(void) {
 void test_parse_simple_modulo(void) {
     const char *input = "int main(void) { return 7 % 3; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(return_stmt->expression, OPERATOR_MODULO, 7, 3);
     arena_destroy(&test_arena);
 }
@@ -637,16 +653,18 @@ void test_parse_precedence_add_mul(void) {
     // AST should be: (1 + (2 * 3)) ->  ADD(1, MUL(2,3))
     const char *input = "int main(void) { return 1 + 2 * 3; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     AstNode *expr_node = return_stmt->expression;
 
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
-    BinaryOpNode *add_op = (BinaryOpNode*)expr_node;
+    BinaryOpNode *add_op = (BinaryOpNode *) expr_node;
     TEST_ASSERT_EQUAL(OPERATOR_ADD, add_op->op);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_op->left->type);
     TEST_ASSERT_EQUAL_INT(1, ((IntLiteralNode*)add_op->left)->value);
@@ -660,16 +678,18 @@ void test_parse_precedence_mul_add(void) {
     // AST should be: ((1 * 2) + 3) -> ADD(MUL(1,2), 3)
     const char *input = "int main(void) { return 1 * 2 + 3; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     AstNode *expr_node = return_stmt->expression;
 
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
-    BinaryOpNode *add_op = (BinaryOpNode*)expr_node;
+    BinaryOpNode *add_op = (BinaryOpNode *) expr_node;
     TEST_ASSERT_EQUAL(OPERATOR_ADD, add_op->op);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_op->right->type);
     TEST_ASSERT_EQUAL_INT(3, ((IntLiteralNode*)add_op->right)->value);
@@ -683,16 +703,18 @@ void test_parse_associativity_subtract(void) {
     // AST should be: ((10 - 3) - 2) -> SUBTRACT(SUBTRACT(10,3), 2)
     const char *input = "int main(void) { return 10 - 3 - 2; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     AstNode *expr_node = return_stmt->expression;
 
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
-    BinaryOpNode *outer_sub_op = (BinaryOpNode*)expr_node;
+    BinaryOpNode *outer_sub_op = (BinaryOpNode *) expr_node;
     TEST_ASSERT_EQUAL(OPERATOR_SUBTRACT, outer_sub_op->op);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, outer_sub_op->right->type);
     TEST_ASSERT_EQUAL_INT(2, ((IntLiteralNode*)outer_sub_op->right)->value);
@@ -706,16 +728,18 @@ void test_parse_associativity_divide(void) {
     // AST should be: ((100 / 10) / 2) -> DIVIDE(DIVIDE(100,10), 2)
     const char *input = "int main(void) { return 100 / 10 / 2; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     AstNode *expr_node = return_stmt->expression;
 
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
-    BinaryOpNode *outer_div_op = (BinaryOpNode*)expr_node;
+    BinaryOpNode *outer_div_op = (BinaryOpNode *) expr_node;
     TEST_ASSERT_EQUAL(OPERATOR_DIVIDE, outer_div_op->op);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, outer_div_op->right->type);
     TEST_ASSERT_EQUAL_INT(2, ((IntLiteralNode*)outer_div_op->right)->value);
@@ -729,16 +753,18 @@ void test_parse_parentheses_simple(void) {
     // AST should be: ((1 + 2) * 3) -> MULTIPLY(ADD(1,2), 3)
     const char *input = "int main(void) { return (1 + 2) * 3; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     AstNode *expr_node = return_stmt->expression;
 
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type);
-    BinaryOpNode *mul_op = (BinaryOpNode*)expr_node;
+    BinaryOpNode *mul_op = (BinaryOpNode *) expr_node;
     TEST_ASSERT_EQUAL(OPERATOR_MULTIPLY, mul_op->op);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mul_op->right->type);
     TEST_ASSERT_EQUAL_INT(3, ((IntLiteralNode*)mul_op->right)->value);
@@ -752,16 +778,18 @@ void test_parse_parentheses_nested(void) {
     // AST: 1 * (2 + 3) % 4 -> MODULO(MULTIPLY(1, ADD(2,3)), 4)
     const char *input = "int main(void) { return 1 * (2 + 3) % 4; }";
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
     AstNode *expr_node = return_stmt->expression;
 
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type); // MODULO is root
-    BinaryOpNode *mod_op = (BinaryOpNode*)expr_node;
+    BinaryOpNode *mod_op = (BinaryOpNode *) expr_node;
     TEST_ASSERT_EQUAL(OPERATOR_MODULO, mod_op->op);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mod_op->right->type);
     TEST_ASSERT_EQUAL_INT(4, ((IntLiteralNode*)mod_op->right)->value);
@@ -769,7 +797,7 @@ void test_parse_parentheses_nested(void) {
     // Left child of MODULO is MULTIPLY(1, ADD(2,3))
     AstNode *mul_node = mod_op->left;
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, mul_node->type);
-    BinaryOpNode *mul_op = (BinaryOpNode*)mul_node;
+    BinaryOpNode *mul_op = (BinaryOpNode *) mul_node;
     TEST_ASSERT_EQUAL(OPERATOR_MULTIPLY, mul_op->op);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mul_op->left->type);
     TEST_ASSERT_EQUAL_INT(1, ((IntLiteralNode*)mul_op->left)->value);
@@ -783,16 +811,18 @@ void test_parse_unary_with_binary_simple(void) {
     // Test -1 + 5 -> ADD(NEGATE(1), 5)
     const char *input1 = "int main(void) { return -1 + 5; }";
     Arena arena1 = arena_create(1024);
-    Lexer lexer1; lexer_init(&lexer1, input1, &arena1);
-    Parser parser1; parser_init(&parser1, &lexer1, &arena1);
+    Lexer lexer1;
+    lexer_init(&lexer1, input1, &arena1);
+    Parser parser1;
+    parser_init(&parser1, &lexer1, &arena1);
     ProgramNode *program1 = parse_program(&parser1);
     TEST_ASSERT_NOT_NULL(program1);
     TEST_ASSERT_FALSE(parser1.error_flag);
-    ReturnStmtNode *return_stmt1 = (ReturnStmtNode *)program1->function->body;
+    ReturnStmtNode *return_stmt1 = (ReturnStmtNode *) program1->function->body;
     AstNode *expr1 = return_stmt1->expression;
 
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr1->type);
-    BinaryOpNode *add_op1 = (BinaryOpNode*)expr1;
+    BinaryOpNode *add_op1 = (BinaryOpNode *) expr1;
     TEST_ASSERT_EQUAL(OPERATOR_ADD, add_op1->op);
     verify_unary_op_node(add_op1->left, OPERATOR_NEGATE, 1);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_op1->right->type);
@@ -802,16 +832,18 @@ void test_parse_unary_with_binary_simple(void) {
     // Test 10 * -2 -> MULTIPLY(10, NEGATE(2))
     const char *input2 = "int main(void) { return 10 * -2; }";
     Arena arena2 = arena_create(1024);
-    Lexer lexer2; lexer_init(&lexer2, input2, &arena2);
-    Parser parser2; parser_init(&parser2, &lexer2, &arena2);
+    Lexer lexer2;
+    lexer_init(&lexer2, input2, &arena2);
+    Parser parser2;
+    parser_init(&parser2, &lexer2, &arena2);
     ProgramNode *program2 = parse_program(&parser2);
     TEST_ASSERT_NOT_NULL(program2);
     TEST_ASSERT_FALSE(parser2.error_flag);
-    ReturnStmtNode *return_stmt2 = (ReturnStmtNode *)program2->function->body;
+    ReturnStmtNode *return_stmt2 = (ReturnStmtNode *) program2->function->body;
     AstNode *expr2 = return_stmt2->expression;
 
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr2->type);
-    BinaryOpNode *mul_op2 = (BinaryOpNode*)expr2;
+    BinaryOpNode *mul_op2 = (BinaryOpNode *) expr2;
     TEST_ASSERT_EQUAL(OPERATOR_MULTIPLY, mul_op2->op);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mul_op2->left->type);
     TEST_ASSERT_EQUAL_INT(10, ((IntLiteralNode*)mul_op2->left)->value);
@@ -846,7 +878,7 @@ void test_parse_unary_on_parenthesized_expr(void) {
 
     AstNode *unary_expr = return_stmt->expression;
     TEST_ASSERT_EQUAL(NODE_UNARY_OP, unary_expr->type);
-    UnaryOpNode *unary_node = (UnaryOpNode *)unary_expr;
+    UnaryOpNode *unary_node = (UnaryOpNode *) unary_expr;
     TEST_ASSERT_EQUAL(OPERATOR_NEGATE, unary_node->op);
 
     verify_binary_op_node(unary_node->operand, OPERATOR_ADD, 2, 3);
@@ -859,12 +891,14 @@ void test_parse_unary_on_parenthesized_expr(void) {
 void test_parse_relational_less_than(void) {
     const char *input = "int main(void) { return 1 < 2; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '<'");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '<'");
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(ret->expression, OPERATOR_LESS, 1, 2);
     arena_destroy(&arena);
 }
@@ -872,12 +906,14 @@ void test_parse_relational_less_than(void) {
 void test_parse_relational_greater_than(void) {
     const char *input = "int main(void) { return 2 > 1; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '>'");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '>'");
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(ret->expression, OPERATOR_GREATER, 2, 1);
     arena_destroy(&arena);
 }
@@ -885,12 +921,14 @@ void test_parse_relational_greater_than(void) {
 void test_parse_relational_less_equal(void) {
     const char *input = "int main(void) { return 1 <= 2; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '<='");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '<='");
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(ret->expression, OPERATOR_LESS_EQUAL, 1, 2);
     arena_destroy(&arena);
 }
@@ -898,12 +936,14 @@ void test_parse_relational_less_equal(void) {
 void test_parse_relational_greater_equal(void) {
     const char *input = "int main(void) { return 2 >= 1; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '>='");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '>='");
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(ret->expression, OPERATOR_GREATER_EQUAL, 2, 1);
     arena_destroy(&arena);
 }
@@ -911,12 +951,14 @@ void test_parse_relational_greater_equal(void) {
 void test_parse_relational_equal_equal(void) {
     const char *input = "int main(void) { return 1 == 1; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '=='");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '=='");
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(ret->expression, OPERATOR_EQUAL_EQUAL, 1, 1);
     arena_destroy(&arena);
 }
@@ -924,12 +966,14 @@ void test_parse_relational_equal_equal(void) {
 void test_parse_relational_not_equal(void) {
     const char *input = "int main(void) { return 1 != 2; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '!='");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '!='");
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(ret->expression, OPERATOR_NOT_EQUAL, 1, 2);
     arena_destroy(&arena);
 }
@@ -937,12 +981,14 @@ void test_parse_relational_not_equal(void) {
 void test_parse_logical_and(void) {
     const char *input = "int main(void) { return 1 && 0; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '&&'");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '&&'");
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(ret->expression, OPERATOR_LOGICAL_AND, 1, 0);
     arena_destroy(&arena);
 }
@@ -950,12 +996,14 @@ void test_parse_logical_and(void) {
 void test_parse_logical_or(void) {
     const char *input = "int main(void) { return 0 || 1; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '||'");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '||'");
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     verify_binary_op_node(ret->expression, OPERATOR_LOGICAL_OR, 0, 1);
     arena_destroy(&arena);
 }
@@ -966,26 +1014,28 @@ void test_parse_logical_or(void) {
 void test_precedence_logical_or_and(void) {
     const char *input = "int main(void) { return 1 || 0 && 1; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
 
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     AstNode *expr = ret->expression;
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr->type, "Root not BINARY_OP");
 
-    BinaryOpNode *or_node = (BinaryOpNode *)expr;
+    BinaryOpNode *or_node = (BinaryOpNode *) expr;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_OR, or_node->op, "Root op not ||");
     TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, or_node->left->type, "OR left not INT_LITERAL");
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, ((IntLiteralNode *)or_node->left)->value, "OR left value mismatch");
 
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, or_node->right->type, "OR right not BINARY_OP");
-    BinaryOpNode *and_node = (BinaryOpNode *)or_node->right;
+    BinaryOpNode *and_node = (BinaryOpNode *) or_node->right;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Nested op not &&");
-    verify_binary_op_node((AstNode*)and_node, OPERATOR_LOGICAL_AND, 0, 1); // Verifies children of AND
+    verify_binary_op_node((AstNode *) and_node, OPERATOR_LOGICAL_AND, 0, 1); // Verifies children of AND
 
     arena_destroy(&arena);
 }
@@ -994,18 +1044,20 @@ void test_precedence_logical_or_and(void) {
 void test_precedence_relational_and_logical(void) {
     const char *input = "int main(void) { return 1 < 2 && 3 > 1; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
 
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     AstNode *expr = ret->expression;
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr->type, "Root not BINARY_OP");
 
-    BinaryOpNode *and_node = (BinaryOpNode *)expr;
+    BinaryOpNode *and_node = (BinaryOpNode *) expr;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Root op not &&");
 
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, and_node->left->type, "&& left not BINARY_OP");
@@ -1021,23 +1073,25 @@ void test_precedence_relational_and_logical(void) {
 void test_precedence_arithmetic_relational_logical(void) {
     const char *input = "int main(void) { return 1 + 2 < 4 && 5 > 3 - 1; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
 
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     AstNode *expr = ret->expression;
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr->type, "Root not BINARY_OP");
 
-    BinaryOpNode *and_node = (BinaryOpNode *)expr;
+    BinaryOpNode *and_node = (BinaryOpNode *) expr;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Root op not &&");
 
     // Left side of &&: (1 + 2) < 4
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, and_node->left->type, "AND left not BINARY_OP");
-    BinaryOpNode *less_node = (BinaryOpNode *)and_node->left;
+    BinaryOpNode *less_node = (BinaryOpNode *) and_node->left;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LESS, less_node->op, "Op not <");
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, less_node->left->type, "< left not BINARY_OP");
     verify_binary_op_node(less_node->left, OPERATOR_ADD, 1, 2);
@@ -1046,7 +1100,7 @@ void test_precedence_arithmetic_relational_logical(void) {
 
     // Right side of &&: 5 > (3 - 1)
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, and_node->right->type, "AND right not BINARY_OP");
-    BinaryOpNode *greater_node = (BinaryOpNode *)and_node->right;
+    BinaryOpNode *greater_node = (BinaryOpNode *) and_node->right;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_GREATER, greater_node->op, "Op not >");
     TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, greater_node->left->type, "> left not INT_LITERAL");
     TEST_ASSERT_EQUAL_INT_MESSAGE(5, ((IntLiteralNode *)greater_node->left)->value, "> left value mismatch");
@@ -1060,18 +1114,20 @@ void test_precedence_arithmetic_relational_logical(void) {
 void test_precedence_unary_not_with_logical(void) {
     const char *input = "int main(void) { return !0 && 1; }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
 
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     AstNode *expr = ret->expression;
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr->type, "Root not BINARY_OP");
 
-    BinaryOpNode *and_node = (BinaryOpNode *)expr;
+    BinaryOpNode *and_node = (BinaryOpNode *) expr;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Root op not &&");
 
     TEST_ASSERT_EQUAL_MESSAGE(NODE_UNARY_OP, and_node->left->type, "AND left not UNARY_OP");
@@ -1087,22 +1143,24 @@ void test_precedence_unary_not_with_logical(void) {
 void test_precedence_unary_not_on_parenthesized_logical(void) {
     const char *input = "int main(void) { return !(1 < 2 && 0); }";
     Arena arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &arena);
-    Parser parser; parser_init(&parser, &lexer, &arena);
+    Lexer lexer;
+    lexer_init(&lexer, input, &arena);
+    Parser parser;
+    parser_init(&parser, &lexer, &arena);
     ProgramNode *program = parse_program(&parser);
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
 
-    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    ReturnStmtNode *ret = (ReturnStmtNode *) program->function->body;
     AstNode *expr = ret->expression;
     TEST_ASSERT_EQUAL_MESSAGE(NODE_UNARY_OP, expr->type, "Root not UNARY_OP");
 
-    UnaryOpNode *not_node = (UnaryOpNode *)expr;
+    UnaryOpNode *not_node = (UnaryOpNode *) expr;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_NOT, not_node->op, "Root op not !");
 
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, not_node->operand->type, "NOT operand not BINARY_OP");
-    BinaryOpNode *and_node = (BinaryOpNode *)not_node->operand;
+    BinaryOpNode *and_node = (BinaryOpNode *) not_node->operand;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Nested op not &&");
 
     TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, and_node->left->type, "&& left not BINARY_OP");
@@ -1138,8 +1196,7 @@ void test_parse_error_missing_closing_paren(void) {
 
 // --- Test Runner ---
 // Group parser tests into a single runner function
-void run_parser_tests(void)
-{
+void run_parser_tests(void) {
     RUN_TEST(test_parse_valid_program);
     RUN_TEST(test_parse_missing_semicolon);
     RUN_TEST(test_parse_missing_brace);

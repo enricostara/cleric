@@ -29,6 +29,20 @@ TacOperand create_tac_operand_temp(const int temp_id) {
     return op;
 }
 
+TacOperand create_tac_operand_label(const char *name, Arena *arena) {
+    TacOperand op;
+    op.type = TAC_OPERAND_LABEL;
+    // Assume name is already managed (e.g., arena-allocated by caller or string literal)
+    // If name needs to be copied into the arena specifically for this operand:
+    // size_t name_len = strlen(name) + 1;
+    // char *name_copy = arena_alloc(arena, name_len);
+    // if (!name_copy) { perror("Failed to allocate TAC label name"); exit(EXIT_FAILURE); }
+    // memcpy(name_copy, name, name_len);
+    // op.value.label_name = name_copy;
+    op.value.label_name = name; // Assuming name is persistent
+    return op;
+}
+
 //------------------------------------------------------------------------------
 // Instruction Creation
 //------------------------------------------------------------------------------
@@ -73,7 +87,8 @@ TacInstruction *create_tac_instruction_return(const TacOperand src, Arena *arena
 }
 
 // --- Binary Instruction Creation ---
-TacInstruction *create_tac_instruction_add(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+TacInstruction *create_tac_instruction_add(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                           Arena *arena) {
     TacInstruction *instr = create_base_instruction(TAC_INS_ADD, arena);
     instr->operands.binary_op.dst = dst;
     instr->operands.binary_op.src1 = src1;
@@ -81,7 +96,8 @@ TacInstruction *create_tac_instruction_add(const TacOperand dst, const TacOperan
     return instr;
 }
 
-TacInstruction *create_tac_instruction_sub(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+TacInstruction *create_tac_instruction_sub(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                           Arena *arena) {
     TacInstruction *instr = create_base_instruction(TAC_INS_SUB, arena);
     instr->operands.binary_op.dst = dst;
     instr->operands.binary_op.src1 = src1;
@@ -89,7 +105,8 @@ TacInstruction *create_tac_instruction_sub(const TacOperand dst, const TacOperan
     return instr;
 }
 
-TacInstruction *create_tac_instruction_mul(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+TacInstruction *create_tac_instruction_mul(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                           Arena *arena) {
     TacInstruction *instr = create_base_instruction(TAC_INS_MUL, arena);
     instr->operands.binary_op.dst = dst;
     instr->operands.binary_op.src1 = src1;
@@ -97,7 +114,8 @@ TacInstruction *create_tac_instruction_mul(const TacOperand dst, const TacOperan
     return instr;
 }
 
-TacInstruction *create_tac_instruction_div(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+TacInstruction *create_tac_instruction_div(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                           Arena *arena) {
     TacInstruction *instr = create_base_instruction(TAC_INS_DIV, arena);
     instr->operands.binary_op.dst = dst;
     instr->operands.binary_op.src1 = src1;
@@ -105,11 +123,93 @@ TacInstruction *create_tac_instruction_div(const TacOperand dst, const TacOperan
     return instr;
 }
 
-TacInstruction *create_tac_instruction_mod(const TacOperand dst, const TacOperand src1, const TacOperand src2, Arena *arena) {
+TacInstruction *create_tac_instruction_mod(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                           Arena *arena) {
     TacInstruction *instr = create_base_instruction(TAC_INS_MOD, arena);
     instr->operands.binary_op.dst = dst;
     instr->operands.binary_op.src1 = src1;
     instr->operands.binary_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_logical_not(const TacOperand dst, const TacOperand src, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_LOGICAL_NOT, arena);
+    instr->operands.unary_op.dst = dst;
+    instr->operands.unary_op.src = src;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_less(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                            Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_LESS, arena);
+    instr->operands.relational_op.dst = dst;
+    instr->operands.relational_op.src1 = src1;
+    instr->operands.relational_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_greater(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                               Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_GREATER, arena);
+    instr->operands.relational_op.dst = dst;
+    instr->operands.relational_op.src1 = src1;
+    instr->operands.relational_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_less_equal(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                                  Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_LESS_EQUAL, arena);
+    instr->operands.relational_op.dst = dst;
+    instr->operands.relational_op.src1 = src1;
+    instr->operands.relational_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_greater_equal(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                                     Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_GREATER_EQUAL, arena);
+    instr->operands.relational_op.dst = dst;
+    instr->operands.relational_op.src1 = src1;
+    instr->operands.relational_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_equal(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                             Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_EQUAL, arena);
+    instr->operands.relational_op.dst = dst;
+    instr->operands.relational_op.src1 = src1;
+    instr->operands.relational_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_not_equal(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                                 Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_NOT_EQUAL, arena);
+    instr->operands.relational_op.dst = dst;
+    instr->operands.relational_op.src1 = src1;
+    instr->operands.relational_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_label(const TacOperand label, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_LABEL, arena);
+    instr->operands.label_def.label = label;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_goto(const TacOperand target_label, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_GOTO, arena);
+    instr->operands.go_to.target_label = target_label;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_if_false_goto(const TacOperand condition_src, const TacOperand target_label,
+                                                     Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_IF_FALSE_GOTO, arena);
+    instr->operands.conditional_goto.condition_src = condition_src;
+    instr->operands.conditional_goto.target_label = target_label;
     return instr;
 }
 
@@ -226,6 +326,9 @@ void tac_print_operand(StringBuffer *sb, const TacOperand *operand) {
         case TAC_OPERAND_TEMP:
             string_buffer_append(sb, "t%d", operand->value.temp_id);
             break;
+        case TAC_OPERAND_LABEL:
+            string_buffer_append(sb, "%s", operand->value.label_name ? operand->value.label_name : "<null_label_name>");
+            break;
         default:
             string_buffer_append(sb, "<unk_op_type:%d>", operand->type);
             break;
@@ -303,6 +406,80 @@ void tac_print_instruction(StringBuffer *sb, const TacInstruction *instruction) 
             tac_print_operand(sb, &instruction->operands.binary_op.src2);
             string_buffer_append(sb, "\n");
             break;
+        // New Unary Op
+        case TAC_INS_LOGICAL_NOT:
+            tac_print_operand(sb, &instruction->operands.unary_op.dst);
+            string_buffer_append(sb, " = ! ");
+            tac_print_operand(sb, &instruction->operands.unary_op.src);
+            string_buffer_append(sb, "\n");
+            break;
+        // New Relational Ops
+        case TAC_INS_LESS:
+            tac_print_operand(sb, &instruction->operands.relational_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src1);
+            string_buffer_append(sb, " < ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_GREATER:
+            tac_print_operand(sb, &instruction->operands.relational_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src1);
+            string_buffer_append(sb, " > ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_LESS_EQUAL:
+            tac_print_operand(sb, &instruction->operands.relational_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src1);
+            string_buffer_append(sb, " <= ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_GREATER_EQUAL:
+            tac_print_operand(sb, &instruction->operands.relational_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src1);
+            string_buffer_append(sb, " >= ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_EQUAL:
+            tac_print_operand(sb, &instruction->operands.relational_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src1);
+            string_buffer_append(sb, " == ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_NOT_EQUAL:
+            tac_print_operand(sb, &instruction->operands.relational_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src1);
+            string_buffer_append(sb, " != ");
+            tac_print_operand(sb, &instruction->operands.relational_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        // New Control Flow Instructions
+        case TAC_INS_LABEL:
+            tac_print_operand(sb, &instruction->operands.label_def.label);
+            string_buffer_append(sb, ":");
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_GOTO:
+            string_buffer_append(sb, "goto ");
+            tac_print_operand(sb, &instruction->operands.go_to.target_label);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_IF_FALSE_GOTO:
+            string_buffer_append(sb, "if_false ");
+            tac_print_operand(sb, &instruction->operands.conditional_goto.condition_src);
+            string_buffer_append(sb, " goto ");
+            tac_print_operand(sb, &instruction->operands.conditional_goto.target_label);
+            string_buffer_append(sb, "\n");
+            break;
         default:
             string_buffer_append(sb, "<unknown_instr_type:%d>\n", instruction->type);
             break;
@@ -316,10 +493,10 @@ void tac_print_function(StringBuffer *sb, const TacFunction *function, const int
         return;
     }
     print_tac_indent(sb, indent_level);
-    string_buffer_append(sb, "Function %s:\n", function->name ? function->name : "<anonymous>");
+    string_buffer_append(sb, "function %s:\n", function->name ? function->name : "<anonymous>");
 
     for (size_t i = 0; i < function->instruction_count; ++i) {
-        print_tac_indent(sb, indent_level + 1);
+        print_tac_indent(sb, indent_level + 1); // Corrected: Instructions should be indented relative to function
         tac_print_instruction(sb, &function->instructions[i]);
     }
 }
@@ -329,11 +506,12 @@ void tac_print_program(StringBuffer *sb, const TacProgram *program) {
         string_buffer_append(sb, "<null_tac_program>\n");
         return;
     }
-    string_buffer_append(sb, "Program\n");
+    string_buffer_append(sb, "program:\n"); // Added colon
     for (size_t i = 0; i < program->function_count; ++i) {
-        tac_print_function(sb, program->functions[i], 0);
+        tac_print_function(sb, program->functions[i], 1); // Changed indent_level to 1
         if (i < program->function_count - 1) {
             string_buffer_append_char(sb, '\n'); // Add a newline between functions
         }
     }
+    string_buffer_append(sb, "end program\n");
 }

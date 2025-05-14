@@ -45,7 +45,8 @@ static void test_compile_return_4(void) {
 
 static void test_compile_return_negated_parenthesized_constant(void) {
     Arena test_arena = arena_create(1024 * 8);
-    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for negated parenthesized constant test");
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start,
+                                 "Failed to create test arena for negated parenthesized constant test");
 
     const char *input_c = "int main(void) { return -((((10)))); }";
     const char *expected_asm =
@@ -53,11 +54,11 @@ static void test_compile_return_negated_parenthesized_constant(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n"   // t0 -> max_id=0 -> (0+1)*8=8 bytes -> aligned 16 -> min 32 bytes
-            "    movl $10, %eax\n"   // Load constant 10 into %eax
-            "    negl %eax\n"        // Negate %eax (eax is now -10)
-            "    movl %eax, -8(%rbp)\n"// Store result to t0 (-8(%rbp))
-            "    movl -8(%rbp), %eax\n"// return t0 (load t0 into eax for return)
+            "    subq $32, %rsp\n" // t0 -> max_id=0 -> (0+1)*8=8 bytes -> aligned 16 -> min 32 bytes
+            "    movl $10, %eax\n" // Load constant 10 into %eax
+            "    negl %eax\n" // Negate %eax (eax is now -10)
+            "    movl %eax, -8(%rbp)\n" // Store result to t0 (-8(%rbp))
+            "    movl -8(%rbp), %eax\n" // return t0 (load t0 into eax for return)
             "    leave\n"
             "    retq\n";
 
@@ -72,7 +73,8 @@ static void test_compile_return_negated_parenthesized_constant(void) {
 
     const char *actual_asm = string_buffer_content_str(&sb);
     TEST_ASSERT_NOT_NULL_MESSAGE(actual_asm, "Output assembly buffer is NULL for negated parenthesized constant test");
-    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch for negated parenthesized constant");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm,
+                                     "Generated assembly mismatch for negated parenthesized constant");
 
     arena_destroy(&test_arena);
 }
@@ -87,14 +89,14 @@ static void test_compile_return_double_negation(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n"       // t0, t1 -> max_id=1 -> (1+1)*8=16 bytes -> min 32 bytes
-            "    movl $4, %eax\n"        // Load constant 4 into %eax (for inner -4; src_str for NEGATE becomes $4)
-            "    negl %eax\n"            // Negate %eax (eax is now -4)
-            "    movl %eax, -8(%rbp)\n"  // Store result to t0 (-8(%rbp))
-            "    movl -8(%rbp), %eax\n"  // Load t0 (-4) into %eax (for outer -t0)
-            "    negl %eax\n"            // Negate %eax (eax is now 4)
+            "    subq $32, %rsp\n" // t0, t1 -> max_id=1 -> (1+1)*8=16 bytes -> min 32 bytes
+            "    movl $4, %eax\n" // Load constant 4 into %eax (for inner -4; src_str for NEGATE becomes $4)
+            "    negl %eax\n" // Negate %eax (eax is now -4)
+            "    movl %eax, -8(%rbp)\n" // Store result to t0 (-8(%rbp))
+            "    movl -8(%rbp), %eax\n" // Load t0 (-4) into %eax (for outer -t0)
+            "    negl %eax\n" // Negate %eax (eax is now 4)
             "    movl %eax, -16(%rbp)\n" // Store result to t1 (-16(%rbp))
-            "    movl -16(%rbp), %eax\n"  // Return t1 (load t1 into eax for return)
+            "    movl -16(%rbp), %eax\n" // Return t1 (load t1 into eax for return)
             "    leave\n"
             "    retq\n";
 

@@ -198,9 +198,10 @@ static void test_return_binary_add_literals(void) {
     // 1. Construct AST for: int main() { return 5 + 3; }
     IntLiteralNode *lhs_literal = create_int_literal_node(5, &test_arena);
     IntLiteralNode *rhs_literal = create_int_literal_node(3, &test_arena);
-    BinaryOpNode *binary_add_node = create_binary_op_node(OPERATOR_ADD, (AstNode *)lhs_literal, (AstNode *)rhs_literal, &test_arena);
-    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)binary_add_node, &test_arena);
-    FuncDefNode *func_node = create_func_def_node("main", (AstNode *)return_node, &test_arena);
+    BinaryOpNode *binary_add_node = create_binary_op_node(OPERATOR_ADD, (AstNode *) lhs_literal,
+                                                          (AstNode *) rhs_literal, &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) binary_add_node, &test_arena);
+    FuncDefNode *func_node = create_func_def_node("main", (AstNode *) return_node, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
     // 2. Translate AST to TAC

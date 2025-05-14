@@ -129,7 +129,7 @@ static void test_calculate_max_temp_id_no_instructions(void) {
 }
 
 static void test_calculate_max_temp_id_no_temporaries(void) {
-    Arena arena = arena_create(512); // Increased from 256
+    Arena arena = arena_create(1024); // Increased from 256
     TacFunction *func = create_tac_function("no_temps_func", &arena);
 
     TacOperand const_op = create_tac_operand_const(5);
@@ -141,7 +141,7 @@ static void test_calculate_max_temp_id_no_temporaries(void) {
 }
 
 static void test_calculate_max_temp_id_one_temporary_dst(void) {
-    Arena arena = arena_create(512); // Increased from 256
+    Arena arena = arena_create(1024); // Increased from 256
     TacFunction *func = create_tac_function("one_temp_dst_func", &arena);
 
     TacOperand t0 = create_tac_operand_temp(0);
@@ -157,7 +157,7 @@ static void test_calculate_max_temp_id_one_temporary_dst(void) {
 }
 
 static void test_calculate_max_temp_id_one_temporary_src(void) {
-    Arena arena = arena_create(512); // Increased from 256
+    Arena arena = arena_create(1024); // Increased from 256
     TacFunction *func = create_tac_function("one_temp_src_func", &arena);
 
     TacOperand t0 = create_tac_operand_temp(0);
@@ -180,7 +180,7 @@ static void test_calculate_max_temp_id_one_temporary_src(void) {
 }
 
 static void test_calculate_max_temp_id_mixed_operands(void) {
-    Arena arena = arena_create(512);
+    Arena arena = arena_create(1024);
     TacFunction *func = create_tac_function("mixed_ops_func", &arena);
 
     TacOperand t0 = create_tac_operand_temp(0);
@@ -203,7 +203,7 @@ static void test_calculate_max_temp_id_mixed_operands(void) {
 }
 
 static void test_calculate_max_temp_id_temp_ids_not_sequential(void) {
-    Arena arena = arena_create(512); // Increased from 256
+    Arena arena = arena_create(1024); // Increased from 256
     TacFunction *func = create_tac_function("non_seq_temps_func", &arena);
 
     TacOperand t0 = create_tac_operand_temp(0);
@@ -277,7 +277,7 @@ static void test_codegen_copy_const_to_temp_and_return(void) {
 
 // Test for TAC_INS_NEGATE: t0 = 5; t1 = -t0; return t1;
 static void test_codegen_negate_temp_from_temp(void) {
-    Arena arena = arena_create(1024);
+    Arena arena = arena_create(2048);
     TEST_ASSERT_NOT_NULL(arena.start);
 
     TacProgram *prog = create_tac_program(&arena);
@@ -319,7 +319,7 @@ static void test_codegen_negate_temp_from_temp(void) {
 
 // Test for TAC_INS_COMPLEMENT: t0 = 10; t0 = ~t0; return t0;
 static void test_codegen_complement_temp_in_place(void) {
-    Arena arena = arena_create(1024);
+    Arena arena = arena_create(2048);
     TEST_ASSERT_NOT_NULL(arena.start);
 
     TacProgram *prog = create_tac_program(&arena);
@@ -358,7 +358,7 @@ static void test_codegen_complement_temp_in_place(void) {
 
 // Test for return ~(-2);  (Should be -3)
 static void test_codegen_complement_of_negated_constant(void) {
-    Arena arena = arena_create(1024);
+    Arena arena = arena_create(2048);
     TEST_ASSERT_NOT_NULL(arena.start);
 
     TacProgram *prog = create_tac_program(&arena);

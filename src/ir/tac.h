@@ -14,8 +14,8 @@
 typedef enum {
     TAC_OPERAND_CONST, // Integer Constant
     TAC_OPERAND_TEMP,  // Temporary variable (register/stack slot) identified by ID
+    TAC_OPERAND_LABEL // New: Label identifier for jumps
     // TAC_OPERAND_VAR // Future: Source variable identifier
-    // TAC_OPERAND_LABEL // Future: Label identifier for jumps
 } TacOperandType;
 
 typedef struct {
@@ -23,8 +23,8 @@ typedef struct {
     union {
         int constant_value; // For TAC_OPERAND_CONST
         int temp_id;        // For TAC_OPERAND_TEMP
+        const char* label_name; // New: For TAC_OPERAND_LABEL
         // const char* var_name; // Future: For TAC_OPERAND_VAR
-        // const char* label_name; // Future: For TAC_OPERAND_LABEL
     } value;
 } TacOperand;
 
@@ -45,7 +45,23 @@ typedef enum {
     TAC_INS_DIV,        // dst = src1 / src2
     TAC_INS_MOD,        // dst = src1 % src2
 
-    // Future instructions: GOTO, IFZ, CALL, PARAM, LABEL, etc.
+    // New Unary Op
+    TAC_INS_LOGICAL_NOT,// dst = !src (boolean result: 0 or 1)
+
+    // New Binary Relational Ops (all result in dst = 0 or 1)
+    TAC_INS_LESS,       // dst = src1 < src2
+    TAC_INS_GREATER,    // dst = src1 > src2
+    TAC_INS_LESS_EQUAL, // dst = src1 <= src2
+    TAC_INS_GREATER_EQUAL,// dst = src1 >= src2
+    TAC_INS_EQUAL,      // dst = src1 == src2
+    TAC_INS_NOT_EQUAL,  // dst = src1 != src2
+
+    // New Control Flow Instructions
+    TAC_INS_LABEL,          // label_name: (defines a label)
+    TAC_INS_GOTO,           // goto label_name
+    TAC_INS_IF_FALSE_GOTO   // if_false condition_src goto label_name
+
+    // Future instructions: CALL, PARAM, etc.
 } TacInstructionType;
 
 // Forward declare TacInstruction for use in struct definitions if needed (not strictly necessary here)
@@ -57,14 +73,21 @@ typedef struct {
         // dst = src
         struct { TacOperand dst; TacOperand src; } copy;
         // dst = op src
-        struct { TacOperand dst; TacOperand src; } unary_op; // Used for NEGATE, COMPLEMENT
+        struct { TacOperand dst; TacOperand src; } unary_op; // Used for NEGATE, COMPLEMENT, LOGICAL_NOT
         // return src
         struct { TacOperand src; } ret;
         // dst = src1 op src2
         struct { TacOperand dst; TacOperand src1; TacOperand src2; } binary_op; // For ADD, SUB, MUL, DIV, MOD
+        // dst = src1 op src2 (relational)
+        struct { TacOperand dst; TacOperand src1; TacOperand src2; } relational_op; // For LESS, GREATER, etc.
 
-        // Future: struct { const char* label; } label;
-        // Future: struct { const char* label; TacOperand condition; } conditional_jump; // e.g., ifz condition goto label
+        // label_name:
+        struct { TacOperand label; } label_def; // For TAC_INS_LABEL
+        // goto label_name
+        struct { TacOperand target_label; } go_to; // For TAC_INS_GOTO
+        // if_false condition_src goto label_name
+        struct { TacOperand condition_src; TacOperand target_label; } conditional_goto; // For TAC_INS_IF_FALSE_GOTO
+
         // Future: struct { const char* func_name; TacOperand result; } call;
         // Future: struct { TacOperand param; } param;
     } operands;
@@ -97,6 +120,7 @@ typedef struct {
 // Operand creation
 TacOperand create_tac_operand_const(int value);
 TacOperand create_tac_operand_temp(int temp_id);
+TacOperand create_tac_operand_label(const char* name, Arena* arena);
 
 // Instruction creation (simplified examples)
 TacInstruction* create_tac_instruction_copy(TacOperand dst, TacOperand src, Arena* arena);
@@ -104,12 +128,28 @@ TacInstruction* create_tac_instruction_negate(TacOperand dst, TacOperand src, Ar
 TacInstruction* create_tac_instruction_complement(TacOperand dst, TacOperand src, Arena* arena);
 TacInstruction* create_tac_instruction_return(TacOperand src, Arena* arena);
 
+// New Unary instruction creation
+TacInstruction* create_tac_instruction_logical_not(TacOperand dst, TacOperand src, Arena* arena);
+
 // Binary instruction creation
 TacInstruction* create_tac_instruction_add(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
 TacInstruction* create_tac_instruction_sub(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
 TacInstruction* create_tac_instruction_mul(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
 TacInstruction* create_tac_instruction_div(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
 TacInstruction* create_tac_instruction_mod(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+
+// New Relational instruction creation
+TacInstruction* create_tac_instruction_less(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_greater(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_less_equal(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_greater_equal(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_equal(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_not_equal(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+
+// New Control Flow instruction creation
+TacInstruction* create_tac_instruction_label(TacOperand label, Arena* arena);
+TacInstruction* create_tac_instruction_goto(TacOperand target_label, Arena* arena);
+TacInstruction* create_tac_instruction_if_false_goto(TacOperand condition_src, TacOperand target_label, Arena* arena);
 
 // Function and Program manipulation
 TacFunction* create_tac_function(const char* name, Arena* arena);

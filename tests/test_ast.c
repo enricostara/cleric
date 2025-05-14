@@ -101,7 +101,8 @@ static void test_create_binary_op_add(void) {
     IntLiteralNode *right_operand = create_int_literal_node(5, &test_arena);
     TEST_ASSERT_NOT_NULL_MESSAGE(right_operand, "Failed to create right operand for binary_op_add");
 
-    BinaryOpNode *binary_node = create_binary_op_node(OPERATOR_ADD, (AstNode *)left_operand, (AstNode *)right_operand, &test_arena);
+    BinaryOpNode *binary_node = create_binary_op_node(OPERATOR_ADD, (AstNode *) left_operand, (AstNode *) right_operand,
+                                                      &test_arena);
     TEST_ASSERT_NOT_NULL_MESSAGE(binary_node, "Failed to create binary_op_node for ADD");
 
     TEST_ASSERT_EQUAL(NODE_BINARY_OP, binary_node->base.type);
@@ -125,15 +126,15 @@ static void test_ast_pretty_print_output(void) {
     IntLiteralNode *val5 = create_int_literal_node(5, &test_arena);
     TEST_ASSERT_NOT_NULL_MESSAGE(val5, "Failed to create val5 for pretty_print");
 
-    BinaryOpNode *sum_op = create_binary_op_node(OPERATOR_ADD, (AstNode *)val10, (AstNode *)val5, &test_arena);
+    BinaryOpNode *sum_op = create_binary_op_node(OPERATOR_ADD, (AstNode *) val10, (AstNode *) val5, &test_arena);
     TEST_ASSERT_NOT_NULL_MESSAGE(sum_op, "Failed to create sum_op for pretty_print");
 
     IntLiteralNode *val2 = create_int_literal_node(2, &test_arena);
     TEST_ASSERT_NOT_NULL_MESSAGE(val2, "Failed to create val2 for pretty_print");
 
-    BinaryOpNode *mul_op = create_binary_op_node(OPERATOR_MULTIPLY, (AstNode *)sum_op, (AstNode *)val2, &test_arena);
+    BinaryOpNode *mul_op = create_binary_op_node(OPERATOR_MULTIPLY, (AstNode *) sum_op, (AstNode *) val2, &test_arena);
     TEST_ASSERT_NOT_NULL_MESSAGE(mul_op, "Failed to create mul_op for pretty_print");
-    
+
     ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode *) mul_op, &test_arena);
     TEST_ASSERT_NOT_NULL_MESSAGE(ret_stmt, "Failed to create ret_stmt for pretty_print");
 
@@ -147,7 +148,7 @@ static void test_ast_pretty_print_output(void) {
     printf("\n--- AST Pretty Print Output Start ---\n");
     ast_pretty_print((AstNode *) program_node, 0);
     printf("--- AST Pretty Print Output End ---\n");
-    
+
     arena_destroy(&test_arena);
     TEST_PASS_MESSAGE("AST Pretty Print test executed. Visually inspect output.");
 }
