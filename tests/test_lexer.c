@@ -309,7 +309,7 @@ void test_token_to_string_symbol(void) {
     token_to_string(token, buffer, 64);
     TEST_ASSERT_EQUAL_STRING("'||'", buffer);
 
-    token.type = TOKEN_SYMBOL_LOGICAL_NOT;
+    token.type = TOKEN_SYMBOL_BANG;
     token_to_string(token, buffer, 64);
     TEST_ASSERT_EQUAL_STRING("'!'", buffer);
 

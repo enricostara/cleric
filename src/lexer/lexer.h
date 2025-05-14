@@ -33,7 +33,7 @@ typedef enum {
     TOKEN_SYMBOL_NOT_EQUAL,     // '!='
     TOKEN_SYMBOL_LOGICAL_AND,   // '&&'
     TOKEN_SYMBOL_LOGICAL_OR,    // '||'
-    TOKEN_SYMBOL_LOGICAL_NOT,   // '!'
+    TOKEN_SYMBOL_BANG,   // '!'
     TOKEN_SYMBOL_ASSIGN,        // '='    
     TOKEN_SYMBOL_DECREMENT, // '--'
     TOKEN_EOF, // End of input

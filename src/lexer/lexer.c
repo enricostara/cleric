@@ -197,7 +197,7 @@ bool lexer_next_token(Lexer *lexer, Token *out_token) {
                 *out_token = (Token){TOKEN_SYMBOL_NOT_EQUAL, NULL, start};
                 return true;
             }
-            sym_type = TOKEN_SYMBOL_LOGICAL_NOT;
+            sym_type = TOKEN_SYMBOL_BANG;
             break;
         case '&':
             if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '&') {
@@ -303,7 +303,7 @@ void token_to_string(Token token, char *buffer, size_t buffer_size) {
             break;
         case TOKEN_SYMBOL_LOGICAL_OR: type_str = "'||'";
             break;
-        case TOKEN_SYMBOL_LOGICAL_NOT: type_str = "'!'";
+        case TOKEN_SYMBOL_BANG: type_str = "'!'";
             break;
         case TOKEN_SYMBOL_ASSIGN: type_str = "'='";
             break;

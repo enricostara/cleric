@@ -10,18 +10,30 @@
 
 // --- Precedence Climbing: Operator Properties ---
 #define LOWEST_BINARY_PRECEDENCE 1
-#define UNARY_OPERATOR_PRECEDENCE 3 // Higher than any binary operator we have
+#define UNARY_OPERATOR_PRECEDENCE 7 // Adjusted: Higher than any binary operator
 
 // Returns precedence level (0 if not a relevant binary operator)
 static int get_token_precedence(TokenType type) {
     switch (type) {
+        case TOKEN_SYMBOL_LOGICAL_OR:    // ||
+            return 1;
+        case TOKEN_SYMBOL_LOGICAL_AND:   // &&
+            return 2;
+        case TOKEN_SYMBOL_EQUAL_EQUAL:   // ==
+        case TOKEN_SYMBOL_NOT_EQUAL:     // !=
+            return 3;
+        case TOKEN_SYMBOL_LESS:          // <
+        case TOKEN_SYMBOL_GREATER:       // >
+        case TOKEN_SYMBOL_LESS_EQUAL:    // <=
+        case TOKEN_SYMBOL_GREATER_EQUAL: // >=
+            return 4;
         case TOKEN_SYMBOL_PLUS:
         case TOKEN_SYMBOL_MINUS: // Binary minus
-            return 1;
+            return 5; // Adjusted from 1
         case TOKEN_SYMBOL_STAR:
         case TOKEN_SYMBOL_SLASH:
         case TOKEN_SYMBOL_PERCENT:
-            return 2;
+            return 6; // Adjusted from 2
         default:
             return 0; // Not a binary operator we handle with precedence climbing here
     }
@@ -39,11 +51,36 @@ static BinaryOperatorType token_to_binary_operator_type(TokenType type) {
             return OPERATOR_DIVIDE;
         case TOKEN_SYMBOL_PERCENT:
             return OPERATOR_MODULO;
+        case TOKEN_SYMBOL_LOGICAL_OR:
+            return OPERATOR_LOGICAL_OR;
+        case TOKEN_SYMBOL_LOGICAL_AND:
+            return OPERATOR_LOGICAL_AND;
+        case TOKEN_SYMBOL_EQUAL_EQUAL:
+            return OPERATOR_EQUAL_EQUAL;
+        case TOKEN_SYMBOL_NOT_EQUAL:
+            return OPERATOR_NOT_EQUAL;
+        case TOKEN_SYMBOL_LESS:
+            return OPERATOR_LESS;
+        case TOKEN_SYMBOL_GREATER:
+            return OPERATOR_GREATER;
+        case TOKEN_SYMBOL_LESS_EQUAL:
+            return OPERATOR_LESS_EQUAL;
+        case TOKEN_SYMBOL_GREATER_EQUAL:
+            return OPERATOR_GREATER_EQUAL;
         default:
             // Should not happen if called correctly
             fprintf(stderr, "Parser Internal Error: Invalid token type for binary operator conversion: %d\n", type);
             // Potentially set an error flag on parser or return a specific error type if AST allows
             return (BinaryOperatorType)-1; // Indicate error
+    }
+}
+
+static bool token_to_unary_operator_type(TokenType token_type, UnaryOperatorType *op_type) {
+    switch (token_type) {
+        case TOKEN_SYMBOL_MINUS: *op_type = OPERATOR_NEGATE; return true;
+        case TOKEN_SYMBOL_TILDE: *op_type = OPERATOR_COMPLEMENT; return true;
+        case TOKEN_SYMBOL_BANG:  *op_type = OPERATOR_LOGICAL_NOT; return true;
+        default: return false;
     }
 }
 
@@ -344,31 +381,24 @@ static AstNode *parse_expression(Parser *parser) {
 static AstNode *parse_primary_expression(Parser *parser) { // NOLINT(*-no-recursion) // Retaining for now, can remove if linter is fine
     if (parser->error_flag) return NULL;
 
-    // Handle Unary Operators
-    if (parser->current_token.type == TOKEN_SYMBOL_MINUS || parser->current_token.type == TOKEN_SYMBOL_TILDE) {
-        UnaryOperatorType un_op_type;
-        if (parser->current_token.type == TOKEN_SYMBOL_MINUS) {
-            un_op_type = OPERATOR_NEGATE;
-        } else { // TOKEN_SYMBOL_TILDE
-            un_op_type = OPERATOR_COMPLEMENT;
-        }
-        parser_advance(parser); // Consume the operator ('-' or '~')
-        if (parser->error_flag) return NULL; // Check if advance caused an error
+    // Handle Unary Operators: '-', '~', '!'
+    UnaryOperatorType un_op_type;
+    if (token_to_unary_operator_type(parser->current_token.type, &un_op_type)) {
+        parser_advance(parser); // Consume the unary operator token
+        if (parser->error_flag) return NULL;
 
-        // This ensures that -a * b is parsed as (-a) * b
-        AstNode *operand_node = parse_expression_recursive(parser, UNARY_OPERATOR_PRECEDENCE); // Recursively parse the operand with high precedence
-        if (!operand_node) {
-            // Error already reported by recursive call or advance
-            return NULL;
+        // Recursively parse the operand with unary precedence
+        AstNode *operand = parse_expression_recursive(parser, UNARY_OPERATOR_PRECEDENCE);
+        if (parser->error_flag || !operand) {
+            if (!parser->error_flag) {
+                 // If operand is NULL but no error flag, it means an unexpected EOF or missing operand after unary op.
+                char current_token_str[128];
+                token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
+                parser_error(parser, "Syntax Error: Expected expression after unary operator, but got %s", current_token_str);
+            }
+            return NULL; // Error already set or operand missing
         }
-
-        // Create the UnaryOpNode
-        UnaryOpNode* unary_node = create_unary_op_node(un_op_type, operand_node, parser->arena);
-        if (!unary_node) {
-             parser_error(parser, "Memory allocation failed for unary operator node");
-             return NULL;
-        }
-        return (AstNode*)unary_node;
+        return (AstNode *)create_unary_op_node(un_op_type, operand, parser->arena);
     }
 
     // Handle Integer Literals
