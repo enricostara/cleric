@@ -216,6 +216,10 @@ void test_token_to_string_keyword(void) {
     token_to_string(token, buffer, 64);
     TEST_ASSERT_EQUAL_STRING("INT", buffer);
 
+    token.type = TOKEN_KEYWORD_VOID;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("VOID", buffer);
+
     token.type = TOKEN_KEYWORD_RETURN;
     token_to_string(token, buffer, 64);
     TEST_ASSERT_EQUAL_STRING("RETURN", buffer);
@@ -227,9 +231,92 @@ void test_token_to_string_symbol(void) {
     token_to_string(token, buffer, 64);
     TEST_ASSERT_EQUAL_STRING("'('", buffer);
 
+    token.type = TOKEN_SYMBOL_RPAREN;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("')'", buffer);
+
+    token.type = TOKEN_SYMBOL_LBRACE;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'{'", buffer);
+
+    token.type = TOKEN_SYMBOL_RBRACE;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'}'", buffer);
+
     token.type = TOKEN_SYMBOL_SEMICOLON;
     token_to_string(token, buffer, 64);
     TEST_ASSERT_EQUAL_STRING("';'", buffer);
+
+    token.type = TOKEN_SYMBOL_TILDE;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'~'", buffer);
+
+    token.type = TOKEN_SYMBOL_MINUS;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'-'", buffer);
+
+    token.type = TOKEN_SYMBOL_DECREMENT;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'--'", buffer);
+
+    token.type = TOKEN_SYMBOL_PLUS;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'+'", buffer);
+
+    token.type = TOKEN_SYMBOL_STAR;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'*'", buffer);
+
+    token.type = TOKEN_SYMBOL_SLASH;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'/'", buffer);
+
+    token.type = TOKEN_SYMBOL_PERCENT;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'%'", buffer);
+
+    // Relational Operators
+    token.type = TOKEN_SYMBOL_LESS;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'<'", buffer);
+
+    token.type = TOKEN_SYMBOL_GREATER;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'>'", buffer);
+
+    token.type = TOKEN_SYMBOL_LESS_EQUAL;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'<='", buffer);
+
+    token.type = TOKEN_SYMBOL_GREATER_EQUAL;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'>='", buffer);
+
+    token.type = TOKEN_SYMBOL_EQUAL_EQUAL;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'=='", buffer);
+
+    token.type = TOKEN_SYMBOL_NOT_EQUAL;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'!='", buffer);
+
+    // Logical Operators
+    token.type = TOKEN_SYMBOL_LOGICAL_AND;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'&&'", buffer);
+
+    token.type = TOKEN_SYMBOL_LOGICAL_OR;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'||'", buffer);
+
+    token.type = TOKEN_SYMBOL_LOGICAL_NOT;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'!'", buffer);
+
+    // Assignment Operator
+    token.type = TOKEN_SYMBOL_ASSIGN;
+    token_to_string(token, buffer, 64);
+    TEST_ASSERT_EQUAL_STRING("'='", buffer);
 }
 
 void test_token_to_string_identifier(void) {
