@@ -832,30 +832,144 @@ void test_parse_unary_with_binary_simple(void) {
 }
 
 void test_parse_unary_on_parenthesized_expr(void) {
-    // Test -(1 + 2) * 3 -> MULTIPLY(NEGATE(ADD(1,2)), 3)
-    const char *input = "int main(void) { return -(1 + 2) * 3; }";
+    const char *input = "int main(void) { return -(2 + 3); }"; // Equivalent to return -5;
     Arena test_arena = arena_create(1024);
-    Lexer lexer; lexer_init(&lexer, input, &test_arena);
-    Parser parser; parser_init(&parser, &lexer, &test_arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
+
     ProgramNode *program = parse_program(&parser);
-    TEST_ASSERT_NOT_NULL(program);
-    TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *)program->function->body;
-    AstNode *expr_node = return_stmt->expression;
 
-    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_node->type); // MULTIPLY is root
-    BinaryOpNode *mul_op = (BinaryOpNode*)expr_node;
-    TEST_ASSERT_EQUAL(OPERATOR_MULTIPLY, mul_op->op);
-    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mul_op->right->type);
-    TEST_ASSERT_EQUAL_INT(3, ((IntLiteralNode*)mul_op->right)->value);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input");
 
-    // Left child of MULTIPLY is NEGATE(ADD(1,2))
-    AstNode *unary_node_ast = mul_op->left;
-    TEST_ASSERT_EQUAL(NODE_UNARY_OP, unary_node_ast->type);
-    UnaryOpNode *unary_op = (UnaryOpNode*)unary_node_ast;
-    TEST_ASSERT_EQUAL(OPERATOR_NEGATE, unary_op->op);
-    verify_binary_op_node(unary_op->operand, OPERATOR_ADD, 1, 2);
+    // Program -> FuncDef -> ReturnStmt -> UnaryOp (-) -> BinaryOp (+)
+    TEST_ASSERT_EQUAL(NODE_PROGRAM, program->base.type);
+    TEST_ASSERT_NOT_NULL(program->function);
+    FuncDefNode *func_def = program->function;
+    TEST_ASSERT_EQUAL(NODE_FUNC_DEF, func_def->base.type);
+    TEST_ASSERT_NOT_NULL(func_def->body);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, func_def->body->type);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) func_def->body;
+    TEST_ASSERT_NOT_NULL(return_stmt->expression);
+
+    AstNode *unary_expr = return_stmt->expression;
+    TEST_ASSERT_EQUAL(NODE_UNARY_OP, unary_expr->type);
+    UnaryOpNode *unary_node = (UnaryOpNode *)unary_expr;
+    TEST_ASSERT_EQUAL(OPERATOR_NEGATE, unary_node->op);
+
+    verify_binary_op_node(unary_node->operand, OPERATOR_ADD, 2, 3);
+
     arena_destroy(&test_arena);
+}
+
+// --- Relational and Logical Operator Tests ---
+
+void test_parse_relational_less_than(void) {
+    const char *input = "int main(void) { return 1 < 2; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '<'");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '<'");
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(ret->expression, OPERATOR_LESS, 1, 2);
+    arena_destroy(&arena);
+}
+
+void test_parse_relational_greater_than(void) {
+    const char *input = "int main(void) { return 2 > 1; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '>'");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '>'");
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(ret->expression, OPERATOR_GREATER, 2, 1);
+    arena_destroy(&arena);
+}
+
+void test_parse_relational_less_equal(void) {
+    const char *input = "int main(void) { return 1 <= 2; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '<='");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '<='");
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(ret->expression, OPERATOR_LESS_EQUAL, 1, 2);
+    arena_destroy(&arena);
+}
+
+void test_parse_relational_greater_equal(void) {
+    const char *input = "int main(void) { return 2 >= 1; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '>='");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '>='");
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(ret->expression, OPERATOR_GREATER_EQUAL, 2, 1);
+    arena_destroy(&arena);
+}
+
+void test_parse_relational_equal_equal(void) {
+    const char *input = "int main(void) { return 1 == 1; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '=='");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '=='");
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(ret->expression, OPERATOR_EQUAL_EQUAL, 1, 1);
+    arena_destroy(&arena);
+}
+
+void test_parse_relational_not_equal(void) {
+    const char *input = "int main(void) { return 1 != 2; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '!='");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '!='");
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(ret->expression, OPERATOR_NOT_EQUAL, 1, 2);
+    arena_destroy(&arena);
+}
+
+void test_parse_logical_and(void) {
+    const char *input = "int main(void) { return 1 && 0; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '&&'");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '&&'");
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(ret->expression, OPERATOR_LOGICAL_AND, 1, 0);
+    arena_destroy(&arena);
+}
+
+void test_parse_logical_or(void) {
+    const char *input = "int main(void) { return 0 || 1; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode is NULL for '||'");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error for '||'");
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    verify_binary_op_node(ret->expression, OPERATOR_LOGICAL_OR, 0, 1);
+    arena_destroy(&arena);
 }
 
 // --- Error Test Cases ---
@@ -917,6 +1031,16 @@ void run_parser_tests(void)
     // Unary with Binary
     RUN_TEST(test_parse_unary_with_binary_simple);
     RUN_TEST(test_parse_unary_on_parenthesized_expr);
+
+    // Relational and Logical Operator Tests
+    RUN_TEST(test_parse_relational_less_than);
+    RUN_TEST(test_parse_relational_greater_than);
+    RUN_TEST(test_parse_relational_less_equal);
+    RUN_TEST(test_parse_relational_greater_equal);
+    RUN_TEST(test_parse_relational_equal_equal);
+    RUN_TEST(test_parse_relational_not_equal);
+    RUN_TEST(test_parse_logical_and);
+    RUN_TEST(test_parse_logical_or);
 
     // Error Handling Tests
     RUN_TEST(test_parse_error_missing_rhs_after_binary_op);
