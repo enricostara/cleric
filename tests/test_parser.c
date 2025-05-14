@@ -271,6 +271,42 @@ void test_parse_complement_operator(void) {
     arena_destroy(&test_arena);
 }
 
+// Test parsing a program with a logical NOT unary operator
+void test_parse_logical_not_operator(void) {
+    const char *input = "int main(void) { return !0; }";
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    Lexer lexer;
+    lexer_init(&lexer, input, &test_arena); // Init lexer with arena
+    Parser parser;
+    parser_init(&parser, &lexer, &test_arena);
+
+    ProgramNode *program = parse_program(&parser);
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with logical NOT");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with logical NOT");
+
+    // Verify program structure
+    TEST_ASSERT_EQUAL(NODE_PROGRAM, program->base.type);
+    TEST_ASSERT_NOT_NULL(program->function);
+
+    // Verify function structure
+    FuncDefNode *func_def = program->function;
+    TEST_ASSERT_EQUAL(NODE_FUNC_DEF, func_def->base.type);
+    TEST_ASSERT_NOT_NULL(func_def->body);
+
+    // Verify return statement
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, func_def->body->type);
+    ReturnStmtNode *return_stmt = (ReturnStmtNode *) func_def->body;
+    TEST_ASSERT_NOT_NULL(return_stmt->expression);
+
+    // Verify unary operation
+    verify_unary_op_node(return_stmt->expression, OPERATOR_LOGICAL_NOT, 0);
+
+    arena_destroy(&test_arena);
+}
+
 // Test parsing a program with nested unary operators
 void test_parse_nested_unary_operators(void) {
     const char *input = "int main(void) { return -~42; }";
@@ -853,6 +889,7 @@ void run_parser_tests(void)
     RUN_TEST(test_parse_function_empty_body);
     RUN_TEST(test_parse_negation_operator);
     RUN_TEST(test_parse_complement_operator);
+    RUN_TEST(test_parse_logical_not_operator);
     RUN_TEST(test_parse_nested_unary_operators);
     RUN_TEST(test_parse_parenthesized_expression);
     RUN_TEST(test_parse_unary_with_parentheses);
