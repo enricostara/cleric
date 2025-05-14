@@ -138,9 +138,13 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
         }
         case NODE_UNARY_OP: { // Added case for unary operators
             const UnaryOpNode *unary_node = (UnaryOpNode *) node;
-            const char *op_str = (unary_node->op == OPERATOR_NEGATE) ? "Negate" :
-                                (unary_node->op == OPERATOR_COMPLEMENT) ? "Complement" :
-                                "UnknownOp";
+            const char *op_str;
+            switch (unary_node->op) {
+                case OPERATOR_NEGATE: op_str = "Negate"; break;
+                case OPERATOR_COMPLEMENT: op_str = "Complement"; break;
+                case OPERATOR_LOGICAL_NOT: op_str = "LogicalNot"; break;
+                default: op_str = "UnknownUnaryOp"; break;
+            }
             printf("UnaryOp(op=%s,\n", op_str);
             ast_pretty_print(unary_node->operand, indent_level + 1);
             print_indent(indent_level);
@@ -156,6 +160,14 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
                 case OPERATOR_MULTIPLY: op_str = "Multiply"; break;
                 case OPERATOR_DIVIDE: op_str = "Divide"; break;
                 case OPERATOR_MODULO: op_str = "Modulo"; break;
+                case OPERATOR_LESS: op_str = "Less"; break;
+                case OPERATOR_GREATER: op_str = "Greater"; break;
+                case OPERATOR_LESS_EQUAL: op_str = "LessEqual"; break;
+                case OPERATOR_GREATER_EQUAL: op_str = "GreaterEqual"; break;
+                case OPERATOR_EQUAL_EQUAL: op_str = "EqualEqual"; break;
+                case OPERATOR_NOT_EQUAL: op_str = "NotEqual"; break;
+                case OPERATOR_LOGICAL_AND: op_str = "LogicalAnd"; break;
+                case OPERATOR_LOGICAL_OR: op_str = "LogicalOr"; break;
                 default: op_str = "UnknownBinaryOp"; break;
             }
             printf("BinaryOp(op=%s,\n", op_str);

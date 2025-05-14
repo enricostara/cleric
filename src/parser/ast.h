@@ -16,7 +16,8 @@ typedef enum {
 // Define the types of Unary Operators
 typedef enum {
     OPERATOR_NEGATE, // - (Arithmetic negation)
-    OPERATOR_COMPLEMENT // ~ (Bitwise complement)
+    OPERATOR_COMPLEMENT, // ~ (Bitwise complement)
+    OPERATOR_LOGICAL_NOT // ! (Logical NOT)
 } UnaryOperatorType;
 
 // Define the types of Binary Operators
@@ -25,7 +26,19 @@ typedef enum {
     OPERATOR_SUBTRACT,    // - (binary)
     OPERATOR_MULTIPLY,    // *
     OPERATOR_DIVIDE,      // /
-    OPERATOR_MODULO       // %
+    OPERATOR_MODULO,      // %
+
+    // Relational Operators
+    OPERATOR_LESS,          // <
+    OPERATOR_GREATER,       // >
+    OPERATOR_LESS_EQUAL,    // <=
+    OPERATOR_GREATER_EQUAL, // >=
+    OPERATOR_EQUAL_EQUAL,   // ==
+    OPERATOR_NOT_EQUAL,     // !=
+
+    // Logical Operators
+    OPERATOR_LOGICAL_AND,   // &&
+    OPERATOR_LOGICAL_OR     // ||
 } BinaryOperatorType;
 
 // Base structure for all AST nodes
