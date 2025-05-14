@@ -167,6 +167,54 @@ bool lexer_next_token(Lexer *lexer, Token *out_token) {
             break;
         case '%': sym_type = TOKEN_SYMBOL_PERCENT;
             break;
+        case '<':
+            if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '=') {
+                lexer->pos += 2; // Consume both '<='
+                *out_token = (Token){TOKEN_SYMBOL_LESS_EQUAL, NULL, start};
+                return true;
+            }
+            sym_type = TOKEN_SYMBOL_LESS;
+            break;
+        case '>':
+            if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '=') {
+                lexer->pos += 2; // Consume both '>='
+                *out_token = (Token){TOKEN_SYMBOL_GREATER_EQUAL, NULL, start};
+                return true;
+            }
+            sym_type = TOKEN_SYMBOL_GREATER;
+            break;
+        case '=':
+            if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '=') {
+                lexer->pos += 2; // Consume both '=='
+                *out_token = (Token){TOKEN_SYMBOL_EQUAL_EQUAL, NULL, start};
+                return true;
+            }
+            sym_type = TOKEN_SYMBOL_ASSIGN;
+            break;
+        case '!':
+            if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '=') {
+                lexer->pos += 2; // Consume both '!='
+                *out_token = (Token){TOKEN_SYMBOL_NOT_EQUAL, NULL, start};
+                return true;
+            }
+            sym_type = TOKEN_SYMBOL_LOGICAL_NOT;
+            break;
+        case '&':
+            if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '&') {
+                lexer->pos += 2; // Consume both '&&'
+                *out_token = (Token){TOKEN_SYMBOL_LOGICAL_AND, NULL, start};
+                return true;
+            }
+            // Single '&' will fall through to TOKEN_UNKNOWN
+            break;
+        case '|':
+            if (lexer->pos + 1 < lexer->len && lexer->src[lexer->pos + 1] == '|') {
+                lexer->pos += 2; // Consume both '||'
+                *out_token = (Token){TOKEN_SYMBOL_LOGICAL_OR, NULL, start};
+                return true;
+            }
+            // Single '|' will fall through to TOKEN_UNKNOWN
+            break;
         default: break;
     }
     if (sym_type != TOKEN_UNKNOWN) {
@@ -239,8 +287,26 @@ void token_to_string(Token token, char *buffer, size_t buffer_size) {
             break;
         case TOKEN_SYMBOL_PERCENT: type_str = "'%'";
             break;
-        // Add other symbols here...
-
+        case TOKEN_SYMBOL_LESS: type_str = "'<'";
+            break;
+        case TOKEN_SYMBOL_GREATER: type_str = "'>'";
+            break;
+        case TOKEN_SYMBOL_LESS_EQUAL: type_str = "'<='";
+            break;
+        case TOKEN_SYMBOL_GREATER_EQUAL: type_str = "'>='";
+            break;
+        case TOKEN_SYMBOL_EQUAL_EQUAL: type_str = "'=='";
+            break;
+        case TOKEN_SYMBOL_NOT_EQUAL: type_str = "'!='";
+            break;
+        case TOKEN_SYMBOL_LOGICAL_AND: type_str = "'&&'";
+            break;
+        case TOKEN_SYMBOL_LOGICAL_OR: type_str = "'||'";
+            break;
+        case TOKEN_SYMBOL_LOGICAL_NOT: type_str = "'!'";
+            break;
+        case TOKEN_SYMBOL_ASSIGN: type_str = "'='";
+            break;
         // Special Tokens
         case TOKEN_EOF: type_str = "EOF";
             break;
