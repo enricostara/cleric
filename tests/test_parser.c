@@ -516,15 +516,9 @@ void test_parse_mismatched_parentheses(void) {
 void test_parse_integer_bounds(void) {
     const char *input = "int main(void) { return 2147483647; }"; // INT_MAX for 32-bit int
     Arena test_arena = arena_create(1024);
-    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
-
-    Lexer lexer;
-    lexer_init(&lexer, input, &test_arena);
-    Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
-
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
-
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for valid input with INT_MAX");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input with INT_MAX");
 
@@ -572,15 +566,9 @@ void test_parse_integer_overflow(void) {
 void test_parse_simple_addition(void) {
     const char *input = "int main(void) { return 1 + 2; }";
     Arena test_arena = arena_create(1024);
-    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
-
-    Lexer lexer;
-    lexer_init(&lexer, input, &test_arena);
-    Parser parser;
-    parser_init(&parser, &lexer, &test_arena);
-
+    Lexer lexer; lexer_init(&lexer, input, &test_arena);
+    Parser parser; parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
-
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Parser returned NULL for simple addition");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for simple addition");
 
@@ -972,6 +960,161 @@ void test_parse_logical_or(void) {
     arena_destroy(&arena);
 }
 
+// --- Complex Precedence and Associativity Tests ---
+
+// Test: 1 || 0 && 1  =>  1 || (0 && 1)
+void test_precedence_logical_or_and(void) {
+    const char *input = "int main(void) { return 1 || 0 && 1; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
+
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    AstNode *expr = ret->expression;
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr->type, "Root not BINARY_OP");
+
+    BinaryOpNode *or_node = (BinaryOpNode *)expr;
+    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_OR, or_node->op, "Root op not ||");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, or_node->left->type, "OR left not INT_LITERAL");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(1, ((IntLiteralNode *)or_node->left)->value, "OR left value mismatch");
+
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, or_node->right->type, "OR right not BINARY_OP");
+    BinaryOpNode *and_node = (BinaryOpNode *)or_node->right;
+    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Nested op not &&");
+    verify_binary_op_node((AstNode*)and_node, OPERATOR_LOGICAL_AND, 0, 1); // Verifies children of AND
+
+    arena_destroy(&arena);
+}
+
+// Test: 1 < 2 && 3 > 1  =>  (1 < 2) && (3 > 1)
+void test_precedence_relational_and_logical(void) {
+    const char *input = "int main(void) { return 1 < 2 && 3 > 1; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
+
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    AstNode *expr = ret->expression;
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr->type, "Root not BINARY_OP");
+
+    BinaryOpNode *and_node = (BinaryOpNode *)expr;
+    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Root op not &&");
+
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, and_node->left->type, "&& left not BINARY_OP");
+    verify_binary_op_node(and_node->left, OPERATOR_LESS, 1, 2);
+
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, and_node->right->type, "&& right not BINARY_OP");
+    verify_binary_op_node(and_node->right, OPERATOR_GREATER, 3, 1);
+
+    arena_destroy(&arena);
+}
+
+// Test: 1 + 2 < 4 && 5 > 3 - 1  =>  ((1 + 2) < 4) && (5 > (3 - 1))
+void test_precedence_arithmetic_relational_logical(void) {
+    const char *input = "int main(void) { return 1 + 2 < 4 && 5 > 3 - 1; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
+
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    AstNode *expr = ret->expression;
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr->type, "Root not BINARY_OP");
+
+    BinaryOpNode *and_node = (BinaryOpNode *)expr;
+    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Root op not &&");
+
+    // Left side of &&: (1 + 2) < 4
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, and_node->left->type, "AND left not BINARY_OP");
+    BinaryOpNode *less_node = (BinaryOpNode *)and_node->left;
+    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LESS, less_node->op, "Op not <");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, less_node->left->type, "< left not BINARY_OP");
+    verify_binary_op_node(less_node->left, OPERATOR_ADD, 1, 2);
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, less_node->right->type, "< right not INT_LITERAL");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(4, ((IntLiteralNode *)less_node->right)->value, "< right value mismatch");
+
+    // Right side of &&: 5 > (3 - 1)
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, and_node->right->type, "AND right not BINARY_OP");
+    BinaryOpNode *greater_node = (BinaryOpNode *)and_node->right;
+    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_GREATER, greater_node->op, "Op not >");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, greater_node->left->type, "> left not INT_LITERAL");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(5, ((IntLiteralNode *)greater_node->left)->value, "> left value mismatch");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, greater_node->right->type, "> right not BINARY_OP");
+    verify_binary_op_node(greater_node->right, OPERATOR_SUBTRACT, 3, 1);
+
+    arena_destroy(&arena);
+}
+
+// Test: !0 && 1  =>  (!0) && 1
+void test_precedence_unary_not_with_logical(void) {
+    const char *input = "int main(void) { return !0 && 1; }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
+
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    AstNode *expr = ret->expression;
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr->type, "Root not BINARY_OP");
+
+    BinaryOpNode *and_node = (BinaryOpNode *)expr;
+    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Root op not &&");
+
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_UNARY_OP, and_node->left->type, "AND left not UNARY_OP");
+    verify_unary_op_node(and_node->left, OPERATOR_LOGICAL_NOT, 0);
+
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, and_node->right->type, "AND right not INT_LITERAL");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(1, ((IntLiteralNode *)and_node->right)->value, "AND right value mismatch");
+
+    arena_destroy(&arena);
+}
+
+// Test: !(1 < 2 && 0)  =>  !((1 < 2) && 0)
+void test_precedence_unary_not_on_parenthesized_logical(void) {
+    const char *input = "int main(void) { return !(1 < 2 && 0); }";
+    Arena arena = arena_create(1024);
+    Lexer lexer; lexer_init(&lexer, input, &arena);
+    Parser parser; parser_init(&parser, &lexer, &arena);
+    ProgramNode *program = parse_program(&parser);
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "ProgramNode NULL");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error");
+
+    ReturnStmtNode *ret = (ReturnStmtNode *)program->function->body;
+    AstNode *expr = ret->expression;
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_UNARY_OP, expr->type, "Root not UNARY_OP");
+
+    UnaryOpNode *not_node = (UnaryOpNode *)expr;
+    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_NOT, not_node->op, "Root op not !");
+
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, not_node->operand->type, "NOT operand not BINARY_OP");
+    BinaryOpNode *and_node = (BinaryOpNode *)not_node->operand;
+    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_LOGICAL_AND, and_node->op, "Nested op not &&");
+
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, and_node->left->type, "&& left not BINARY_OP");
+    verify_binary_op_node(and_node->left, OPERATOR_LESS, 1, 2);
+
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_INT_LITERAL, and_node->right->type, "&& right not INT_LITERAL");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, ((IntLiteralNode *)and_node->right)->value, "&& right value mismatch");
+
+    arena_destroy(&arena);
+}
+
+
 // --- Error Test Cases ---
 void test_parse_error_missing_rhs_after_binary_op(void) {
     const char *input = "int main(void) { return 1 + ; }";
@@ -1041,6 +1184,13 @@ void run_parser_tests(void)
     RUN_TEST(test_parse_relational_not_equal);
     RUN_TEST(test_parse_logical_and);
     RUN_TEST(test_parse_logical_or);
+
+    // Complex Precedence and Associativity Tests
+    RUN_TEST(test_precedence_logical_or_and);
+    RUN_TEST(test_precedence_relational_and_logical);
+    RUN_TEST(test_precedence_arithmetic_relational_logical);
+    RUN_TEST(test_precedence_unary_not_with_logical);
+    RUN_TEST(test_precedence_unary_not_on_parenthesized_logical);
 
     // Error Handling Tests
     RUN_TEST(test_parse_error_missing_rhs_after_binary_op);
