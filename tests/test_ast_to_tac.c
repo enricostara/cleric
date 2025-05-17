@@ -358,7 +358,7 @@ static void test_return_logical_and_rhs_evaluates(void) {
     TacFunction *func = tac_program->functions[0];
     TEST_ASSERT_NOT_NULL(func);
     TEST_ASSERT_EQUAL_STRING("main", func->name);
-    // Expected: if_false const 1 goto L0, t0 = const 0, goto L1, L0:, t0 = 0, L1:, return t0
+    // Expected: if_false const 1 goto L0, t0 = (rhs_result != 0), goto L1, L0:, t0 = 0, L1:, return t0
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, func->instruction_count, "Expected 7 TAC items for 1 && 0");
 
     const TacInstruction *instr;
@@ -372,13 +372,16 @@ static void test_return_logical_and_rhs_evaluates(void) {
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.conditional_goto.target_label.type);
     TEST_ASSERT_EQUAL_STRING("L0", instr->operands.conditional_goto.target_label.value.label_name);
 
-    // instr[1]: t0 = const 0 (dest_temp = rhs_result)
+    // instr[1]: t0 = (rhs_result != 0)  (e.g. t0 = (const 0 != const 0) -> t0 = 0)
+    // Original AST: 1 && 0. So rhs_result is const 0.
     instr = &func->instructions[1];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);    // RHS is const 0
-    TEST_ASSERT_EQUAL_INT(0, instr->operands.copy.src.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_NOT_EQUAL, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.relational_op.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.relational_op.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type);    // rhs_result (const 0)
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src1.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type);    // const 0 to compare against
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src2.value.constant_value);
 
     // instr[2]: goto L1
     instr = &func->instructions[2];
@@ -437,7 +440,7 @@ static void test_return_logical_and_short_circuit(void) {
     TacFunction *func = tac_program->functions[0];
     TEST_ASSERT_NOT_NULL(func);
     TEST_ASSERT_EQUAL_STRING("main", func->name);
-    // Expected: if_false const 0 goto L0, t0 = const 1, goto L1, L0:, t0 = 0, L1:, return t0
+    // Expected: if_false const 0 goto L0, t0 = (rhs_result != 0), goto L1, L0:, t0 = 0, L1:, return t0
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, func->instruction_count, "Expected 7 TAC items for 0 && 1 (short-circuit)");
 
     const TacInstruction *instr;
@@ -451,13 +454,17 @@ static void test_return_logical_and_short_circuit(void) {
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.conditional_goto.target_label.type);
     TEST_ASSERT_EQUAL_STRING("L0", instr->operands.conditional_goto.target_label.value.label_name);
 
-    // instr[1]: t0 = const 1 (dest_temp = rhs_result - TAC generated but path avoids it)
+    // instr[1]: t0 = (rhs_result != 0) (e.g. t0 = (const 1 != const 0) -> t0 = 1)
+    // This instruction is generated but skipped due to short-circuiting for 0 && 1.
+    // Original AST: 0 && 1. So rhs_result is const 1.
     instr = &func->instructions[1];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);    // RHS is const 1
-    TEST_ASSERT_EQUAL_INT(1, instr->operands.copy.src.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_NOT_EQUAL, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.relational_op.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.relational_op.dst.value.temp_id); // t0 (dest_temp)
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type);    // rhs_result (const 1)
+    TEST_ASSERT_EQUAL_INT(1, instr->operands.relational_op.src1.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type);    // const 0 to compare against
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src2.value.constant_value);
 
     // instr[2]: goto L1
     instr = &func->instructions[2];
@@ -521,47 +528,49 @@ static void test_return_logical_or_rhs_evaluates(void) {
     const TacInstruction *instr;
     int temp_id_dest = 0; // Assuming t0 is the destination temporary for ||
 
-    // instr[0]: if_false const 0 goto L0
+    // instr[0]: if_true const 0 goto L_true_exit (L1)
     instr = &func->instructions[0];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_IF_FALSE_GOTO, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_IF_TRUE_GOTO, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.conditional_goto.condition_src.type);
     TEST_ASSERT_EQUAL_INT(0, instr->operands.conditional_goto.condition_src.value.constant_value); // LHS is const 0
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.conditional_goto.target_label.type);
-    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.conditional_goto.target_label.value.label_name);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.conditional_goto.target_label.value.label_name);
 
-    // instr[1]: t0 = 1 (skipped in this path, but TAC is generated)
+    // instr[1]: t0 = (rhs_result != 0) (e.g. t0 = (const 1 != const 0) -> t0 = 1)
     instr = &func->instructions[1];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);
-    TEST_ASSERT_EQUAL_INT(1, instr->operands.copy.src.value.constant_value); // Assign 1 if LHS was true
+    TEST_ASSERT_EQUAL_INT(TAC_INS_NOT_EQUAL, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.relational_op.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.relational_op.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type);    // rhs_result (const 1)
+    TEST_ASSERT_EQUAL_INT(1, instr->operands.relational_op.src1.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type);    // const 0 to compare against
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src2.value.constant_value);
 
-    // instr[2]: goto L1 (skipped in this path)
+    // instr[2]: goto L_end (L2)
     instr = &func->instructions[2];
     TEST_ASSERT_EQUAL_INT(TAC_INS_GOTO, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.go_to.target_label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.go_to.target_label.value.label_name);
+    TEST_ASSERT_EQUAL_STRING("L2", instr->operands.go_to.target_label.value.label_name);
 
-    // instr[3]: L0: (evaluate_rhs_label - this path is taken)
+    // instr[3]: L_true_exit: (L1)
     instr = &func->instructions[3];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
-    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label_def.label.value.label_name);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label_def.label.value.label_name);
 
-    // instr[4]: t0 = const 1 (dest_temp = rhs_result)
+    // instr[4]: t0 = 1 (if LHS was true path)
     instr = &func->instructions[4];
     TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
     TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);    // RHS is const 1
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);
     TEST_ASSERT_EQUAL_INT(1, instr->operands.copy.src.value.constant_value);
 
-    // instr[5]: L1: (end_label)
+    // instr[5]: L_end: (L2)
     instr = &func->instructions[5];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label_def.label.value.label_name);
+    TEST_ASSERT_EQUAL_STRING("L2", instr->operands.label_def.label.value.label_name);
 
     // instr[6]: return t0
     instr = &func->instructions[6];
@@ -599,53 +608,56 @@ static void test_return_logical_or_short_circuit(void) {
     const TacInstruction *instr;
     int temp_id_dest = 0; // Assuming t0 is the destination temporary for ||
 
-    // instr[0]: if_false const 1 goto L0
+    // instr[0]: if_true const 1 goto L_true_exit (L1)
     instr = &func->instructions[0];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_IF_FALSE_GOTO, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_IF_TRUE_GOTO, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.conditional_goto.condition_src.type);
     TEST_ASSERT_EQUAL_INT(1, instr->operands.conditional_goto.condition_src.value.constant_value); // LHS is const 1
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.conditional_goto.target_label.type);
-    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.conditional_goto.target_label.value.label_name);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.conditional_goto.target_label.value.label_name); // L_true_exit
 
-    // instr[1]: t0 = 1 (this path is taken)
+    // Path for 1 || 0 (LHS is true, short-circuits):
+    // instr[1]: t0 = (const 0 != const 0) -> t0 = 0 (Generated, but skipped. RHS is 0)
     instr = &func->instructions[1];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_NOT_EQUAL, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.relational_op.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.relational_op.dst.value.temp_id);    // t0 (dest_temp)
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type);       // rhs_result (const 0)
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src1.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type);       // const 0 to compare against
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src2.value.constant_value);
+
+    // instr[2]: goto L_end (L2) (Generated, but skipped)
+    instr = &func->instructions[2];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_GOTO, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.go_to.target_label.type);
+    TEST_ASSERT_EQUAL_STRING("L2", instr->operands.go_to.target_label.value.label_name); // L_end_logical_or is L2
+
+    // instr[3]: L_true_exit: (L1)
+    instr = &func->instructions[3];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label_def.label.value.label_name);
+
+    // instr[4]: t0 = 1 (Executed, because LHS was true)
+    instr = &func->instructions[4];
     TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
     TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);
     TEST_ASSERT_EQUAL_INT(1, instr->operands.copy.src.value.constant_value); // Assign 1 because LHS was true
 
-    // instr[2]: goto L1 (this path is taken)
-    instr = &func->instructions[2];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_GOTO, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.go_to.target_label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.go_to.target_label.value.label_name);
-
-    // instr[3]: L0: (evaluate_rhs_label - skipped)
-    instr = &func->instructions[3];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
-    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label_def.label.value.label_name);
-
-    // instr[4]: t0 = const 0 (dest_temp = rhs_result - TAC generated but path avoids it)
-    instr = &func->instructions[4];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);    // RHS is const 0
-    TEST_ASSERT_EQUAL_INT(0, instr->operands.copy.src.value.constant_value);
-
-    // instr[5]: L1: (end_label)
+    // instr[5]: L_end: (L2)
     instr = &func->instructions[5];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label_def.label.value.label_name);
+    TEST_ASSERT_EQUAL_STRING("L2", instr->operands.label_def.label.value.label_name);
 
     // instr[6]: return t0
     instr = &func->instructions[6];
     TEST_ASSERT_EQUAL_INT(TAC_INS_RETURN, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.ret.src.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.ret.src.value.temp_id); // t0 (should be 1)
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.ret.src.value.temp_id); // t0
 
     arena_destroy(&test_arena);
 }

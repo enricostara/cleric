@@ -213,6 +213,14 @@ TacInstruction *create_tac_instruction_if_false_goto(const TacOperand condition_
     return instr;
 }
 
+TacInstruction *create_tac_instruction_if_true_goto(const TacOperand condition_src, const TacOperand target_label,
+                                                     Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_IF_TRUE_GOTO, arena);
+    instr->operands.conditional_goto.condition_src = condition_src;
+    instr->operands.conditional_goto.target_label = target_label;
+    return instr;
+}
+
 //------------------------------------------------------------------------------
 // Function and Program Manipulation
 //------------------------------------------------------------------------------
@@ -475,6 +483,13 @@ void tac_print_instruction(StringBuffer *sb, const TacInstruction *instruction) 
             break;
         case TAC_INS_IF_FALSE_GOTO:
             string_buffer_append(sb, "if_false ");
+            tac_print_operand(sb, &instruction->operands.conditional_goto.condition_src);
+            string_buffer_append(sb, " goto ");
+            tac_print_operand(sb, &instruction->operands.conditional_goto.target_label);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_IF_TRUE_GOTO:
+            string_buffer_append(sb, "if_not_zero ");
             tac_print_operand(sb, &instruction->operands.conditional_goto.condition_src);
             string_buffer_append(sb, " goto ");
             tac_print_operand(sb, &instruction->operands.conditional_goto.target_label);

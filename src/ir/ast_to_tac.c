@@ -164,120 +164,146 @@ static TacOperand visit_unary_op_expression(const UnaryOpNode *unary_node, TacFu
     return dest_temp;
 }
 
+// Helper function to handle LOGICAL_AND operations (short-circuiting)
+static TacOperand visit_logical_and_expression(const BinaryOpNode *binary_node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr) {
+    // LHS && RHS
+    // 1. Evaluate LHS
+    TacOperand lhs_result = visit_expression(binary_node->left, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+    if (!is_valid_operand(lhs_result)) {
+        fprintf(stderr, "Error: LOGICAL_AND's left operand did not yield a valid result.\n");
+        return create_invalid_operand();
+    }
+
+    // 2. Create a temporary for the final result of the AND expression
+    TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
+
+    // 3. Create labels for short-circuiting
+    const char *false_exit_label_name = generate_label_name(arena, label_counter_ptr);
+    TacOperand false_exit_label = create_tac_operand_label(false_exit_label_name, arena);
+    const char *end_label_name = generate_label_name(arena, label_counter_ptr);
+    TacOperand end_label = create_tac_operand_label(end_label_name, arena);
+
+    // 4. if_false lhs_result goto L_false_exit
+    TacInstruction *if_false_instr = create_tac_instruction_if_false_goto(lhs_result, false_exit_label, arena);
+    add_instruction_to_function(current_function, if_false_instr, arena);
+
+    // 5. Evaluate RHS (only if LHS was true)
+    TacOperand rhs_result = visit_expression(binary_node->right, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+    if (!is_valid_operand(rhs_result)) {
+        fprintf(stderr, "Error: LOGICAL_AND's right operand did not yield a valid result.\n");
+        // Still need to emit the labels for correct control flow even on error
+        TacInstruction *define_false_label_instr = create_tac_instruction_label(false_exit_label, arena);
+        add_instruction_to_function(current_function, define_false_label_instr, arena);
+        TacInstruction *assign_false_instr = create_tac_instruction_copy(dest_temp, create_tac_operand_const(0), arena);
+        add_instruction_to_function(current_function, assign_false_instr, arena);
+        TacInstruction *define_end_label_instr = create_tac_instruction_label(end_label, arena);
+        add_instruction_to_function(current_function, define_end_label_instr, arena);
+        return create_invalid_operand();
+    }
+    // 6. dest_temp = rhs_result (if RHS is evaluated, its result is the result of the AND)
+    //    However, logical AND should result in 0 or 1. So if rhs_result is non-zero, dest_temp is 1, else 0.
+    TacInstruction *assign_rhs_bool_instr = create_tac_instruction_not_equal(dest_temp, rhs_result, create_tac_operand_const(0), arena);
+    add_instruction_to_function(current_function, assign_rhs_bool_instr, arena);
+
+    // 7. goto L_end
+    TacInstruction *goto_end_instr = create_tac_instruction_goto(end_label, arena);
+    add_instruction_to_function(current_function, goto_end_instr, arena);
+
+    // 8. L_false_exit:
+    TacInstruction *false_label_def_instr = create_tac_instruction_label(false_exit_label, arena);
+    add_instruction_to_function(current_function, false_label_def_instr, arena);
+
+    // 9. dest_temp = 0 (false)
+    TacInstruction *assign_false_val_instr = create_tac_instruction_copy(dest_temp, create_tac_operand_const(0), arena);
+    add_instruction_to_function(current_function, assign_false_val_instr, arena);
+
+    // 10. L_end:
+    TacInstruction *end_label_def_instr = create_tac_instruction_label(end_label, arena);
+    add_instruction_to_function(current_function, end_label_def_instr, arena);
+
+    // 11. The result of this expression is dest_temp
+    return dest_temp;
+}
+
+// Helper function to handle LOGICAL_OR operations (short-circuiting)
+static TacOperand visit_logical_or_expression(const BinaryOpNode *binary_node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr) {
+    // LHS || RHS
+    // 1. Evaluate LHS
+    TacOperand lhs_result = visit_expression(binary_node->left, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+    if (!is_valid_operand(lhs_result)) {
+        fprintf(stderr, "Error: LOGICAL_OR's left operand did not yield a valid result.\n");
+        return create_invalid_operand();
+    }
+
+    // 2. Create a temporary for the final result
+    TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
+
+    // 3. Create labels
+    const char *eval_rhs_label_name = generate_label_name(arena, label_counter_ptr);
+    TacOperand eval_rhs_label = create_tac_operand_label(eval_rhs_label_name, arena);
+    const char *true_exit_label_name = generate_label_name(arena, label_counter_ptr);
+    TacOperand true_exit_label = create_tac_operand_label(true_exit_label_name, arena);
+    const char *end_label_name = generate_label_name(arena, label_counter_ptr);
+    TacOperand end_label = create_tac_operand_label(end_label_name, arena);
+
+    // 4. if_true lhs_result goto L_true_exit (If LHS is true, jump to assign true and exit)
+    TacInstruction *if_true_instr = create_tac_instruction_if_true_goto(lhs_result, true_exit_label, arena);
+    add_instruction_to_function(current_function, if_true_instr, arena);
+
+    // 5. LHS was false. Evaluate RHS. (This is the path if not short-circuited by LHS being true)
+    TacOperand rhs_result = visit_expression(binary_node->right, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+    if (!is_valid_operand(rhs_result)) {
+        fprintf(stderr, "Error: LOGICAL_OR's right operand did not yield a valid result.\n");
+        // Still need to emit labels for correct control flow even on error
+        TacInstruction *define_true_label_instr = create_tac_instruction_label(true_exit_label, arena);
+        add_instruction_to_function(current_function, define_true_label_instr, arena);
+        TacInstruction *assign_true_instr_on_err = create_tac_instruction_copy(dest_temp, create_tac_operand_const(1), arena);
+        add_instruction_to_function(current_function, assign_true_instr_on_err, arena);
+        // We also need the eval_rhs label and end_label for consistent paths.
+        TacInstruction *define_eval_rhs_label_instr = create_tac_instruction_label(eval_rhs_label, arena);
+        add_instruction_to_function(current_function, define_eval_rhs_label_instr, arena);
+        TacInstruction *define_end_label_instr = create_tac_instruction_label(end_label, arena);
+        add_instruction_to_function(current_function, define_end_label_instr, arena);
+        return create_invalid_operand();
+    }
+    // 6. dest_temp = (rhs_result != 0) (Result is true if RHS is non-zero, false otherwise)
+    TacInstruction *assign_rhs_bool_instr = create_tac_instruction_not_equal(dest_temp, rhs_result, create_tac_operand_const(0), arena);
+    add_instruction_to_function(current_function, assign_rhs_bool_instr, arena);
+    //    goto L_end
+    TacInstruction *goto_end_instr_from_rhs = create_tac_instruction_goto(end_label, arena);
+    add_instruction_to_function(current_function, goto_end_instr_from_rhs, arena);
+
+    // 7. L_true_exit: (LHS was true, or preparing path for it)
+    TacInstruction *true_label_def_instr = create_tac_instruction_label(true_exit_label, arena);
+    add_instruction_to_function(current_function, true_label_def_instr, arena);
+
+    // 8. dest_temp = 1 (true)
+    TacInstruction *assign_true_val_instr = create_tac_instruction_copy(dest_temp, create_tac_operand_const(1), arena);
+    add_instruction_to_function(current_function, assign_true_val_instr, arena);
+    // No need for goto L_end here, as L_end will follow or this path is taken via goto.
+
+    // 9. L_end: (Path from RHS evaluation also jumps here)
+    TacInstruction *end_label_def_instr = create_tac_instruction_label(end_label, arena);
+    add_instruction_to_function(current_function, end_label_def_instr, arena);
+
+    // Note: The eval_rhs_label is implicitly handled by the control flow where RHS is evaluated if LHS is false.
+    // The explicit definition and jump to eval_rhs_label_name from original code might be slightly different. Reviewing that. 
+    // The original OR was: if_false LSH goto eval_RHS; LHS_true_path: assign 1, goto end; eval_RHS_label: evaluate RHS, assign bool(RHS), end_label.
+    // Current is: if_true LHS goto true_exit; evaluate RHS, assign bool(RHS), goto end; true_exit_label: assign 1; end_label.
+    // These are logically equivalent for correct short-circuiting. The key is that RHS is skipped if LHS meets OR's condition.
+
+    // 10. The result of this expression is dest_temp
+    return dest_temp;
+}
+
 // Helper function to handle binary operations
 static TacOperand visit_binary_op_expression(const BinaryOpNode *binary_node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr) {
     // Handle LOGICAL_AND and LOGICAL_OR separately due to short-circuiting
     if (binary_node->op == OPERATOR_LOGICAL_AND) {
-        // LHS && RHS
-        // 1. Evaluate LHS
-        TacOperand lhs_result = visit_expression(binary_node->left, current_function, arena, next_temp_id_ptr, label_counter_ptr);
-        if (!is_valid_operand(lhs_result)) {
-            fprintf(stderr, "Error: LOGICAL_AND's left operand did not yield a valid result.\n");
-            return create_invalid_operand();
-        }
-
-        // 2. Create a temporary for the final result of the AND expression
-        TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
-
-        // 3. Create labels for short-circuiting
-        const char *false_exit_label_name = generate_label_name(arena, label_counter_ptr);
-        TacOperand false_exit_label = create_tac_operand_label(false_exit_label_name, arena);
-        const char *end_label_name = generate_label_name(arena, label_counter_ptr);
-        TacOperand end_label = create_tac_operand_label(end_label_name, arena);
-
-        // 4. if_false lhs_result goto L_false_exit
-        TacInstruction *if_false_instr = create_tac_instruction_if_false_goto(lhs_result, false_exit_label, arena);
-        add_instruction_to_function(current_function, if_false_instr, arena);
-
-        // 5. Evaluate RHS (only if LHS was true)
-        TacOperand rhs_result = visit_expression(binary_node->right, current_function, arena, next_temp_id_ptr, label_counter_ptr);
-        if (!is_valid_operand(rhs_result)) {
-            fprintf(stderr, "Error: LOGICAL_AND's right operand did not yield a valid result.\n");
-            // Still need to emit the labels for correct control flow even on error
-            TacInstruction *define_false_label_instr = create_tac_instruction_label(false_exit_label, arena); // Renamed to avoid conflict
-            add_instruction_to_function(current_function, define_false_label_instr, arena);
-            TacInstruction *assign_false_instr = create_tac_instruction_copy(dest_temp, create_tac_operand_const(0), arena);
-            add_instruction_to_function(current_function, assign_false_instr, arena);
-            TacInstruction *define_end_label_instr = create_tac_instruction_label(end_label, arena); // Renamed to avoid conflict
-            add_instruction_to_function(current_function, define_end_label_instr, arena);
-            return create_invalid_operand();
-        }
-        // 6. dest_temp = rhs_result (if RHS is evaluated, its result is the result of the AND)
-        TacInstruction *assign_rhs_instr = create_tac_instruction_copy(dest_temp, rhs_result, arena);
-        add_instruction_to_function(current_function, assign_rhs_instr, arena);
-
-        // 7. goto L_end
-        TacInstruction *goto_end_instr = create_tac_instruction_goto(end_label, arena);
-        add_instruction_to_function(current_function, goto_end_instr, arena);
-
-        // 8. L_false_exit:
-        TacInstruction *false_label_def_instr = create_tac_instruction_label(false_exit_label, arena); // Renamed for clarity
-        add_instruction_to_function(current_function, false_label_def_instr, arena);
-
-        // 9. dest_temp = 0 (false)
-        TacInstruction *assign_false_val_instr = create_tac_instruction_copy(dest_temp, create_tac_operand_const(0), arena); // Renamed for clarity
-        add_instruction_to_function(current_function, assign_false_val_instr, arena);
-
-        // 10. L_end:
-        TacInstruction *end_label_def_instr = create_tac_instruction_label(end_label, arena); // Renamed for clarity
-        add_instruction_to_function(current_function, end_label_def_instr, arena);
-
-        // 11. The result of this expression is dest_temp
-        return dest_temp;
+        return visit_logical_and_expression(binary_node, current_function, arena, next_temp_id_ptr, label_counter_ptr);
     }
     if (binary_node->op == OPERATOR_LOGICAL_OR) {
-        // LHS || RHS
-        // 1. Evaluate LHS
-        TacOperand lhs_result = visit_expression(binary_node->left, current_function, arena, next_temp_id_ptr, label_counter_ptr);
-        if (!is_valid_operand(lhs_result)) {
-            fprintf(stderr, "Error: LOGICAL_OR's left operand did not yield a valid result.\n");
-            return create_invalid_operand();
-        }
-
-        // 2. Create a temporary for the final result
-        TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
-
-        // 3. Create labels
-        const char *eval_rhs_label_name = generate_label_name(arena, label_counter_ptr);
-        TacOperand eval_rhs_label = create_tac_operand_label(eval_rhs_label_name, arena);
-        const char *end_label_name = generate_label_name(arena, label_counter_ptr);
-        TacOperand end_label = create_tac_operand_label(end_label_name, arena);
-
-        // 4. if_false lhs_result goto eval_rhs_label (If LHS is false, jump to evaluate RHS)
-        TacInstruction *if_false_instr = create_tac_instruction_if_false_goto(lhs_result, eval_rhs_label, arena);
-        add_instruction_to_function(current_function, if_false_instr, arena);
-
-        // 5. LHS was true. Set result to true and jump to end.
-        //    dest_temp = 1 (true)
-        TacInstruction *assign_true_instr = create_tac_instruction_copy(dest_temp, create_tac_operand_const(1), arena);
-        add_instruction_to_function(current_function, assign_true_instr, arena);
-        //    goto L_end
-        TacInstruction *goto_end_instr = create_tac_instruction_goto(end_label, arena);
-        add_instruction_to_function(current_function, goto_end_instr, arena);
-
-        // 6. eval_rhs_label:
-        TacInstruction *eval_rhs_label_def_instr = create_tac_instruction_label(eval_rhs_label, arena); // Renamed
-        add_instruction_to_function(current_function, eval_rhs_label_def_instr, arena);
-
-        // 7. Evaluate RHS (only if LHS was false)
-        TacOperand rhs_result = visit_expression(binary_node->right, current_function, arena, next_temp_id_ptr, label_counter_ptr);
-        if (!is_valid_operand(rhs_result)) {
-            fprintf(stderr, "Error: LOGICAL_OR's right operand did not yield a valid result.\n");
-            // Still need to emit end_label for correct control flow
-            TacInstruction *define_end_label_instr = create_tac_instruction_label(end_label, arena); // Renamed
-            add_instruction_to_function(current_function, define_end_label_instr, arena);
-            return create_invalid_operand();
-        }
-        // 8. dest_temp = rhs_result
-        TacInstruction *assign_rhs_instr = create_tac_instruction_copy(dest_temp, rhs_result, arena);
-        add_instruction_to_function(current_function, assign_rhs_instr, arena);
-
-        // 9. L_end:
-        TacInstruction *end_label_def_instr = create_tac_instruction_label(end_label, arena); // Renamed
-        add_instruction_to_function(current_function, end_label_def_instr, arena);
-
-        // 10. The result of this expression is dest_temp
-        return dest_temp;
+        return visit_logical_or_expression(binary_node, current_function, arena, next_temp_id_ptr, label_counter_ptr);
     }
     // Standard binary operations (non-short-circuiting)
     // 1. Visit left and right operands

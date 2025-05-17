@@ -59,7 +59,8 @@ typedef enum {
     // New Control Flow Instructions
     TAC_INS_LABEL,          // label_name: (defines a label)
     TAC_INS_GOTO,           // goto label_name
-    TAC_INS_IF_FALSE_GOTO   // if_false condition_src goto label_name
+    TAC_INS_IF_FALSE_GOTO,  // if_false condition_src goto label_name
+    TAC_INS_IF_TRUE_GOTO // if_true condition_src goto label_name (or if_not_zero)
 
     // Future instructions: CALL, PARAM, etc.
 } TacInstructionType;
@@ -86,7 +87,8 @@ typedef struct {
         // goto label_name
         struct { TacOperand target_label; } go_to; // For TAC_INS_GOTO
         // if_false condition_src goto label_name
-        struct { TacOperand condition_src; TacOperand target_label; } conditional_goto; // For TAC_INS_IF_FALSE_GOTO
+        // if_not_zero condition_src goto label_name
+        struct { TacOperand condition_src; TacOperand target_label; } conditional_goto; // For TAC_INS_IF_FALSE_GOTO and TAC_INS_IF_NOT_ZERO_GOTO
 
         // Future: struct { const char* func_name; TacOperand result; } call;
         // Future: struct { TacOperand param; } param;
@@ -150,6 +152,7 @@ TacInstruction* create_tac_instruction_not_equal(TacOperand dst, TacOperand src1
 TacInstruction* create_tac_instruction_label(TacOperand label, Arena* arena);
 TacInstruction* create_tac_instruction_goto(TacOperand target_label, Arena* arena);
 TacInstruction* create_tac_instruction_if_false_goto(TacOperand condition_src, TacOperand target_label, Arena* arena);
+TacInstruction* create_tac_instruction_if_true_goto(TacOperand condition_src, TacOperand target_label, Arena* arena);
 
 // Function and Program manipulation
 TacFunction* create_tac_function(const char* name, Arena* arena);
