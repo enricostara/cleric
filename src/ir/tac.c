@@ -29,7 +29,7 @@ TacOperand create_tac_operand_temp(const int temp_id) {
     return op;
 }
 
-TacOperand create_tac_operand_label(const char *name, Arena *arena) {
+TacOperand create_tac_operand_label(const char *name) {
     TacOperand op;
     op.type = TAC_OPERAND_LABEL;
     // Assume name is already managed (e.g., arena-allocated by caller or string literal)
@@ -214,7 +214,7 @@ TacInstruction *create_tac_instruction_if_false_goto(const TacOperand condition_
 }
 
 TacInstruction *create_tac_instruction_if_true_goto(const TacOperand condition_src, const TacOperand target_label,
-                                                     Arena *arena) {
+                                                    Arena *arena) {
     TacInstruction *instr = create_base_instruction(TAC_INS_IF_TRUE_GOTO, arena);
     instr->operands.conditional_goto.condition_src = condition_src;
     instr->operands.conditional_goto.target_label = target_label;

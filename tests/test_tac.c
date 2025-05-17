@@ -24,7 +24,7 @@ void test_create_operands(void) {
     // Test Label Operand
     Arena label_arena = arena_create(256);
     const char *label_name_str = "L1";
-    TacOperand label_op = create_tac_operand_label(label_name_str, &label_arena);
+    TacOperand label_op = create_tac_operand_label(label_name_str);
     TEST_ASSERT_EQUAL(TAC_OPERAND_LABEL, label_op.type);
     TEST_ASSERT_EQUAL_STRING(label_name_str, label_op.value.label_name);
     arena_destroy(&label_arena);
@@ -162,7 +162,7 @@ void test_create_new_tac_instructions(void) {
 
     // Test LABEL (LBL1:)
     const char *lbl_name = "LBL1";
-    TacOperand label_op_def = create_tac_operand_label(lbl_name, &test_arena);
+    TacOperand label_op_def = create_tac_operand_label(lbl_name);
     TacInstruction *label_instr = create_tac_instruction_label(label_op_def, &test_arena);
     TEST_ASSERT_NOT_NULL(label_instr);
     TEST_ASSERT_EQUAL(TAC_INS_LABEL, label_instr->type);
@@ -170,7 +170,7 @@ void test_create_new_tac_instructions(void) {
     TEST_ASSERT_EQUAL_STRING(lbl_name, label_instr->operands.label_def.label.value.label_name);
 
     // Test GOTO (GOTO LBL1)
-    TacOperand target_label_op = create_tac_operand_label(lbl_name, &test_arena);
+    TacOperand target_label_op = create_tac_operand_label(lbl_name);
     TacInstruction *goto_instr = create_tac_instruction_goto(target_label_op, &test_arena);
     TEST_ASSERT_NOT_NULL(goto_instr);
     TEST_ASSERT_EQUAL(TAC_INS_GOTO, goto_instr->type);
@@ -350,8 +350,8 @@ static void test_print_tac_program(void) {
     // Operands for control flow
     const char *label_L0_name = "L0";
     const char *label_L1_name = "L1";
-    TacOperand label_L0 = create_tac_operand_label(label_L0_name, &test_arena);
-    TacOperand label_L1 = create_tac_operand_label(label_L1_name, &test_arena);
+    TacOperand label_L0 = create_tac_operand_label(label_L0_name);
+    TacOperand label_L1 = create_tac_operand_label(label_L1_name);
 
     // 5. Create and add TacInstructions to the function
     TacInstruction *instr1 = create_tac_instruction_copy(t0, const_val2, &test_arena);

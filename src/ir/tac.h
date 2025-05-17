@@ -122,7 +122,7 @@ typedef struct {
 // Operand creation
 TacOperand create_tac_operand_const(int value);
 TacOperand create_tac_operand_temp(int temp_id);
-TacOperand create_tac_operand_label(const char* name, Arena* arena);
+TacOperand create_tac_operand_label(const char* name);
 
 // Instruction creation (simplified examples)
 TacInstruction* create_tac_instruction_copy(TacOperand dst, TacOperand src, Arena* arena);
