@@ -374,37 +374,37 @@ static void test_return_logical_and_rhs_evaluates(void) {
 
     // instr[1]: t0 = const 0 (dest_temp = rhs_result)
     instr = &func->instructions[1];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_ASSIGN, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.assign.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.assign.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.assign.src.type);    // RHS is const 0
-    TEST_ASSERT_EQUAL_INT(0, instr->operands.assign.src.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);    // RHS is const 0
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.copy.src.value.constant_value);
 
     // instr[2]: goto L1
     instr = &func->instructions[2];
     TEST_ASSERT_EQUAL_INT(TAC_INS_GOTO, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.jmp.target_label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.jmp.target_label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.go_to.target_label.type);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.go_to.target_label.value.label_name);
 
     // instr[3]: L0:
     instr = &func->instructions[3];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label.label.type);
-    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label.label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
+    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label_def.label.value.label_name);
 
     // instr[4]: t0 = 0 (dest_temp = false)
     instr = &func->instructions[4];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_ASSIGN, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.assign.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.assign.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.assign.src.type); // Assigning constant 0
-    TEST_ASSERT_EQUAL_INT(0, instr->operands.assign.src.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type); // Assigning constant 0
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.copy.src.value.constant_value);
 
     // instr[5]: L1:
     instr = &func->instructions[5];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label.label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label.label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label_def.label.value.label_name);
 
     // instr[6]: return t0
     instr = &func->instructions[6];
@@ -453,37 +453,37 @@ static void test_return_logical_and_short_circuit(void) {
 
     // instr[1]: t0 = const 1 (dest_temp = rhs_result - TAC generated but path avoids it)
     instr = &func->instructions[1];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_ASSIGN, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.assign.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.assign.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.assign.src.type);    // RHS is const 1
-    TEST_ASSERT_EQUAL_INT(1, instr->operands.assign.src.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);    // RHS is const 1
+    TEST_ASSERT_EQUAL_INT(1, instr->operands.copy.src.value.constant_value);
 
     // instr[2]: goto L1
     instr = &func->instructions[2];
     TEST_ASSERT_EQUAL_INT(TAC_INS_GOTO, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.jmp.target_label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.jmp.target_label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.go_to.target_label.type);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.go_to.target_label.value.label_name);
 
     // instr[3]: L0:
     instr = &func->instructions[3];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label.label.type);
-    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label.label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
+    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label_def.label.value.label_name);
 
     // instr[4]: t0 = 0 (dest_temp = false - this path is taken)
     instr = &func->instructions[4];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_ASSIGN, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.assign.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.assign.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.assign.src.type);
-    TEST_ASSERT_EQUAL_INT(0, instr->operands.assign.src.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.copy.src.value.constant_value);
 
     // instr[5]: L1:
     instr = &func->instructions[5];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label.label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label.label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label_def.label.value.label_name);
 
     // instr[6]: return t0
     instr = &func->instructions[6];
@@ -531,37 +531,37 @@ static void test_return_logical_or_rhs_evaluates(void) {
 
     // instr[1]: t0 = 1 (skipped in this path, but TAC is generated)
     instr = &func->instructions[1];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_ASSIGN, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.assign.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.assign.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.assign.src.type);
-    TEST_ASSERT_EQUAL_INT(1, instr->operands.assign.src.value.constant_value); // Assign 1 if LHS was true
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);
+    TEST_ASSERT_EQUAL_INT(1, instr->operands.copy.src.value.constant_value); // Assign 1 if LHS was true
 
     // instr[2]: goto L1 (skipped in this path)
     instr = &func->instructions[2];
     TEST_ASSERT_EQUAL_INT(TAC_INS_GOTO, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.jmp.target_label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.jmp.target_label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.go_to.target_label.type);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.go_to.target_label.value.label_name);
 
     // instr[3]: L0: (evaluate_rhs_label - this path is taken)
     instr = &func->instructions[3];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label.label.type);
-    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label.label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
+    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label_def.label.value.label_name);
 
     // instr[4]: t0 = const 1 (dest_temp = rhs_result)
     instr = &func->instructions[4];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_ASSIGN, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.assign.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.assign.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.assign.src.type);    // RHS is const 1
-    TEST_ASSERT_EQUAL_INT(1, instr->operands.assign.src.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);    // RHS is const 1
+    TEST_ASSERT_EQUAL_INT(1, instr->operands.copy.src.value.constant_value);
 
     // instr[5]: L1: (end_label)
     instr = &func->instructions[5];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label.label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label.label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label_def.label.value.label_name);
 
     // instr[6]: return t0
     instr = &func->instructions[6];
@@ -609,37 +609,37 @@ static void test_return_logical_or_short_circuit(void) {
 
     // instr[1]: t0 = 1 (this path is taken)
     instr = &func->instructions[1];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_ASSIGN, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.assign.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.assign.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.assign.src.type);
-    TEST_ASSERT_EQUAL_INT(1, instr->operands.assign.src.value.constant_value); // Assign 1 because LHS was true
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);
+    TEST_ASSERT_EQUAL_INT(1, instr->operands.copy.src.value.constant_value); // Assign 1 because LHS was true
 
     // instr[2]: goto L1 (this path is taken)
     instr = &func->instructions[2];
     TEST_ASSERT_EQUAL_INT(TAC_INS_GOTO, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.jmp.target_label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.jmp.target_label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.go_to.target_label.type);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.go_to.target_label.value.label_name);
 
     // instr[3]: L0: (evaluate_rhs_label - skipped)
     instr = &func->instructions[3];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label.label.type);
-    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label.label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
+    TEST_ASSERT_EQUAL_STRING("L0", instr->operands.label_def.label.value.label_name);
 
     // instr[4]: t0 = const 0 (dest_temp = rhs_result - TAC generated but path avoids it)
     instr = &func->instructions[4];
-    TEST_ASSERT_EQUAL_INT(TAC_INS_ASSIGN, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.assign.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.assign.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.assign.src.type);    // RHS is const 0
-    TEST_ASSERT_EQUAL_INT(0, instr->operands.assign.src.value.constant_value);
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.copy.dst.value.temp_id); // t0
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.copy.src.type);    // RHS is const 0
+    TEST_ASSERT_EQUAL_INT(0, instr->operands.copy.src.value.constant_value);
 
     // instr[5]: L1: (end_label)
     instr = &func->instructions[5];
     TEST_ASSERT_EQUAL_INT(TAC_INS_LABEL, instr->type);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label.label.type);
-    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label.label.value.label_name);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_LABEL, instr->operands.label_def.label.type);
+    TEST_ASSERT_EQUAL_STRING("L1", instr->operands.label_def.label.value.label_name);
 
     // instr[6]: return t0
     instr = &func->instructions[6];
