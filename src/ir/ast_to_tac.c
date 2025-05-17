@@ -3,14 +3,26 @@
 #include <stdio.h>  // For error reporting (potentially)
 #include <stdlib.h> // For NULL
 #include <stdbool.h>// For bool type
+#include <string.h> // For strcpy and strlen for label generation
 
 // --- Static Helper Function Declarations ---
 
 // Forward declaration for visiting statements (like ReturnStmt)
-static void visit_statement(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr);
+static void visit_statement(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr);
 
 // Forward declaration for visiting expressions (which produce a value)
-static TacOperand visit_expression(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr);
+static TacOperand visit_expression(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr);
+
+// Helper to generate unique label names
+static const char *generate_label_name(Arena *arena, int *label_counter_ptr) {
+    char buffer[32]; // Sufficient for "L" + number
+    sprintf(buffer, "L%d", (*label_counter_ptr)++);
+    char *label_str = arena_alloc(arena, strlen(buffer) + 1);
+    if (label_str) {
+        strcpy(label_str, buffer);
+    }
+    return label_str;
+}
 
 // Helper to create an invalid operand (useful for nodes that don't return a value)
 static TacOperand create_invalid_operand() {
@@ -56,12 +68,13 @@ TacProgram *ast_to_tac(ProgramNode *ast_root, Arena *arena) {
     add_function_to_program(tac_program, tac_function, arena);
 
     // Visit the function body (statements)
-    // Initialize the temporary ID counter for this function
+    // Initialize the temporary ID counter and label counter for this function
     int next_temp_id = 0;
+    int label_counter = 0;
     // For now, assume the body is a single statement (like the ReturnStmt)
     // A real implementation would handle blocks/sequences of statements.
     if (func_def->body) {
-        visit_statement(func_def->body, tac_function, arena, &next_temp_id);
+        visit_statement(func_def->body, tac_function, arena, &next_temp_id, &label_counter);
     } else {
         // Handle functions with empty bodies if necessary
         fprintf(stderr, "Warning: Function '%s' has an empty body.\n", func_def->name);
@@ -73,7 +86,7 @@ TacProgram *ast_to_tac(ProgramNode *ast_root, Arena *arena) {
 // --- Static Helper Function Implementations ---
 
 // Visitor for statement nodes
-static void visit_statement(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr) {
+static void visit_statement(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr) {
     // ReSharper disable once CppDFAConstantConditions
     // ReSharper disable once CppDFAUnreachableCode
     if (!node) return;
@@ -83,7 +96,7 @@ static void visit_statement(AstNode *node, TacFunction *current_function, Arena 
             const ReturnStmtNode *ret_node = (ReturnStmtNode *) node;
             // Visit the expression to generate its TAC and get the result operand
             const TacOperand result_operand = visit_expression(ret_node->expression, current_function, arena,
-                                                               next_temp_id_ptr);
+                                                               next_temp_id_ptr, label_counter_ptr);
 
             // Check if the expression produced a valid result
             if (!is_valid_operand(result_operand)) {
@@ -109,7 +122,7 @@ static void visit_statement(AstNode *node, TacFunction *current_function, Arena 
 }
 
 // Visitor for expression nodes (returns the operand holding the result)
-static TacOperand visit_expression(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr) {
+static TacOperand visit_expression(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr) {
     if (!node) return create_invalid_operand();
 
     switch (node->type) {
@@ -123,7 +136,7 @@ static TacOperand visit_expression(AstNode *node, TacFunction *current_function,
 
             // 1. Visit the operand expression first
             const TacOperand operand_result = visit_expression(unary_node->operand, current_function, arena,
-                                                               next_temp_id_ptr);
+                                                               next_temp_id_ptr, label_counter_ptr);
             if (!is_valid_operand(operand_result)) {
                 fprintf(stderr, "Error: Unary operator's operand did not yield a valid result.\n");
                 return create_invalid_operand();
@@ -142,9 +155,9 @@ static TacOperand visit_expression(AstNode *node, TacFunction *current_function,
                 case OPERATOR_COMPLEMENT:
                     unary_instr = create_tac_instruction_complement(dest_temp, operand_result, arena);
                     break;
-                // case OPERATOR_LOGICAL_NOT: // Add if/when this operator exists
-                //     unary_instr = create_tac_instruction_logical_not(dest_temp, operand_result, arena);
-                //     break;
+                case OPERATOR_LOGICAL_NOT:
+                    unary_instr = create_tac_instruction_logical_not(dest_temp, operand_result, arena);
+                    break;
                 default:
                     fprintf(stderr, "Error: Unsupported unary operator type %d.\n", unary_node->op);
                     return create_invalid_operand();
@@ -164,14 +177,128 @@ static TacOperand visit_expression(AstNode *node, TacFunction *current_function,
         case NODE_BINARY_OP: {
             const BinaryOpNode *binary_node = (BinaryOpNode *) node;
 
+            // Handle LOGICAL_AND and LOGICAL_OR separately due to short-circuiting
+            if (binary_node->op == OPERATOR_LOGICAL_AND) {
+                // LHS && RHS
+                // 1. Evaluate LHS
+                TacOperand lhs_result = visit_expression(binary_node->left, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+                if (!is_valid_operand(lhs_result)) {
+                    fprintf(stderr, "Error: LOGICAL_AND's left operand did not yield a valid result.\n");
+                    return create_invalid_operand();
+                }
+
+                // 2. Create a temporary for the final result of the AND expression
+                TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
+
+                // 3. Create labels for short-circuiting
+                const char *false_exit_label_name = generate_label_name(arena, label_counter_ptr);
+                TacOperand false_exit_label = create_tac_operand_label(false_exit_label_name, arena);
+                const char *end_label_name = generate_label_name(arena, label_counter_ptr);
+                TacOperand end_label = create_tac_operand_label(end_label_name, arena);
+
+                // 4. if_false lhs_result goto L_false_exit
+                TacInstruction *if_false_instr = create_tac_instruction_if_false_goto(lhs_result, false_exit_label, arena);
+                add_instruction_to_function(current_function, if_false_instr, arena);
+
+                // 5. Evaluate RHS (only if LHS was true)
+                TacOperand rhs_result = visit_expression(binary_node->right, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+                if (!is_valid_operand(rhs_result)) {
+                    fprintf(stderr, "Error: LOGICAL_AND's right operand did not yield a valid result.\n");
+                    // Still need to emit the labels for correct control flow even on error
+                    TacInstruction *false_label_instr = create_tac_instruction_label(false_exit_label, arena);
+                    add_instruction_to_function(current_function, false_label_instr, arena);
+                    TacInstruction *assign_false_instr = create_tac_instruction_copy(dest_temp, create_tac_operand_const(0), arena);
+                    add_instruction_to_function(current_function, assign_false_instr, arena);
+                    TacInstruction *end_label_instr = create_tac_instruction_label(end_label, arena);
+                    add_instruction_to_function(current_function, end_label_instr, arena);
+                    return create_invalid_operand();
+                }
+                // 6. dest_temp = rhs_result (if RHS is evaluated, its result is the result of the AND)
+                TacInstruction *assign_rhs_instr = create_tac_instruction_copy(dest_temp, rhs_result, arena);
+                add_instruction_to_function(current_function, assign_rhs_instr, arena);
+
+                // 7. goto L_end
+                TacInstruction *goto_end_instr = create_tac_instruction_goto(end_label, arena);
+                add_instruction_to_function(current_function, goto_end_instr, arena);
+
+                // 8. L_false_exit:
+                TacInstruction *false_label_instr = create_tac_instruction_label(false_exit_label, arena);
+                add_instruction_to_function(current_function, false_label_instr, arena);
+
+                // 9. dest_temp = 0 (false)
+                TacInstruction *assign_false_instr = create_tac_instruction_copy(dest_temp, create_tac_operand_const(0), arena);
+                add_instruction_to_function(current_function, assign_false_instr, arena);
+
+                // 10. L_end:
+                TacInstruction *end_label_instr = create_tac_instruction_label(end_label, arena);
+                add_instruction_to_function(current_function, end_label_instr, arena);
+
+                // 11. The result of this expression is dest_temp
+                return dest_temp;
+            }
+            if (binary_node->op == OPERATOR_LOGICAL_OR) {
+                // LHS || RHS
+                // 1. Evaluate LHS
+                TacOperand lhs_result = visit_expression(binary_node->left, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+                if (!is_valid_operand(lhs_result)) {
+                    fprintf(stderr, "Error: LOGICAL_OR's left operand did not yield a valid result.\n");
+                    return create_invalid_operand();
+                }
+
+                // 2. Create a temporary for the final result
+                TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
+
+                // 3. Create labels
+                const char *eval_rhs_label_name = generate_label_name(arena, label_counter_ptr);
+                TacOperand eval_rhs_label = create_tac_operand_label(eval_rhs_label_name, arena);
+                const char *end_label_name = generate_label_name(arena, label_counter_ptr);
+                TacOperand end_label = create_tac_operand_label(end_label_name, arena);
+
+                // 4. if_false lhs_result goto eval_rhs_label (If LHS is false, jump to evaluate RHS)
+                TacInstruction *if_false_instr = create_tac_instruction_if_false_goto(lhs_result, eval_rhs_label, arena);
+                add_instruction_to_function(current_function, if_false_instr, arena);
+
+                // 5. LHS was true. Set result to true and jump to end.
+                //    dest_temp = 1 (true)
+                TacInstruction *assign_true_instr = create_tac_instruction_copy(dest_temp, create_tac_operand_const(1), arena);
+                add_instruction_to_function(current_function, assign_true_instr, arena);
+                //    goto L_end
+                TacInstruction *goto_end_instr = create_tac_instruction_goto(end_label, arena);
+                add_instruction_to_function(current_function, goto_end_instr, arena);
+
+                // 6. eval_rhs_label:
+                TacInstruction *eval_rhs_label_instr = create_tac_instruction_label(eval_rhs_label, arena);
+                add_instruction_to_function(current_function, eval_rhs_label_instr, arena);
+
+                // 7. Evaluate RHS (only if LHS was false)
+                TacOperand rhs_result = visit_expression(binary_node->right, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+                if (!is_valid_operand(rhs_result)) {
+                    fprintf(stderr, "Error: LOGICAL_OR's right operand did not yield a valid result.\n");
+                    // Still need to emit end_label for correct control flow
+                    TacInstruction *end_label_instr = create_tac_instruction_label(end_label, arena);
+                    add_instruction_to_function(current_function, end_label_instr, arena);
+                    return create_invalid_operand();
+                }
+                // 8. dest_temp = rhs_result
+                TacInstruction *assign_rhs_instr = create_tac_instruction_copy(dest_temp, rhs_result, arena);
+                add_instruction_to_function(current_function, assign_rhs_instr, arena);
+
+                // 9. L_end:
+                TacInstruction *end_label_instr = create_tac_instruction_label(end_label, arena);
+                add_instruction_to_function(current_function, end_label_instr, arena);
+
+                // 10. The result of this expression is dest_temp
+                return dest_temp;
+            }
+            // Standard binary operations (non-short-circuiting)
             // 1. Visit left and right operands
-            const TacOperand left_operand = visit_expression(binary_node->left, current_function, arena, next_temp_id_ptr);
+            const TacOperand left_operand = visit_expression(binary_node->left, current_function, arena, next_temp_id_ptr, label_counter_ptr);
             if (!is_valid_operand(left_operand)) {
                 fprintf(stderr, "Error: Binary operator's left operand did not yield a valid result.\n");
                 return create_invalid_operand();
             }
 
-            const TacOperand right_operand = visit_expression(binary_node->right, current_function, arena, next_temp_id_ptr);
+            const TacOperand right_operand = visit_expression(binary_node->right, current_function, arena, next_temp_id_ptr, label_counter_ptr);
             if (!is_valid_operand(right_operand)) {
                 fprintf(stderr, "Error: Binary operator's right operand did not yield a valid result.\n");
                 return create_invalid_operand();
@@ -198,8 +325,29 @@ static TacOperand visit_expression(AstNode *node, TacFunction *current_function,
                 case OPERATOR_MODULO:
                     binary_instr = create_tac_instruction_mod(dest_temp, left_operand, right_operand, arena);
                     break;
+                case OPERATOR_LESS:
+                    binary_instr = create_tac_instruction_less(dest_temp, left_operand, right_operand, arena);
+                    break;
+                case OPERATOR_GREATER:
+                    binary_instr = create_tac_instruction_greater(dest_temp, left_operand, right_operand, arena);
+                    break;
+                case OPERATOR_LESS_EQUAL:
+                    binary_instr = create_tac_instruction_less_equal(dest_temp, left_operand, right_operand, arena);
+                    break;
+                case OPERATOR_GREATER_EQUAL:
+                    binary_instr = create_tac_instruction_greater_equal(dest_temp, left_operand, right_operand, arena);
+                    break;
+                case OPERATOR_EQUAL_EQUAL:
+                    binary_instr = create_tac_instruction_equal(dest_temp, left_operand, right_operand, arena);
+                    break;
+                case OPERATOR_NOT_EQUAL:
+                    binary_instr = create_tac_instruction_not_equal(dest_temp, left_operand, right_operand, arena);
+                    break;
+                // Logical Operators (to be implemented with short-circuiting)
+                // case OPERATOR_LOGICAL_AND: // Handled above
+                // case OPERATOR_LOGICAL_OR: // Handled above
                 default:
-                    fprintf(stderr, "Error: Unsupported binary operator type %d.\n", binary_node->op);
+                    fprintf(stderr, "Error: Unsupported binary operator type %d (or not yet handled).\n", binary_node->op);
                     return create_invalid_operand();
             }
 

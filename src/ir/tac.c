@@ -80,6 +80,13 @@ TacInstruction *create_tac_instruction_complement(const TacOperand dst, const Ta
     return instr;
 }
 
+TacInstruction *create_tac_instruction_logical_not(const TacOperand dst, const TacOperand src, Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_LOGICAL_NOT, arena);
+    instr->operands.unary_op.dst = dst;
+    instr->operands.unary_op.src = src;
+    return instr;
+}
+
 TacInstruction *create_tac_instruction_return(const TacOperand src, Arena *arena) {
     TacInstruction *instr = create_base_instruction(TAC_INS_RETURN, arena);
     instr->operands.ret.src = src;
@@ -129,13 +136,6 @@ TacInstruction *create_tac_instruction_mod(const TacOperand dst, const TacOperan
     instr->operands.binary_op.dst = dst;
     instr->operands.binary_op.src1 = src1;
     instr->operands.binary_op.src2 = src2;
-    return instr;
-}
-
-TacInstruction *create_tac_instruction_logical_not(const TacOperand dst, const TacOperand src, Arena *arena) {
-    TacInstruction *instr = create_base_instruction(TAC_INS_LOGICAL_NOT, arena);
-    instr->operands.unary_op.dst = dst;
-    instr->operands.unary_op.src = src;
     return instr;
 }
 
