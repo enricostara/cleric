@@ -32,13 +32,6 @@ TacOperand create_tac_operand_temp(const int temp_id) {
 TacOperand create_tac_operand_label(const char *name) {
     TacOperand op;
     op.type = TAC_OPERAND_LABEL;
-    // Assume name is already managed (e.g., arena-allocated by caller or string literal)
-    // If name needs to be copied into the arena specifically for this operand:
-    // size_t name_len = strlen(name) + 1;
-    // char *name_copy = arena_alloc(arena, name_len);
-    // if (!name_copy) { perror("Failed to allocate TAC label name"); exit(EXIT_FAILURE); }
-    // memcpy(name_copy, name, name_len);
-    // op.value.label_name = name_copy;
     op.value.label_name = name; // Assuming name is persistent
     return op;
 }
