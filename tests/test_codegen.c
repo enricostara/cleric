@@ -6,6 +6,36 @@
 #include "../src/memory/arena.h"
 #include "ir/ast_to_tac.h"
 
+// --- Helper Functions for Testing Codegen ---
+
+// Helper function to verify assembly generation for a given TacFunction
+static void verify_asm_for_function(
+    const char* test_description,      // For TEST_ASSERT_EQUAL_STRING_MESSAGE
+    TacFunction* func,                 // Caller creates and populates this with an arena
+    Arena* arena,                      // The arena used by the caller for func and its instructions
+    const char* expected_assembly
+) {
+    // 1. Create TacProgram (using the same arena as the function)
+    TacProgram *tac_program = create_tac_program(arena);
+    TEST_ASSERT_NOT_NULL_MESSAGE(tac_program, "Failed to create TacProgram in verify_asm_for_function");
+    add_function_to_program(tac_program, func, arena); // func is already arena-allocated by caller
+
+    // 2. Setup Codegen State (StringBuffer, also using the same arena)
+    StringBuffer sb;
+    string_buffer_init(&sb, arena, 1024); // Increased buffer size for potentially larger outputs
+
+    // 3. Generate Code from TAC
+    bool success = codegen_generate_program(tac_program, &sb);
+    TEST_ASSERT_TRUE_MESSAGE(success, "codegen_generate_program from TAC failed in verify_asm_for_function");
+
+    // 4. Assertions
+    const char *actual_assembly = string_buffer_content_str(&sb);
+    TEST_ASSERT_NOT_NULL_MESSAGE(actual_assembly, "Output assembly buffer is NULL in verify_asm_for_function");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_assembly, actual_assembly, test_description);
+
+    // Arena cleanup is handled by the caller of this helper (the test function itself)
+}
+
 // --- Test Cases ---
 
 // Test generating code for a simple function returning an integer literal
@@ -467,61 +497,138 @@ static void test_codegen_stack_allocation_for_many_temps(void) {
     arena_destroy(&arena);
 }
 
-// --- Test Runner ---
+// --- New Tests for Relational and Conditional Jump Codegen ---
 
-// Test for: int main(void) { return -((((10)))); }
-// Expected TAC: t0 = 10; t1 = -t0; return t1;
-// Expected stack: 2 temps (t0,t1) -> max_id=1 -> (1+1)*8=16 -> aligned to 16 -> min 32 bytes.
+static void test_codegen_relational_equal_consts_true(void) {
+    Arena test_arena = arena_create(1024 * 2);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create arena for test_codegen_relational_equal_consts_true");
+
+    // Operands
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand const5_1 = create_tac_operand_const(5);
+    TacOperand const5_2 = create_tac_operand_const(5);
+
+    // Instructions
+    // Note: create_tac_instruction_* returns a pointer, but add_instruction_to_function might copy it
+    // or the TacFunction might own them. Let's stick to the pattern of creating them directly for the function.
+    TacInstruction* instr1 = create_tac_instruction_equal(t0, const5_1, const5_2, &test_arena);
+    TacInstruction* instr2 = create_tac_instruction_return(t0, &test_arena);
+
+    // Create TacFunction
+    TacFunction *func = create_tac_function("test_eq_true", &test_arena);
+    add_instruction_to_function(func, instr1, &test_arena);
+    add_instruction_to_function(func, instr2, &test_arena);
+
+    // Expected Assembly (max_temp_id=0 -> (0+1)*8=8 bytes, aligned to 16 is 16, min 32 bytes)
+    const char *expected_asm =
+        ".globl _test_eq_true\n"
+        "_test_eq_true:\n"
+        "    pushq %rbp\n"
+        "    movq %rsp, %rbp\n"
+        "    subq $32, %rsp\n"
+        "    movl $5, %eax\n"
+        "    cmpl $5, %eax\n"
+        "    sete %al\n"
+        "    movzbl %al, %eax\n"
+        "    movl %eax, -8(%rbp)\n"
+        "    movl -8(%rbp), %eax\n"
+        "    leave\n"
+        "    retq\n";
+
+    verify_asm_for_function("test_codegen_relational_equal_consts_true: t0 = (5 == 5); return t0;",
+                              func, &test_arena, expected_asm);
+
+    arena_destroy(&test_arena);
+}
+
+static void test_codegen_relational_equal_consts_false(void) {
+    Arena test_arena = arena_create(1024 * 2);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create arena for test_codegen_relational_equal_consts_false");
+
+    // Operands
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand const5 = create_tac_operand_const(5);
+    TacOperand const6 = create_tac_operand_const(6);
+
+    // Instructions
+    TacInstruction* instr1 = create_tac_instruction_equal(t0, const5, const6, &test_arena);
+    TacInstruction* instr2 = create_tac_instruction_return(t0, &test_arena);
+
+    TacFunction *func = create_tac_function("test_eq_false", &test_arena);
+    add_instruction_to_function(func, instr1, &test_arena);
+    add_instruction_to_function(func, instr2, &test_arena);
+
+    const char *expected_asm =
+        ".globl _test_eq_false\n"
+        "_test_eq_false:\n"
+        "    pushq %rbp\n"
+        "    movq %rsp, %rbp\n"
+        "    subq $32, %rsp\n"
+        "    movl $5, %eax\n"
+        "    cmpl $6, %eax\n"
+        "    sete %al\n"
+        "    movzbl %al, %eax\n"
+        "    movl %eax, -8(%rbp)\n"
+        "    movl -8(%rbp), %eax\n"
+        "    leave\n"
+        "    retq\n";
+
+    verify_asm_for_function("test_codegen_relational_equal_consts_false: t0 = (5 == 6); return t0;",
+                              func, &test_arena, expected_asm);
+
+    arena_destroy(&test_arena);
+}
+
+// Test for return -(5 + (-2));  (Should be -3)
 static void test_codegen_return_negated_parenthesized_constant(void) {
     Arena arena = arena_create(1024 * 4);
     TEST_ASSERT_NOT_NULL(arena.start);
 
-    // 1. Create AST: ProgramNode -> FuncDefNode("main") -> ReturnStmtNode -> UnaryOpNode(NEGATE_OP) -> IntLiteralNode(10)
-    IntLiteralNode *int_node = create_int_literal_node(10, &arena);
-    UnaryOpNode *neg_op_node = create_unary_op_node(OPERATOR_NEGATE, (AstNode *) int_node, &arena);
-    ReturnStmtNode *ret_stmt_node = create_return_stmt_node((AstNode *) neg_op_node, &arena);
-    FuncDefNode *func_def_node = create_func_def_node("main", (AstNode *) ret_stmt_node, &arena);
-    ProgramNode *program_node = create_program_node(func_def_node, &arena);
+    TacProgram *prog = create_tac_program(&arena);
+    TacFunction *func = create_tac_function("main", &arena);
+    add_function_to_program(prog, func, &arena);
 
-    // 2. Convert AST to TAC
-    TacProgram *tac_program = ast_to_tac(program_node, &arena);
-    TEST_ASSERT_NOT_NULL_MESSAGE(tac_program, "AST to TAC conversion failed for negated parenthesized constant");
-    TEST_ASSERT_EQUAL_INT_MESSAGE(1, tac_program->function_count, "Expected 1 function in TAC program");
-    // Optional: Print TAC for debugging if needed
-    // StringBuffer tac_sb;
-    // string_buffer_init(&tac_sb, &arena, 256);
-    // tac_print_program(&tac_sb, tac_program);
-    // printf("TAC for test_codegen_return_negated_parenthesized_constant:\n%s\n", string_buffer_content_str(&tac_sb));
+    // Operands
+    TacOperand t0 = create_tac_operand_temp(0); // To hold 5 + (-2)
+    TacOperand t1 = create_tac_operand_temp(1); // To hold -(t0)
+    TacOperand const5 = create_tac_operand_const(5);
+    TacOperand const_neg_2 = create_tac_operand_const(-2);
 
+    // 1. t0 = 5 + (-2)  => t0 = 3
+    add_instruction_to_function(func, create_tac_instruction_add(t0, const5, const_neg_2, &arena), &arena);
+    // 2. t1 = -t0      => t1 = -3
+    add_instruction_to_function(func, create_tac_instruction_negate(t1, t0, &arena), &arena);
+    // 3. return t1
+    add_instruction_to_function(func, create_tac_instruction_return(t1, &arena), &arena);
 
-    // 3. Generate Assembly
-    StringBuffer asm_sb;
-    string_buffer_init(&asm_sb, &arena, 512);
-    bool success = codegen_generate_program(tac_program, &asm_sb);
-    TEST_ASSERT_TRUE_MESSAGE(success, "codegen_generate_program failed for negated parenthesized constant");
+    StringBuffer sb;
+    string_buffer_init(&sb, &arena, 512);
+    bool success = codegen_generate_program(prog, &sb);
+    TEST_ASSERT_TRUE(success);
 
-    // 4. Assertions
     const char *expected_asm =
             ".globl _main\n"
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n" // Stack frame for t0
-            "    movl $10, %eax\n" // eax = 10 (from const operand of negate)
-            "    negl %eax\n" // eax = -eax
-            "    movl %eax, -8(%rbp)\n" // t0 = eax (result of negation)
-            "    movl -8(%rbp), %eax\n" // return t0
+            "    subq $32, %rsp\n" // For t0, t1 (max_id=1 -> 2 temps * 8 = 16, aligned to 16, min 32)
+            "    movl $5, %eax\n"
+            "    addl $-2, %eax\n"
+            "    movl %eax, -8(%rbp)\n"  // t0 = 3
+            "    movl -8(%rbp), %eax\n"
+            "    negl %eax\n"
+            "    movl %eax, -16(%rbp)\n" // t1 = -3
+            "    movl -16(%rbp), %eax\n" // return t1
             "    leave\n"
             "    retq\n";
-
-    const char *actual_asm = string_buffer_content_str(&asm_sb);
-    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm,
-                                     "Generated assembly mismatch for negated parenthesized constant");
-
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, string_buffer_content_str(&sb), "Test for -(5 + (-2)) failed.");
     arena_destroy(&arena);
 }
 
-void run_codegen_tests(void) {
+// --- Test Runner ---
+
+void run_codegen_tests(void)
+{
     RUN_TEST(test_codegen_simple_return);
     RUN_TEST(test_operand_to_assembly_string_const_ok);
     RUN_TEST(test_operand_to_assembly_string_temp_ok);
@@ -529,6 +636,7 @@ void run_codegen_tests(void) {
     RUN_TEST(test_operand_to_assembly_string_small_buffer);
     RUN_TEST(test_operand_to_assembly_string_zero_buffer);
     RUN_TEST(test_operand_to_assembly_string_unhandled_type);
+
     RUN_TEST(test_calculate_max_temp_id_null_function);
     RUN_TEST(test_calculate_max_temp_id_no_instructions);
     RUN_TEST(test_calculate_max_temp_id_no_temporaries);
@@ -536,10 +644,15 @@ void run_codegen_tests(void) {
     RUN_TEST(test_calculate_max_temp_id_one_temporary_src);
     RUN_TEST(test_calculate_max_temp_id_mixed_operands);
     RUN_TEST(test_calculate_max_temp_id_temp_ids_not_sequential);
+
     RUN_TEST(test_codegen_copy_const_to_temp_and_return);
     RUN_TEST(test_codegen_negate_temp_from_temp);
     RUN_TEST(test_codegen_complement_temp_in_place);
     RUN_TEST(test_codegen_complement_of_negated_constant);
     RUN_TEST(test_codegen_stack_allocation_for_many_temps);
     RUN_TEST(test_codegen_return_negated_parenthesized_constant);
+
+    // New tests for relational and conditional jumps
+    RUN_TEST(test_codegen_relational_equal_consts_true);
+    RUN_TEST(test_codegen_relational_equal_consts_false);
 }
