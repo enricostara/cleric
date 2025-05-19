@@ -294,6 +294,78 @@ static bool emit_goto_instruction(const TacInstruction *instr, StringBuffer *sb,
     return true;
 }
 
+static bool emit_relational_op_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char op1_str[64];
+    char op2_str[64];
+    char dest_str[64];
+
+    if (!operand_to_assembly_string(&instr->operands.relational_op.src1, op1_str, sizeof(op1_str)) ||
+        !operand_to_assembly_string(&instr->operands.relational_op.src2, op2_str, sizeof(op2_str)) ||
+        !operand_to_assembly_string(&instr->operands.relational_op.dst, dest_str, sizeof(dest_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operands for relational operation (type %d) in function %s.\n", instr->type, current_func_name);
+        return false;
+    }
+
+    string_buffer_append(sb, "    movl %s, %%eax\n", op1_str);
+    string_buffer_append(sb, "    cmpl %s, %%eax\n", op2_str);
+
+    const char* set_instruction = NULL;
+    switch (instr->type) {
+        case TAC_INS_EQUAL:
+            set_instruction = "sete";
+            break;
+        case TAC_INS_NOT_EQUAL:
+            set_instruction = "setne";
+            break;
+        case TAC_INS_LESS:
+            set_instruction = "setl";
+            break;
+        case TAC_INS_LESS_EQUAL:
+            set_instruction = "setle";
+            break;
+        case TAC_INS_GREATER:
+            set_instruction = "setg";
+            break;
+        case TAC_INS_GREATER_EQUAL:
+            set_instruction = "setge";
+            break;
+        default:
+            fprintf(stderr, "Codegen Error: Unhandled relational operator type %d in emit_relational_op_instruction for function %s.\n", instr->type, current_func_name);
+            return false;
+    }
+
+    string_buffer_append(sb, "    %s %%al\n", set_instruction);
+    string_buffer_append(sb, "    movzbl %%al, %%eax\n");
+    string_buffer_append(sb, "    movl %%eax, %s\n", dest_str);
+
+    return true;
+}
+
+static bool emit_conditional_jump_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char cond_str[64];
+    char target_label_str[64];
+
+    if (!operand_to_assembly_string(&instr->operands.conditional_goto.condition_src, cond_str, sizeof(cond_str)) ||
+        !operand_to_assembly_string(&instr->operands.conditional_goto.target_label, target_label_str, sizeof(target_label_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operands for conditional jump (type %d) in function %s.\n", instr->type, current_func_name);
+        return false;
+    }
+
+    string_buffer_append(sb, "    movl %s, %%eax\n", cond_str);   // Move condition (0 or 1) into eax
+    string_buffer_append(sb, "    testl %%eax, %%eax\n"); // Test eax with itself. Sets ZF if eax is 0.
+
+    if (instr->type == TAC_INS_IF_FALSE_GOTO) {
+        string_buffer_append(sb, "    jz %s\n", target_label_str); // Jump if Zero (ZF=1), i.e., if condition was false
+    } else if (instr->type == TAC_INS_IF_TRUE_GOTO) {
+        string_buffer_append(sb, "    jnz %s\n", target_label_str); // Jump if Not Zero (ZF=0), i.e., if condition was true
+    } else {
+        fprintf(stderr, "Codegen Error: Unhandled conditional jump type %d in emit_conditional_jump_instruction for function %s.\n", instr->type, current_func_name);
+        return false;
+    }
+
+    return true;
+}
+
 static bool generate_tac_instruction(const TacInstruction *instr, const TacFunction *current_function,
                                      StringBuffer *sb) {
     if (!instr) {
@@ -328,6 +400,18 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
         }
         case TAC_INS_GOTO: {
             return emit_goto_instruction(instr, sb, func_name_for_errors);
+        }
+        case TAC_INS_EQUAL:
+        case TAC_INS_NOT_EQUAL:
+        case TAC_INS_LESS:
+        case TAC_INS_LESS_EQUAL:
+        case TAC_INS_GREATER:
+        case TAC_INS_GREATER_EQUAL: {
+            return emit_relational_op_instruction(instr, sb, func_name_for_errors);
+        }
+        case TAC_INS_IF_FALSE_GOTO:
+        case TAC_INS_IF_TRUE_GOTO: {
+            return emit_conditional_jump_instruction(instr, sb, func_name_for_errors);
         }
         default:
             fprintf(stderr, "Codegen Warning: Unhandled TAC instruction type %d in function %s. No code generated.\n",
