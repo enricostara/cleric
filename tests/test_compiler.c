@@ -180,6 +180,119 @@ static void test_compile_return_less_than_false(void) {
     arena_destroy(&test_arena);
 }
 
+static void test_compile_logical_not_false(void) {
+    Arena test_arena = arena_create(1024 * 8);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for logical NOT test");
+
+    const char *input_c = "int main(void) { return !0; }";
+    const char *expected_asm =
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n"       // Stack space for TAC temporary t0
+            "    movl $0, %eax\n"        // Load 0
+            "    cmpl $0, %eax\n"        // Compare with 0
+            "    sete %al\n"             // Set AL if 0 == 0 (AL=1)
+            "    movzbl %al, %eax\n"     // Zero-extend AL to EAX (EAX=1)
+            "    movl %eax, -8(%rbp)\n"  // Store result (1) into t0
+            "    movl -8(%rbp), %eax\n"  // Load t0 for return
+            "    leave\n"
+            "    retq\n";
+
+    StringBuffer sb;
+    string_buffer_init(&sb, &test_arena, 512);
+
+    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for logical NOT");
+
+    const char *actual_asm = string_buffer_content_str(&sb);
+    TEST_ASSERT_NOT_NULL_MESSAGE(actual_asm, "Output assembly buffer is NULL for logical NOT test");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch for logical NOT");
+
+    arena_destroy(&test_arena);
+}
+
+static void test_compile_logical_and_true_false(void) {
+    Arena test_arena = arena_create(1024 * 8);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for logical AND test");
+
+    const char *input_c = "int main(void) { return 1 && 0; }";
+    const char *expected_asm =
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n"       // For TAC temporary and labels
+            "    movl $1, %eax\n"        // Load LHS (1)
+            "    testl %eax, %eax\n"     // Is LHS zero?
+            "    jz L0\n"                // If LHS is 0, result is 0 (short-circuit)
+            "    movl $0, %eax\n"        // Load RHS (0)
+            "    cmpl $0, %eax\n"        // Booleanize RHS: (0 == 0) -> false (0)
+            "    setne %al\n"            // al = (RHS != 0)
+            "    movzbl %al, %eax\n"     // eax = booleanized RHS
+            "    movl %eax, -8(%rbp)\n"  // Store booleanized RHS as result
+            "    jmp L1\n"               // Jump to end
+            "L0:\n"
+            "    movl $0, -8(%rbp)\n"  // Store 0 as result (short-circuit path)
+            "L1:\n"
+            "    movl -8(%rbp), %eax\n"  // Load final result for return
+            "    leave\n"
+            "    retq\n";
+
+    StringBuffer sb;
+    string_buffer_init(&sb, &test_arena, 512);
+
+    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for logical AND");
+
+    const char *actual_asm = string_buffer_content_str(&sb);
+    TEST_ASSERT_NOT_NULL_MESSAGE(actual_asm, "Output assembly buffer is NULL for logical AND test");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch for logical AND");
+
+    arena_destroy(&test_arena);
+}
+
+static void test_compile_logical_or_false_true(void) {
+    Arena test_arena = arena_create(1024 * 8);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for logical OR test");
+
+    const char *input_c = "int main(void) { return 0 || 1; }";
+    const char *expected_asm =
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n"       // For TAC temporary and labels
+            "    movl $0, %eax\n"        // Load LHS (0)
+            "    testl %eax, %eax\n"     // Is LHS zero?
+            "    jnz L1\n"               // If LHS is non-zero (true), result is 1 (short-circuit)
+            "    movl $1, %eax\n"        // Load RHS (1)
+            "    cmpl $0, %eax\n"        // Booleanize RHS: (1 == 0) -> false (0) -> setne sets al to 1
+            "    setne %al\n"            // al = (RHS != 0)
+            "    movzbl %al, %eax\n"     // eax = booleanized RHS
+            "    movl %eax, -8(%rbp)\n"  // Store booleanized RHS as result
+            "    jmp L2\n"               // Jump to end
+            "L1:\n"
+            "    movl $1, -8(%rbp)\n"  // Store 1 as result (short-circuit path for OR)
+            "L2:\n"
+            "    movl -8(%rbp), %eax\n"  // Load final result for return
+            "    leave\n"
+            "    retq\n";
+
+    StringBuffer sb;
+    string_buffer_init(&sb, &test_arena, 512);
+
+    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for logical OR");
+
+    const char *actual_asm = string_buffer_content_str(&sb);
+    TEST_ASSERT_NOT_NULL_MESSAGE(actual_asm, "Output assembly buffer is NULL for logical OR test");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch for logical OR");
+
+    arena_destroy(&test_arena);
+}
+
 // --- Test Runner ---
 
 void run_compiler_tests(void) {
@@ -188,4 +301,7 @@ void run_compiler_tests(void) {
     RUN_TEST(test_compile_return_double_negation);
     RUN_TEST(test_compile_return_addition);
     RUN_TEST(test_compile_return_less_than_false);
+    RUN_TEST(test_compile_logical_not_false);
+    RUN_TEST(test_compile_logical_and_true_false);
+    RUN_TEST(test_compile_logical_or_false_true);
 }
