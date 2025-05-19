@@ -625,6 +625,160 @@ static void test_codegen_return_negated_parenthesized_constant(void) {
     arena_destroy(&arena);
 }
 
+// --- New Tests for Relational and Conditional Jump Codegen ---
+
+static void test_codegen_relational_not_equal_consts_true(void) {
+    Arena test_arena = arena_create(1024 * 2);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create arena for test_codegen_relational_not_equal_consts_true");
+
+    // Operands
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand const5 = create_tac_operand_const(5);
+    TacOperand const6 = create_tac_operand_const(6);
+
+    // Instructions
+    TacInstruction* instr1 = create_tac_instruction_not_equal(t0, const5, const6, &test_arena);
+    TacInstruction* instr2 = create_tac_instruction_return(t0, &test_arena);
+
+    TacFunction *func = create_tac_function("test_ne_true", &test_arena);
+    add_instruction_to_function(func, instr1, &test_arena);
+    add_instruction_to_function(func, instr2, &test_arena);
+
+    const char *expected_asm =
+        ".globl _test_ne_true\n"
+        "_test_ne_true:\n"
+        "    pushq %rbp\n"
+        "    movq %rsp, %rbp\n"
+        "    subq $32, %rsp\n"
+        "    movl $5, %eax\n"
+        "    cmpl $6, %eax\n"
+        "    setne %al\n"
+        "    movzbl %al, %eax\n"
+        "    movl %eax, -8(%rbp)\n"
+        "    movl -8(%rbp), %eax\n"
+        "    leave\n"
+        "    retq\n";
+
+    verify_asm_for_function("test_codegen_relational_not_equal_consts_true: t0 = (5 != 6); return t0;",
+                              func, &test_arena, expected_asm);
+
+    arena_destroy(&test_arena);
+}
+
+static void test_codegen_relational_not_equal_consts_false(void) {
+    Arena test_arena = arena_create(1024 * 2);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create arena for test_codegen_relational_not_equal_consts_false");
+
+    // Operands
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand const5_1 = create_tac_operand_const(5);
+    TacOperand const5_2 = create_tac_operand_const(5);
+
+    // Instructions
+    TacInstruction* instr1 = create_tac_instruction_not_equal(t0, const5_1, const5_2, &test_arena);
+    TacInstruction* instr2 = create_tac_instruction_return(t0, &test_arena);
+
+    TacFunction *func = create_tac_function("test_ne_false", &test_arena);
+    add_instruction_to_function(func, instr1, &test_arena);
+    add_instruction_to_function(func, instr2, &test_arena);
+
+    const char *expected_asm =
+        ".globl _test_ne_false\n"
+        "_test_ne_false:\n"
+        "    pushq %rbp\n"
+        "    movq %rsp, %rbp\n"
+        "    subq $32, %rsp\n"
+        "    movl $5, %eax\n"
+        "    cmpl $5, %eax\n"
+        "    setne %al\n"
+        "    movzbl %al, %eax\n"
+        "    movl %eax, -8(%rbp)\n"
+        "    movl -8(%rbp), %eax\n"
+        "    leave\n"
+        "    retq\n";
+
+    verify_asm_for_function("test_codegen_relational_not_equal_consts_false: t0 = (5 != 5); return t0;",
+                              func, &test_arena, expected_asm);
+
+    arena_destroy(&test_arena);
+}
+
+static void test_codegen_relational_less_consts_true(void) {
+    Arena test_arena = arena_create(1024 * 2);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create arena for test_codegen_relational_less_consts_true");
+
+    // Operands
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand const5 = create_tac_operand_const(5);
+    TacOperand const6 = create_tac_operand_const(6);
+
+    // Instructions
+    TacInstruction* instr1 = create_tac_instruction_less(t0, const5, const6, &test_arena);
+    TacInstruction* instr2 = create_tac_instruction_return(t0, &test_arena);
+
+    TacFunction *func = create_tac_function("test_lt_true", &test_arena);
+    add_instruction_to_function(func, instr1, &test_arena);
+    add_instruction_to_function(func, instr2, &test_arena);
+
+    const char *expected_asm =
+        ".globl _test_lt_true\n"
+        "_test_lt_true:\n"
+        "    pushq %rbp\n"
+        "    movq %rsp, %rbp\n"
+        "    subq $32, %rsp\n"
+        "    movl $5, %eax\n"
+        "    cmpl $6, %eax\n"
+        "    setl %al\n"
+        "    movzbl %al, %eax\n"
+        "    movl %eax, -8(%rbp)\n"
+        "    movl -8(%rbp), %eax\n"
+        "    leave\n"
+        "    retq\n";
+
+    verify_asm_for_function("test_codegen_relational_less_consts_true: t0 = (5 < 6); return t0;",
+                              func, &test_arena, expected_asm);
+
+    arena_destroy(&test_arena);
+}
+
+static void test_codegen_relational_less_consts_false(void) {
+    Arena test_arena = arena_create(1024 * 2);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create arena for test_codegen_relational_less_consts_false_equal");
+
+    // Operands
+    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand const5_1 = create_tac_operand_const(5);
+    TacOperand const5_2 = create_tac_operand_const(5);
+
+    // Instructions
+    TacInstruction* instr1 = create_tac_instruction_less(t0, const5_1, const5_2, &test_arena);
+    TacInstruction* instr2 = create_tac_instruction_return(t0, &test_arena);
+
+    TacFunction *func = create_tac_function("test_lt_false_eq", &test_arena);
+    add_instruction_to_function(func, instr1, &test_arena);
+    add_instruction_to_function(func, instr2, &test_arena);
+
+    const char *expected_asm =
+        ".globl _test_lt_false_eq\n"
+        "_test_lt_false_eq:\n"
+        "    pushq %rbp\n"
+        "    movq %rsp, %rbp\n"
+        "    subq $32, %rsp\n"
+        "    movl $5, %eax\n"
+        "    cmpl $5, %eax\n"
+        "    setl %al\n"
+        "    movzbl %al, %eax\n"
+        "    movl %eax, -8(%rbp)\n"
+        "    movl -8(%rbp), %eax\n"
+        "    leave\n"
+        "    retq\n";
+
+    verify_asm_for_function("test_codegen_relational_less_consts_false_equal: t0 = (5 < 5); return t0;",
+                              func, &test_arena, expected_asm);
+
+    arena_destroy(&test_arena);
+}
+
 // --- Test Runner ---
 
 void run_codegen_tests(void)
@@ -655,4 +809,9 @@ void run_codegen_tests(void)
     // New tests for relational and conditional jumps
     RUN_TEST(test_codegen_relational_equal_consts_true);
     RUN_TEST(test_codegen_relational_equal_consts_false);
+    RUN_TEST(test_codegen_relational_not_equal_consts_true);
+    RUN_TEST(test_codegen_relational_not_equal_consts_false);
+    RUN_TEST(test_codegen_relational_less_consts_true);
+    RUN_TEST(test_codegen_relational_less_consts_false);
+
 }
