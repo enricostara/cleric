@@ -31,6 +31,7 @@ int calculate_max_temp_id(const TacFunction *func) {
                 break;
             case TAC_INS_NEGATE:
             case TAC_INS_COMPLEMENT:
+            case TAC_INS_LOGICAL_NOT:
                 operands_to_inspect[0] = &instr->operands.unary_op.dst;
                 operands_to_inspect[1] = &instr->operands.unary_op.src;
                 num_ops_to_inspect = 2;
@@ -66,6 +67,28 @@ static bool generate_tac_function(const TacFunction *func, StringBuffer *sb);
 
 static bool generate_tac_instruction(const TacInstruction *instr, const TacFunction *current_function,
                                      StringBuffer *sb);
+
+static bool emit_return_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
+static bool emit_copy_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
+static bool emit_unary_op_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
+static bool emit_logical_not_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
+static bool emit_binary_arith_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
+static bool emit_division_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
+static bool emit_label_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
+static bool emit_goto_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
+static bool emit_relational_op_instruction(const TacInstruction *instr, StringBuffer *sb,
+                                           const char *current_func_name);
+
+static bool emit_conditional_jump_instruction(const TacInstruction *instr, StringBuffer *sb,
+                                              const char *current_func_name);
 
 // --- Main function ---
 
@@ -176,10 +199,12 @@ static bool emit_copy_instruction(const TacInstruction *instr, StringBuffer *sb,
         return false;
     }
     // If both are stack temporaries (memory operands), use an intermediate register.
-    if (op1_str[0] == '-' && dest_str[0] == '-') { // Temp-to-Temp
+    if (op1_str[0] == '-' && dest_str[0] == '-') {
+        // Temp-to-Temp
         string_buffer_append(sb, "    movl %s, %%r10d\n", op1_str); // mov src_temp to r10d
         string_buffer_append(sb, "    movl %%r10d, %s\n", dest_str); // mov r10d to dst_temp
-    } else if (op1_str[0] == '$' && dest_str[0] == '-') { // Const-to-Temp
+    } else if (op1_str[0] == '$' && dest_str[0] == '-') {
+        // Const-to-Temp
         string_buffer_append(sb, "    movl %s, %s\n", op1_str, dest_str); // movl $const, temp_mem
     } else {
         // Other cases (e.g., Temp-to-Register (if we had them), or more complex scenarios)
@@ -204,7 +229,7 @@ static bool emit_unary_op_instruction(const TacInstruction *instr, StringBuffer 
         return false;
     }
 
-    const char* op_mnemonic = (instr->type == TAC_INS_NEGATE ? "negl" : "notl");
+    const char *op_mnemonic = (instr->type == TAC_INS_NEGATE ? "negl" : "notl");
 
     if (src_op->type == TAC_OPERAND_TEMP &&
         dst_op->type == TAC_OPERAND_TEMP &&
@@ -220,7 +245,8 @@ static bool emit_unary_op_instruction(const TacInstruction *instr, StringBuffer 
     return true;
 }
 
-static bool emit_binary_arith_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+static bool emit_binary_arith_instruction(const TacInstruction *instr, StringBuffer *sb,
+                                          const char *current_func_name) {
     char op1_str[64];
     char op2_str[64];
     char dest_str[64];
@@ -228,7 +254,8 @@ static bool emit_binary_arith_instruction(const TacInstruction *instr, StringBuf
     if (!operand_to_assembly_string(&instr->operands.binary_op.src1, op1_str, sizeof(op1_str)) ||
         !operand_to_assembly_string(&instr->operands.binary_op.src2, op2_str, sizeof(op2_str)) ||
         !operand_to_assembly_string(&instr->operands.binary_op.dst, dest_str, sizeof(dest_str))) {
-        fprintf(stderr, "Codegen Error: Could not convert operands for ADD/SUB/MUL in function %s.\n", current_func_name);
+        fprintf(stderr, "Codegen Error: Could not convert operands for ADD/SUB/MUL in function %s.\n",
+                current_func_name);
         return false;
     }
 
@@ -237,7 +264,8 @@ static bool emit_binary_arith_instruction(const TacInstruction *instr, StringBuf
         string_buffer_append(sb, "    addl %s, %%eax\n", op2_str); // add src2 to eax
     } else if (instr->type == TAC_INS_SUB) {
         string_buffer_append(sb, "    subl %s, %%eax\n", op2_str); // sub src2 from eax
-    } else { // TAC_INS_MUL
+    } else {
+        // TAC_INS_MUL
         string_buffer_append(sb, "    imull %s, %%eax\n", op2_str); // mul eax by src2
     }
     string_buffer_append(sb, "    movl %%eax, %s\n", dest_str); // mov result from eax to dst
@@ -251,7 +279,8 @@ static bool emit_division_instruction(const TacInstruction *instr, StringBuffer 
 
     if (!operand_to_assembly_string(&instr->operands.binary_op.src1, op1_str, sizeof(op1_str)) || // Dividend
         !operand_to_assembly_string(&instr->operands.binary_op.src2, op2_str, sizeof(op2_str)) || // Divisor
-        !operand_to_assembly_string(&instr->operands.binary_op.dst, dest_str, sizeof(dest_str))) { // Destination
+        !operand_to_assembly_string(&instr->operands.binary_op.dst, dest_str, sizeof(dest_str))) {
+        // Destination
         fprintf(stderr, "Codegen Error: Could not convert operands for DIV/MOD in function %s.\n", current_func_name);
         return false;
     }
@@ -261,14 +290,15 @@ static bool emit_division_instruction(const TacInstruction *instr, StringBuffer 
 
     if (instr->operands.binary_op.src2.type == TAC_OPERAND_CONST) {
         string_buffer_append(sb, "    movl %s, %%ecx\n", op2_str); // movl $const_val, %ecx
-        string_buffer_append(sb, "    idivl %%ecx\n");          // idivl %ecx
+        string_buffer_append(sb, "    idivl %%ecx\n"); // idivl %ecx
     } else {
-        string_buffer_append(sb, "    idivl %s\n", op2_str);     // idivl temp_var_on_stack
+        string_buffer_append(sb, "    idivl %s\n", op2_str); // idivl temp_var_on_stack
     }
 
     if (instr->type == TAC_INS_DIV) {
         string_buffer_append(sb, "    movl %%eax, %s\n", dest_str); // Store quotient (eax) into dst
-    } else { // TAC_INS_MOD
+    } else {
+        // TAC_INS_MOD
         string_buffer_append(sb, "    movl %%edx, %s\n", dest_str); // Store remainder (edx) into dst
     }
     return true;
@@ -296,7 +326,7 @@ static bool emit_goto_instruction(const TacInstruction *instr, StringBuffer *sb,
 
 /**
  * @brief Emits assembly code for a TAC relational operation instruction.
- * 
+ *
  * Handles instructions like 'dst = src1 op src2', where 'op' is a relational
  * operator (e.g., ==, <, >=).
  * The generated assembly typically involves:
@@ -305,13 +335,14 @@ static bool emit_goto_instruction(const TacInstruction *instr, StringBuffer *sb,
  *   3. Using a 'setX' instruction (e.g., sete, setl) to set %al based on the comparison.
  *   4. Zero-extending %al to %eax.
  *   5. Storing the result (0 or 1) from %eax into the destination operand.
- * 
+ *
  * @param instr The TAC instruction to process.
  * @param sb The string buffer to append assembly code to.
  * @param current_func_name The name of the current function being processed (for error reporting).
  * @return true if code generation was successful, false otherwise.
  */
-static bool emit_relational_op_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+static bool emit_relational_op_instruction(const TacInstruction *instr, StringBuffer *sb,
+                                           const char *current_func_name) {
     char op1_str[64];
     char op2_str[64];
     char dest_str[64];
@@ -319,14 +350,16 @@ static bool emit_relational_op_instruction(const TacInstruction *instr, StringBu
     if (!operand_to_assembly_string(&instr->operands.relational_op.src1, op1_str, sizeof(op1_str)) ||
         !operand_to_assembly_string(&instr->operands.relational_op.src2, op2_str, sizeof(op2_str)) ||
         !operand_to_assembly_string(&instr->operands.relational_op.dst, dest_str, sizeof(dest_str))) {
-        fprintf(stderr, "Codegen Error: Could not convert operands for relational operation (type %d) in function %s.\n", instr->type, current_func_name);
+        fprintf(
+            stderr, "Codegen Error: Could not convert operands for relational operation (type %d) in function %s.\n",
+            instr->type, current_func_name);
         return false;
     }
 
     string_buffer_append(sb, "    movl %s, %%eax\n", op1_str);
     string_buffer_append(sb, "    cmpl %s, %%eax\n", op2_str);
 
-    const char* set_instruction = NULL;
+    const char *set_instruction = NULL;
     switch (instr->type) {
         case TAC_INS_EQUAL:
             set_instruction = "sete";
@@ -347,7 +380,10 @@ static bool emit_relational_op_instruction(const TacInstruction *instr, StringBu
             set_instruction = "setge";
             break;
         default:
-            fprintf(stderr, "Codegen Error: Unhandled relational operator type %d in emit_relational_op_instruction for function %s.\n", instr->type, current_func_name);
+            fprintf(
+                stderr,
+                "Codegen Error: Unhandled relational operator type %d in emit_relational_op_instruction for function %s.\n",
+                instr->type, current_func_name);
             return false;
     }
 
@@ -360,7 +396,7 @@ static bool emit_relational_op_instruction(const TacInstruction *instr, StringBu
 
 /**
  * @brief Emits assembly code for a TAC conditional jump instruction.
- * 
+ *
  * Handles TAC_INS_IF_FALSE_GOTO and TAC_INS_IF_TRUE_GOTO.
  * The generated assembly typically involves:
  *   1. Loading the boolean condition_src operand into %eax.
@@ -368,33 +404,68 @@ static bool emit_relational_op_instruction(const TacInstruction *instr, StringBu
  *   3. For IF_FALSE_GOTO: Emitting 'jz target_label' (jump if zero/ZF=1).
  *   4. For IF_TRUE_GOTO: Emitting 'jnz target_label' (jump if not zero/ZF=0).
  * The target_label operand is expected to be a string identifier (e.g., "_L0").
- * 
+ *
  * @param instr The TAC instruction to process.
  * @param sb The string buffer to append assembly code to.
  * @param current_func_name The name of the current function being processed (for error reporting).
  * @return true if code generation was successful, false otherwise.
  */
-static bool emit_conditional_jump_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+static bool emit_conditional_jump_instruction(const TacInstruction *instr, StringBuffer *sb,
+                                              const char *current_func_name) {
     char cond_str[64];
     char target_label_str[64];
 
     if (!operand_to_assembly_string(&instr->operands.conditional_goto.condition_src, cond_str, sizeof(cond_str)) ||
-        !operand_to_assembly_string(&instr->operands.conditional_goto.target_label, target_label_str, sizeof(target_label_str))) {
-        fprintf(stderr, "Codegen Error: Could not convert operands for conditional jump (type %d) in function %s.\n", instr->type, current_func_name);
+        !operand_to_assembly_string(&instr->operands.conditional_goto.target_label, target_label_str,
+                                    sizeof(target_label_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operands for conditional jump (type %d) in function %s.\n",
+                instr->type, current_func_name);
         return false;
     }
 
-    string_buffer_append(sb, "    movl %s, %%eax\n", cond_str);   // Move condition (0 or 1) into eax
+    string_buffer_append(sb, "    movl %s, %%eax\n", cond_str); // Move condition (0 or 1) into eax
     string_buffer_append(sb, "    testl %%eax, %%eax\n"); // Test eax with itself. Sets ZF if eax is 0.
 
     if (instr->type == TAC_INS_IF_FALSE_GOTO) {
         string_buffer_append(sb, "    jz %s\n", target_label_str); // Jump if Zero (ZF=1), i.e., if condition was false
     } else if (instr->type == TAC_INS_IF_TRUE_GOTO) {
-        string_buffer_append(sb, "    jnz %s\n", target_label_str); // Jump if Not Zero (ZF=0), i.e., if condition was true
+        string_buffer_append(sb, "    jnz %s\n", target_label_str);
+        // Jump if Not Zero (ZF=0), i.e., if condition was true
     } else {
-        fprintf(stderr, "Codegen Error: Unhandled conditional jump type %d in emit_conditional_jump_instruction for function %s.\n", instr->type, current_func_name);
+        fprintf(
+            stderr,
+            "Codegen Error: Unhandled conditional jump type %d in emit_conditional_jump_instruction for function %s.\n",
+            instr->type, current_func_name);
         return false;
     }
+
+    return true;
+}
+
+static bool emit_logical_not_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char src_str[64];
+    char dest_str[64];
+
+    const TacOperand *src_op = &instr->operands.unary_op.src;
+    const TacOperand *dst_op = &instr->operands.unary_op.dst;
+
+    if (!operand_to_assembly_string(src_op, src_str, sizeof(src_str)) ||
+        !operand_to_assembly_string(dst_op, dest_str, sizeof(dest_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operands for LOGICAL_NOT in function %s.\n",
+                current_func_name);
+        return false;
+    }
+
+    // Load source into eax
+    string_buffer_append(sb, "    movl %s, %%eax\n", src_str);
+    // Compare eax with 0
+    string_buffer_append(sb, "    cmpl $0, %%eax\n");
+    // Set al to 1 if eax was 0 (ZF=1), else 0
+    string_buffer_append(sb, "    sete %%al\n");
+    // Zero-extend al to eax (eax = al)
+    string_buffer_append(sb, "    movzbl %%al, %%eax\n");
+    // Store the result from eax into the destination
+    string_buffer_append(sb, "    movl %%eax, %s\n", dest_str);
 
     return true;
 }
@@ -406,46 +477,40 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
         return false;
     }
 
-    const char *func_name_for_errors = current_function ? current_function->name : "<unknown_function>";
+    const char *func_name_for_errors = current_function ? current_function->name : "(unknown function)";
 
     switch (instr->type) {
-        case TAC_INS_RETURN: {
+        case TAC_INS_RETURN:
             return emit_return_instruction(instr, sb, func_name_for_errors);
-        }
-        case TAC_INS_COPY: {
+        case TAC_INS_COPY:
             return emit_copy_instruction(instr, sb, func_name_for_errors);
-        }
         case TAC_INS_NEGATE:
-        case TAC_INS_COMPLEMENT: {
+        case TAC_INS_COMPLEMENT:
+            // Note: These are arithmetic/bitwise, not logical not.
             return emit_unary_op_instruction(instr, sb, func_name_for_errors);
-        }
+        case TAC_INS_LOGICAL_NOT:
+            return emit_logical_not_instruction(instr, sb, func_name_for_errors);
         case TAC_INS_ADD:
         case TAC_INS_SUB:
-        case TAC_INS_MUL: {
+        case TAC_INS_MUL:
             return emit_binary_arith_instruction(instr, sb, func_name_for_errors);
-        }
         case TAC_INS_DIV:
-        case TAC_INS_MOD: {
+        case TAC_INS_MOD:
             return emit_division_instruction(instr, sb, func_name_for_errors);
-        }
-        case TAC_INS_LABEL: {
+        case TAC_INS_LABEL:
             return emit_label_instruction(instr, sb, func_name_for_errors);
-        }
-        case TAC_INS_GOTO: {
+        case TAC_INS_GOTO:
             return emit_goto_instruction(instr, sb, func_name_for_errors);
-        }
         case TAC_INS_EQUAL:
         case TAC_INS_NOT_EQUAL:
         case TAC_INS_LESS:
         case TAC_INS_LESS_EQUAL:
         case TAC_INS_GREATER:
-        case TAC_INS_GREATER_EQUAL: {
+        case TAC_INS_GREATER_EQUAL:
             return emit_relational_op_instruction(instr, sb, func_name_for_errors);
-        }
         case TAC_INS_IF_FALSE_GOTO:
-        case TAC_INS_IF_TRUE_GOTO: {
+        case TAC_INS_IF_TRUE_GOTO:
             return emit_conditional_jump_instruction(instr, sb, func_name_for_errors);
-        }
         default:
             fprintf(stderr, "Codegen Warning: Unhandled TAC instruction type %d in function %s. No code generated.\n",
                     instr->type, func_name_for_errors);
