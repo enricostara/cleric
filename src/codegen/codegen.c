@@ -155,6 +155,145 @@ static bool generate_tac_function(const TacFunction *func, StringBuffer *sb) {
     return true;
 }
 
+// --- Static helper function implementations (TAC instruction handlers) ---
+
+static bool emit_return_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char op1_str[64];
+    if (!operand_to_assembly_string(&instr->operands.ret.src, op1_str, sizeof(op1_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operand for RETURN in function %s.\n", current_func_name);
+        return false;
+    }
+    string_buffer_append(sb, "    movl %s, %%eax\n", op1_str); // Result in %eax for return
+    return true;
+}
+
+static bool emit_copy_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char op1_str[64];
+    char dest_str[64];
+    if (!operand_to_assembly_string(&instr->operands.copy.src, op1_str, sizeof(op1_str)) ||
+        !operand_to_assembly_string(&instr->operands.copy.dst, dest_str, sizeof(dest_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operands for COPY in function %s.\n", current_func_name);
+        return false;
+    }
+    // If both are stack temporaries (memory operands), use an intermediate register.
+    if (op1_str[0] == '-' && dest_str[0] == '-') { // Temp-to-Temp
+        string_buffer_append(sb, "    movl %s, %%r10d\n", op1_str); // mov src_temp to r10d
+        string_buffer_append(sb, "    movl %%r10d, %s\n", dest_str); // mov r10d to dst_temp
+    } else if (op1_str[0] == '$' && dest_str[0] == '-') { // Const-to-Temp
+        string_buffer_append(sb, "    movl %s, %s\n", op1_str, dest_str); // movl $const, temp_mem
+    } else {
+        // Other cases (e.g., Temp-to-Register (if we had them), or more complex scenarios)
+        // For now, use intermediate register as a general approach.
+        string_buffer_append(sb, "    movl %s, %%r10d\n", op1_str);
+        string_buffer_append(sb, "    movl %%r10d, %s\n", dest_str);
+    }
+    return true;
+}
+
+static bool emit_unary_op_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char op1_str[64];
+    char dest_str[64];
+
+    const TacOperand *src_op = &instr->operands.unary_op.src;
+    const TacOperand *dst_op = &instr->operands.unary_op.dst;
+
+    if (!operand_to_assembly_string(src_op, op1_str, sizeof(op1_str)) ||
+        !operand_to_assembly_string(dst_op, dest_str, sizeof(dest_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operands for %s in function %s.\n",
+                (instr->type == TAC_INS_NEGATE ? "NEGATE" : "COMPLEMENT"), current_func_name);
+        return false;
+    }
+
+    const char* op_mnemonic = (instr->type == TAC_INS_NEGATE ? "negl" : "notl");
+
+    if (src_op->type == TAC_OPERAND_TEMP &&
+        dst_op->type == TAC_OPERAND_TEMP &&
+        src_op->value.temp_id == dst_op->value.temp_id) {
+        // Operate in place: op_mnemonic memory_operand
+        string_buffer_append(sb, "    %s %s\n", op_mnemonic, dest_str);
+    } else {
+        // Use %eax as intermediary
+        string_buffer_append(sb, "    movl %s, %%eax\n", op1_str);
+        string_buffer_append(sb, "    %s %%eax\n", op_mnemonic);
+        string_buffer_append(sb, "    movl %%eax, %s\n", dest_str);
+    }
+    return true;
+}
+
+static bool emit_binary_arith_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char op1_str[64];
+    char op2_str[64];
+    char dest_str[64];
+
+    if (!operand_to_assembly_string(&instr->operands.binary_op.src1, op1_str, sizeof(op1_str)) ||
+        !operand_to_assembly_string(&instr->operands.binary_op.src2, op2_str, sizeof(op2_str)) ||
+        !operand_to_assembly_string(&instr->operands.binary_op.dst, dest_str, sizeof(dest_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operands for ADD/SUB/MUL in function %s.\n", current_func_name);
+        return false;
+    }
+
+    string_buffer_append(sb, "    movl %s, %%eax\n", op1_str); // mov src1 to eax
+    if (instr->type == TAC_INS_ADD) {
+        string_buffer_append(sb, "    addl %s, %%eax\n", op2_str); // add src2 to eax
+    } else if (instr->type == TAC_INS_SUB) {
+        string_buffer_append(sb, "    subl %s, %%eax\n", op2_str); // sub src2 from eax
+    } else { // TAC_INS_MUL
+        string_buffer_append(sb, "    imull %s, %%eax\n", op2_str); // mul eax by src2
+    }
+    string_buffer_append(sb, "    movl %%eax, %s\n", dest_str); // mov result from eax to dst
+    return true;
+}
+
+static bool emit_division_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char op1_str[64];
+    char op2_str[64];
+    char dest_str[64];
+
+    if (!operand_to_assembly_string(&instr->operands.binary_op.src1, op1_str, sizeof(op1_str)) || // Dividend
+        !operand_to_assembly_string(&instr->operands.binary_op.src2, op2_str, sizeof(op2_str)) || // Divisor
+        !operand_to_assembly_string(&instr->operands.binary_op.dst, dest_str, sizeof(dest_str))) { // Destination
+        fprintf(stderr, "Codegen Error: Could not convert operands for DIV/MOD in function %s.\n", current_func_name);
+        return false;
+    }
+
+    string_buffer_append(sb, "    movl %s, %%eax\n", op1_str); // Move dividend (src1) into eax
+    string_buffer_append(sb, "    cltd\n"); // Sign-extend eax into edx:eax (cdq for 32-bit)
+
+    if (instr->operands.binary_op.src2.type == TAC_OPERAND_CONST) {
+        string_buffer_append(sb, "    movl %s, %%ecx\n", op2_str); // movl $const_val, %ecx
+        string_buffer_append(sb, "    idivl %%ecx\n");          // idivl %ecx
+    } else {
+        string_buffer_append(sb, "    idivl %s\n", op2_str);     // idivl temp_var_on_stack
+    }
+
+    if (instr->type == TAC_INS_DIV) {
+        string_buffer_append(sb, "    movl %%eax, %s\n", dest_str); // Store quotient (eax) into dst
+    } else { // TAC_INS_MOD
+        string_buffer_append(sb, "    movl %%edx, %s\n", dest_str); // Store remainder (edx) into dst
+    }
+    return true;
+}
+
+static bool emit_label_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char label_str[64];
+    if (!operand_to_assembly_string(&instr->operands.label_def.label, label_str, sizeof(label_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operand for LABEL in function %s.\n", current_func_name);
+        return false;
+    }
+    string_buffer_append(sb, "%s:\n", label_str);
+    return true;
+}
+
+static bool emit_goto_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char target_label_str[64];
+    if (!operand_to_assembly_string(&instr->operands.go_to.target_label, target_label_str, sizeof(target_label_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert target label for GOTO in function %s.\n", current_func_name);
+        return false;
+    }
+    string_buffer_append(sb, "    jmp %s\n", target_label_str);
+    return true;
+}
+
 static bool generate_tac_instruction(const TacInstruction *instr, const TacFunction *current_function,
                                      StringBuffer *sb) {
     if (!instr) {
@@ -162,150 +301,41 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
         return false;
     }
 
-    // Buffer for operand string representations
-    char op1_str[64];
-    char op2_str[64];
-    char dest_str[64];
+    const char *func_name_for_errors = current_function ? current_function->name : "<unknown_function>";
 
     switch (instr->type) {
         case TAC_INS_RETURN: {
-            if (!operand_to_assembly_string(&instr->operands.ret.src, op1_str, sizeof(op1_str))) {
-                fprintf(stderr, "Codegen Error: Could not convert operand for RETURN in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
-                return false;
-            }
-            string_buffer_append(sb, "    movl %s, %%eax\n", op1_str); // Result in %eax for return
-            break;
+            return emit_return_instruction(instr, sb, func_name_for_errors);
         }
         case TAC_INS_COPY: {
-            if (!operand_to_assembly_string(&instr->operands.copy.src, op1_str, sizeof(op1_str)) ||
-                !operand_to_assembly_string(&instr->operands.copy.dst, dest_str, sizeof(dest_str))) {
-                fprintf(stderr, "Codegen Error: Could not convert operands for COPY in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
-                return false;
-            }
-            // If both are stack temporaries (memory operands), use an intermediate register.
-            // A simple check for now: if they start with '-' (e.g., "-8(%rbp)")
-            if (op1_str[0] == '-' && dest_str[0] == '-') { // Temp-to-Temp
-                string_buffer_append(sb, "    movl %s, %%r10d\n", op1_str); // mov src_temp to r10d
-                string_buffer_append(sb, "    movl %%r10d, %s\n", dest_str); // mov r10d to dst_temp
-            } else if (op1_str[0] == '$' && dest_str[0] == '-') { // Const-to-Temp
-                string_buffer_append(sb, "    movl %s, %s\n", op1_str, dest_str); // movl $const, temp_mem
-            } else {
-                 // Other cases (e.g., Temp-to-Register (if we had them), or more complex scenarios)
-                 // For now, use intermediate register as a general approach.
-                string_buffer_append(sb, "    movl %s, %%r10d\n", op1_str); 
-                string_buffer_append(sb, "    movl %%r10d, %s\n", dest_str); 
-            }
-            break;
+            return emit_copy_instruction(instr, sb, func_name_for_errors);
         }
-        case TAC_INS_NEGATE: {
-            const TacOperand *src_op = &instr->operands.unary_op.src;
-            const TacOperand *dst_op = &instr->operands.unary_op.dst;
-
-            if (!operand_to_assembly_string(src_op, op1_str, sizeof(op1_str)) ||
-                !operand_to_assembly_string(dst_op, dest_str, sizeof(dest_str))) {
-                fprintf(stderr, "Codegen Error: Could not convert operands for NEGATE in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
-                return false;
-            }
-
-            if (src_op->type == TAC_OPERAND_TEMP &&
-                dst_op->type == TAC_OPERAND_TEMP &&
-                src_op->value.temp_id == dst_op->value.temp_id) {
-                // Operate in place: negl memory_operand
-                string_buffer_append(sb, "    negl %s\n", dest_str);
-            } else {
-                // Use %eax as intermediary
-                string_buffer_append(sb, "    movl %s, %%eax\n", op1_str);
-                string_buffer_append(sb, "    negl %%eax\n");
-                string_buffer_append(sb, "    movl %%eax, %s\n", dest_str);
-            }
-            break;
-        }
+        case TAC_INS_NEGATE:
         case TAC_INS_COMPLEMENT: {
-            const TacOperand *src_op = &instr->operands.unary_op.src;
-            const TacOperand *dst_op = &instr->operands.unary_op.dst;
-
-            if (!operand_to_assembly_string(src_op, op1_str, sizeof(op1_str)) ||
-                !operand_to_assembly_string(dst_op, dest_str, sizeof(dest_str))) {
-                fprintf(stderr, "Codegen Error: Could not convert operands for COMPLEMENT in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
-                return false;
-            }
-
-            if (src_op->type == TAC_OPERAND_TEMP &&
-                dst_op->type == TAC_OPERAND_TEMP &&
-                src_op->value.temp_id == dst_op->value.temp_id) {
-                 // Operate in place: notl memory_operand
-                string_buffer_append(sb, "    notl %s\n", dest_str);
-            } else {
-                // Use %eax as intermediary
-                string_buffer_append(sb, "    movl %s, %%eax\n", op1_str);
-                string_buffer_append(sb, "    notl %%eax\n");
-                string_buffer_append(sb, "    movl %%eax, %s\n", dest_str);
-            }
-            break;
+            return emit_unary_op_instruction(instr, sb, func_name_for_errors);
         }
         case TAC_INS_ADD:
         case TAC_INS_SUB:
         case TAC_INS_MUL: {
-            if (!operand_to_assembly_string(&instr->operands.binary_op.src1, op1_str, sizeof(op1_str)) ||
-                !operand_to_assembly_string(&instr->operands.binary_op.src2, op2_str, sizeof(op2_str)) ||
-                !operand_to_assembly_string(&instr->operands.binary_op.dst, dest_str, sizeof(dest_str))) {
-                fprintf(stderr, "Codegen Error: Could not convert operands for ADD/SUB/MUL in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
-                return false;
-            }
-            string_buffer_append(sb, "    movl %s, %%eax\n", op1_str); // mov src1 to eax
-            if (instr->type == TAC_INS_ADD) {
-                string_buffer_append(sb, "    addl %s, %%eax\n", op2_str); // add src2 to eax
-            } else if (instr->type == TAC_INS_SUB) {
-                string_buffer_append(sb, "    subl %s, %%eax\n", op2_str); // sub src2 from eax
-            } else {
-                // TAC_INS_MUL
-                string_buffer_append(sb, "    imull %s, %%eax\n", op2_str); // mul eax by src2
-            }
-            string_buffer_append(sb, "    movl %%eax, %s\n", dest_str); // mov result from eax to dst
-            break;
+            return emit_binary_arith_instruction(instr, sb, func_name_for_errors);
         }
         case TAC_INS_DIV:
         case TAC_INS_MOD: {
-            if (!operand_to_assembly_string(&instr->operands.binary_op.src1, op1_str, sizeof(op1_str)) || // Dividend
-                !operand_to_assembly_string(&instr->operands.binary_op.src2, op2_str, sizeof(op2_str)) || // Divisor
-                !operand_to_assembly_string(&instr->operands.binary_op.dst, dest_str, sizeof(dest_str))) {
-                // Destination
-                fprintf(stderr, "Codegen Error: Could not convert operands for DIV/MOD in function %s.\n",
-                        current_function ? current_function->name : "<unknown>");
-                return false;
-            }
-            string_buffer_append(sb, "    movl %s, %%eax\n", op1_str); // Move dividend (src1) into eax
-            string_buffer_append(sb, "    cltd\n"); // Sign-extend eax into edx:eax (cdq for 32-bit)
-
-            // Handle divisor (src2): if it's a constant, move to register first
-            if (instr->operands.binary_op.src2.type == TAC_OPERAND_CONST) {
-                string_buffer_append(sb, "    movl %s, %%ecx\n", op2_str); // movl $const_val, %ecx
-                string_buffer_append(sb, "    idivl %%ecx\n");          // idivl %ecx
-            } else {
-                string_buffer_append(sb, "    idivl %s\n", op2_str);     // idivl temp_var_on_stack
-            }
-            // Divide edx:eax by src2. Quotient in eax, Remainder in edx.
-
-            if (instr->type == TAC_INS_DIV) {
-                string_buffer_append(sb, "    movl %%eax, %s\n", dest_str); // Store quotient (eax) into dst
-            } else {
-                // TAC_INS_MOD
-                string_buffer_append(sb, "    movl %%edx, %s\n", dest_str); // Store remainder (edx) into dst
-            }
-            break;
+            return emit_division_instruction(instr, sb, func_name_for_errors);
+        }
+        case TAC_INS_LABEL: {
+            return emit_label_instruction(instr, sb, func_name_for_errors);
+        }
+        case TAC_INS_GOTO: {
+            return emit_goto_instruction(instr, sb, func_name_for_errors);
         }
         default:
             fprintf(stderr, "Codegen Warning: Unhandled TAC instruction type %d in function %s. No code generated.\n",
-                    instr->type, current_function ? current_function->name : "<unknown>");
+                    instr->type, func_name_for_errors);
             // return false; // Optionally treat unhandled instructions as an error
             break;
     }
-    return true;
+    return true; // Should only be reached if default case is hit and not treated as error
 }
 
 // Convert a TAC operand to its assembly string representation.
@@ -326,7 +356,12 @@ bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t b
             written = snprintf(out_buffer, buffer_size, "$%d", op->value.constant_value);
             break;
         case TAC_OPERAND_TEMP:
+            // Assuming 8-byte alignment for each temporary on the stack.
+            // temp_id 0 -> -8(%rbp), temp_id 1 -> -16(%rbp), etc.
             written = snprintf(out_buffer, buffer_size, "-%d(%%rbp)", (op->value.temp_id + 1) * 8);
+            break;
+        case TAC_OPERAND_LABEL:
+            written = snprintf(out_buffer, buffer_size, ".%s", op->value.label_name);
             break;
         default:
             fprintf(stderr, "operand_to_assembly_string: Unhandled operand type %d\n", op->type);
@@ -335,9 +370,9 @@ bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t b
     }
 
     if (written < 0 || (size_t) written >= buffer_size) {
-        fprintf(stderr, "operand_to_assembly_string: snprintf error or buffer too small.\n");
+        fprintf(stderr, "operand_to_assembly_string: snprintf error or buffer too small (type: %d).\n", op->type);
         // Ensure buffer is null-terminated even on error if possible
-        out_buffer[buffer_size - 1] = '\0';
+        if (buffer_size > 0) out_buffer[buffer_size - 1] = '\0';
         return false; // Error or truncation
     }
 
