@@ -114,10 +114,78 @@ static void test_compile_return_double_negation(void) {
     arena_destroy(&test_arena);
 }
 
-// --- Test Runner --- 
+static void test_compile_return_addition(void) {
+    Arena test_arena = arena_create(1024 * 8);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for addition test");
+
+    const char *input_c = "int main(void) { return 5 + 3; }";
+    const char *expected_asm =
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n"       // Stack space for TAC temporary t0
+            "    movl $5, %eax\n"        // Load 5
+            "    addl $3, %eax\n"        // Add 3 (eax is now 8)
+            "    movl %eax, -8(%rbp)\n"  // Store result (8) into t0
+            "    movl -8(%rbp), %eax\n"  // Load t0 for return
+            "    leave\n"
+            "    retq\n";
+
+    StringBuffer sb;
+    string_buffer_init(&sb, &test_arena, 512); // Initialize buffer
+
+    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+
+    TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for addition");
+
+    const char *actual_asm = string_buffer_content_str(&sb);
+    TEST_ASSERT_NOT_NULL_MESSAGE(actual_asm, "Output assembly buffer is NULL for addition test");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch for addition");
+
+    arena_destroy(&test_arena);
+}
+
+static void test_compile_return_less_than_false(void) {
+    Arena test_arena = arena_create(1024 * 8);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for less_than_false test");
+
+    const char *input_c = "int main(void) { return 10 < 5; }";
+    const char *expected_asm =
+            ".globl _main\n"
+            "_main:\n"
+            "    pushq %rbp\n"
+            "    movq %rsp, %rbp\n"
+            "    subq $32, %rsp\n"       // Stack space for TAC temporary t0
+            "    movl $10, %eax\n"       // Load 10
+            "    cmpl $5, %eax\n"        // Compare with 5
+            "    setl %al\n"             // Set AL if 10 < 5 (false, so AL=0)
+            "    movzbl %al, %eax\n"     // Zero-extend AL to EAX (EAX=0)
+            "    movl %eax, -8(%rbp)\n"  // Store result (0) into t0
+            "    movl -8(%rbp), %eax\n"  // Load t0 for return
+            "    leave\n"
+            "    retq\n";
+
+    StringBuffer sb;
+    string_buffer_init(&sb, &test_arena, 512); // Initialize buffer
+
+    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+
+    TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for less_than_false");
+
+    const char *actual_asm = string_buffer_content_str(&sb);
+    TEST_ASSERT_NOT_NULL_MESSAGE(actual_asm, "Output assembly buffer is NULL for less_than_false test");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, actual_asm, "Generated assembly mismatch for less_than_false");
+
+    arena_destroy(&test_arena);
+}
+
+// --- Test Runner ---
 
 void run_compiler_tests(void) {
     RUN_TEST(test_compile_return_4);
     RUN_TEST(test_compile_return_negated_parenthesized_constant);
     RUN_TEST(test_compile_return_double_negation);
+    RUN_TEST(test_compile_return_addition);
+    RUN_TEST(test_compile_return_less_than_false);
 }
