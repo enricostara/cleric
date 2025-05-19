@@ -76,6 +76,10 @@ static bool emit_unary_op_instruction(const TacInstruction *instr, StringBuffer 
 
 static bool emit_logical_not_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
 
+static bool emit_logical_and_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
+static bool emit_logical_or_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
+
 static bool emit_binary_arith_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
 
 static bool emit_division_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name);
@@ -442,6 +446,50 @@ static bool emit_conditional_jump_instruction(const TacInstruction *instr, Strin
     return true;
 }
 
+static bool emit_logical_and_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char src1_str[64], src2_str[64], dest_str[64];
+    if (!operand_to_assembly_string(&instr->operands.binary_op.src1, src1_str, sizeof(src1_str)) ||
+        !operand_to_assembly_string(&instr->operands.binary_op.src2, src2_str, sizeof(src2_str)) ||
+        !operand_to_assembly_string(&instr->operands.binary_op.dst, dest_str, sizeof(dest_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operands for LOGICAL_AND in function %s.\n",
+                current_func_name);
+        return false;
+    }
+
+    string_buffer_append(sb, "    movl %s, %%eax\n", src1_str); // Load src1
+    string_buffer_append(sb, "    testl %%eax, %%eax\n"); // Is src1 zero?
+    string_buffer_append(sb, "    setne %%dl\n"); // dl = (src1 != 0)
+    string_buffer_append(sb, "    movl %s, %%eax\n", src2_str); // Load src2
+    string_buffer_append(sb, "    testl %%eax, %%eax\n"); // Is src2 zero?
+    string_buffer_append(sb, "    setne %%al\n"); // al = (src2 != 0)
+    string_buffer_append(sb, "    andb %%dl, %%al\n"); // al = (src1 != 0) && (src2 != 0)
+    string_buffer_append(sb, "    movzbl %%al, %%eax\n"); // Zero-extend al to eax
+    string_buffer_append(sb, "    movl %%eax, %s\n", dest_str); // Store result in dst
+    return true;
+}
+
+static bool emit_logical_or_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
+    char src1_str[64], src2_str[64], dest_str[64];
+    if (!operand_to_assembly_string(&instr->operands.binary_op.src1, src1_str, sizeof(src1_str)) ||
+        !operand_to_assembly_string(&instr->operands.binary_op.src2, src2_str, sizeof(src2_str)) ||
+        !operand_to_assembly_string(&instr->operands.binary_op.dst, dest_str, sizeof(dest_str))) {
+        fprintf(stderr, "Codegen Error: Could not convert operands for LOGICAL_OR in function %s.\n",
+                current_func_name);
+        return false;
+    }
+
+    string_buffer_append(sb, "    movl %s, %%eax\n", src1_str); // Load src1
+    string_buffer_append(sb, "    testl %%eax, %%eax\n"); // Is src1 zero?
+    string_buffer_append(sb, "    setne %%dl\n"); // dl = (src1 != 0)
+    string_buffer_append(sb, "    movl %s, %%eax\n", src2_str); // Load src2
+    string_buffer_append(sb, "    testl %%eax, %%eax\n"); // Is src2 zero?
+    string_buffer_append(sb, "    setne %%al\n"); // al = (src2 != 0)
+    string_buffer_append(sb, "    orb %%dl, %%al\n"); // al = (src1 != 0) || (src2 != 0)
+    string_buffer_append(sb, "    movzbl %%al, %%eax\n"); // Zero-extend al to eax
+    string_buffer_append(sb, "    movl %%eax, %s\n", dest_str); // Store result in dst
+    return true;
+}
+
 static bool emit_logical_not_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
     char src_str[64];
     char dest_str[64];
@@ -490,6 +538,10 @@ static bool generate_tac_instruction(const TacInstruction *instr, const TacFunct
             return emit_unary_op_instruction(instr, sb, func_name_for_errors);
         case TAC_INS_LOGICAL_NOT:
             return emit_logical_not_instruction(instr, sb, func_name_for_errors);
+        case TAC_INS_LOGICAL_AND:
+            return emit_logical_and_instruction(instr, sb, func_name_for_errors);
+        case TAC_INS_LOGICAL_OR:
+            return emit_logical_or_instruction(instr, sb, func_name_for_errors);
         case TAC_INS_ADD:
         case TAC_INS_SUB:
         case TAC_INS_MUL:

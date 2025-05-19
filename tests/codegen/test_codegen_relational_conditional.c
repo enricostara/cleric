@@ -300,7 +300,7 @@ static void test_codegen_relational_less_consts_false_greater(void) {
 
     // Instructions
     // t0 = const10 < const5
-    TacInstruction *instr1 = create_tac_instruction_less_equal(t0, const10, const5, &test_arena);
+    TacInstruction *instr1 = create_tac_instruction_less(t0, const10, const5, &test_arena);
     TacInstruction *instr2 = create_tac_instruction_return(t0, &test_arena);
 
     TacFunction *func = create_tac_function("test_less_false_greater", &test_arena);

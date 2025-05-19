@@ -214,6 +214,24 @@ TacInstruction *create_tac_instruction_if_true_goto(const TacOperand condition_s
     return instr;
 }
 
+TacInstruction *create_tac_instruction_logical_and(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                                 Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_LOGICAL_AND, arena);
+    instr->operands.binary_op.dst = dst;
+    instr->operands.binary_op.src1 = src1;
+    instr->operands.binary_op.src2 = src2;
+    return instr;
+}
+
+TacInstruction *create_tac_instruction_logical_or(const TacOperand dst, const TacOperand src1, const TacOperand src2,
+                                                Arena *arena) {
+    TacInstruction *instr = create_base_instruction(TAC_INS_LOGICAL_OR, arena);
+    instr->operands.binary_op.dst = dst;
+    instr->operands.binary_op.src1 = src1;
+    instr->operands.binary_op.src2 = src2;
+    return instr;
+}
+
 //------------------------------------------------------------------------------
 // Function and Program Manipulation
 //------------------------------------------------------------------------------
@@ -486,6 +504,22 @@ void tac_print_instruction(StringBuffer *sb, const TacInstruction *instruction) 
             tac_print_operand(sb, &instruction->operands.conditional_goto.condition_src);
             string_buffer_append(sb, " goto ");
             tac_print_operand(sb, &instruction->operands.conditional_goto.target_label);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_LOGICAL_AND:
+            tac_print_operand(sb, &instruction->operands.binary_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src1);
+            string_buffer_append(sb, " && ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src2);
+            string_buffer_append(sb, "\n");
+            break;
+        case TAC_INS_LOGICAL_OR:
+            tac_print_operand(sb, &instruction->operands.binary_op.dst);
+            string_buffer_append(sb, " = ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src1);
+            string_buffer_append(sb, " || ");
+            tac_print_operand(sb, &instruction->operands.binary_op.src2);
             string_buffer_append(sb, "\n");
             break;
         default:

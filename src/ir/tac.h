@@ -48,6 +48,10 @@ typedef enum {
     // New Unary Op
     TAC_INS_LOGICAL_NOT,// dst = !src (boolean result: 0 or 1)
 
+    // New Binary Logical Ops (all result in dst = 0 or 1)
+    TAC_INS_LOGICAL_AND,  // dst = src1 && src2 (boolean result: 0 or 1)
+    TAC_INS_LOGICAL_OR,   // dst = src1 || src2 (boolean result: 0 or 1)
+
     // New Binary Relational Ops (all result in dst = 0 or 1)
     TAC_INS_LESS,       // dst = src1 < src2
     TAC_INS_GREATER,    // dst = src1 > src2
@@ -139,6 +143,10 @@ TacInstruction* create_tac_instruction_sub(TacOperand dst, TacOperand src1, TacO
 TacInstruction* create_tac_instruction_mul(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
 TacInstruction* create_tac_instruction_div(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
 TacInstruction* create_tac_instruction_mod(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+
+// New Logical Binary instruction creation
+TacInstruction* create_tac_instruction_logical_and(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
+TacInstruction* create_tac_instruction_logical_or(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
 
 // New Relational instruction creation
 TacInstruction* create_tac_instruction_less(TacOperand dst, TacOperand src1, TacOperand src2, Arena* arena);
