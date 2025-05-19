@@ -445,7 +445,7 @@ bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t b
             written = snprintf(out_buffer, buffer_size, "-%d(%%rbp)", (op->value.temp_id + 1) * 8);
             break;
         case TAC_OPERAND_LABEL:
-            written = snprintf(out_buffer, buffer_size, ".%s", op->value.label_name);
+            written = snprintf(out_buffer, buffer_size, "%s", op->value.label_name);
             break;
         default:
             fprintf(stderr, "operand_to_assembly_string: Unhandled operand type %d\n", op->type);
