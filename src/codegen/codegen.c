@@ -294,6 +294,23 @@ static bool emit_goto_instruction(const TacInstruction *instr, StringBuffer *sb,
     return true;
 }
 
+/**
+ * @brief Emits assembly code for a TAC relational operation instruction.
+ * 
+ * Handles instructions like 'dst = src1 op src2', where 'op' is a relational
+ * operator (e.g., ==, <, >=).
+ * The generated assembly typically involves:
+ *   1. Loading src1 into %eax.
+ *   2. Comparing %eax with src2.
+ *   3. Using a 'setX' instruction (e.g., sete, setl) to set %al based on the comparison.
+ *   4. Zero-extending %al to %eax.
+ *   5. Storing the result (0 or 1) from %eax into the destination operand.
+ * 
+ * @param instr The TAC instruction to process.
+ * @param sb The string buffer to append assembly code to.
+ * @param current_func_name The name of the current function being processed (for error reporting).
+ * @return true if code generation was successful, false otherwise.
+ */
 static bool emit_relational_op_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
     char op1_str[64];
     char op2_str[64];
@@ -341,6 +358,22 @@ static bool emit_relational_op_instruction(const TacInstruction *instr, StringBu
     return true;
 }
 
+/**
+ * @brief Emits assembly code for a TAC conditional jump instruction.
+ * 
+ * Handles TAC_INS_IF_FALSE_GOTO and TAC_INS_IF_TRUE_GOTO.
+ * The generated assembly typically involves:
+ *   1. Loading the boolean condition_src operand into %eax.
+ *   2. Testing %eax with itself (testl %eax, %eax) to set CPU flags (specifically ZF).
+ *   3. For IF_FALSE_GOTO: Emitting 'jz target_label' (jump if zero/ZF=1).
+ *   4. For IF_TRUE_GOTO: Emitting 'jnz target_label' (jump if not zero/ZF=0).
+ * The target_label operand is expected to be a string identifier (e.g., "_L0").
+ * 
+ * @param instr The TAC instruction to process.
+ * @param sb The string buffer to append assembly code to.
+ * @param current_func_name The name of the current function being processed (for error reporting).
+ * @return true if code generation was successful, false otherwise.
+ */
 static bool emit_conditional_jump_instruction(const TacInstruction *instr, StringBuffer *sb, const char *current_func_name) {
     char cond_str[64];
     char target_label_str[64];
@@ -445,6 +478,8 @@ bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t b
             written = snprintf(out_buffer, buffer_size, "-%d(%%rbp)", (op->value.temp_id + 1) * 8);
             break;
         case TAC_OPERAND_LABEL:
+            // For TAC_OPERAND_LABEL, op->value.label_name is expected to be a string
+            // identifier (e.g., "_L0"). This case outputs that string directly.
             written = snprintf(out_buffer, buffer_size, "%s", op->value.label_name);
             break;
         default:

@@ -57,10 +57,10 @@ typedef enum {
     TAC_INS_NOT_EQUAL,  // dst = src1 != src2
 
     // New Control Flow Instructions
-    TAC_INS_LABEL,          // label_name: (defines a label)
-    TAC_INS_GOTO,           // goto label_name
-    TAC_INS_IF_FALSE_GOTO,  // if_false condition_src goto label_name
-    TAC_INS_IF_TRUE_GOTO // if_true condition_src goto label_name (or if_not_zero)
+    TAC_INS_LABEL,          // Defines a code label. Operand is a string identifier (e.g., "_L0").
+    TAC_INS_GOTO,           // Unconditional jump. Operand is a string label identifier.
+    TAC_INS_IF_FALSE_GOTO,  // Conditional jump if 'condition_src' is 0 (false). Target is a string label identifier.
+    TAC_INS_IF_TRUE_GOTO    // Conditional jump if 'condition_src' is non-0 (true). Target is a string label identifier.
 
     // Future instructions: CALL, PARAM, etc.
 } TacInstructionType;
