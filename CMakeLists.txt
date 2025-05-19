@@ -60,6 +60,7 @@ add_executable(test_all
         tests/test_parser.c
         tests/test_strings.c
         tests/codegen/test_codegen.c
+        tests/codegen/test_codegen_logical.c
         tests/codegen/test_codegen_relational_conditional.c
         tests/test_compiler.c
         tests/test_arena.c

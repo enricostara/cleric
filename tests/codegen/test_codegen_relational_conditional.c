@@ -2,7 +2,6 @@
 #include "../../src/ir/tac.h"
 #include "../../src/memory/arena.h"
 
-
 void verify_asm_for_function(const char *test_description, // For TEST_ASSERT_EQUAL_STRING_MESSAGE
                              TacFunction *func, // Caller creates and populates this with an arena
                              Arena *arena, // The arena used by the caller for func and its instructions
