@@ -20,7 +20,7 @@ enable_testing()
 # Add Unity test framework
 # ------------------------
 # Unity is a unit testing framework for C (https://www.throwtheswitch.org/unity)
-add_library(unity tests/unity/unity.c)
+add_library(unity tests/_unity/unity.c)
 
 # --------------------------------------
 # Main application executable: 'cleric'
@@ -59,7 +59,8 @@ add_executable(test_all
         tests/test_ast.c
         tests/test_parser.c
         tests/test_strings.c
-        tests/test_codegen.c
+        tests/codegen/test_codegen.c
+        tests/codegen/test_codegen_relational_conditional.c
         tests/test_compiler.c
         tests/test_arena.c
         tests/test_tac.c
@@ -78,7 +79,7 @@ add_executable(test_all
         src/ir/ast_to_tac.c
 )
 target_link_libraries(test_all unity)
-target_include_directories(test_all PRIVATE include tests/unity src)
+target_include_directories(test_all PRIVATE include tests/_unity src)
 
 # Register the test executable with CTest, so `ctest` will run it
 add_test(test_all test_all)

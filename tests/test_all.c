@@ -1,4 +1,4 @@
-#include "unity/unity.h"
+#include "_unity/unity.h"
 #include <stdio.h>
 
 // Forward declarations for test runner functions from other files
@@ -17,6 +17,8 @@ void run_parser_tests(void);
 void run_strings_tests(void); // Forward declaration for string tests
 
 void run_codegen_tests(void); // Forward declaration for codegen tests
+
+void run_codegen_relational_conditional_tests(void); // Forward declaration for codegen tests
 
 void run_compiler_tests(void); // Forward declaration for integration tests
 
@@ -70,6 +72,9 @@ int main(void) {
 
     printf("\n--- Running Codegen Tests --- \n");
     run_codegen_tests();
+
+    printf("\n--- Running Codegen Tests --- \n");
+    run_codegen_relational_conditional_tests();
 
     /* -- integration tests -- */
     printf("\n--- Running Compiler Tests --- \n");

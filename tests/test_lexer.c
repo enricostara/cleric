@@ -2,7 +2,7 @@
 #include <stdio.h> // For snprintf in helper
 
 #include "../src/lexer/lexer.h"
-#include "unity/unity.h"
+#include "_unity/unity.h"
 #include "memory/arena.h"
 
 // --- Test Case Data Structures ---
