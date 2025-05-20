@@ -154,7 +154,8 @@ static void test_codegen_logical_and_consts_true_true(void) {
             "    movl -8(%rbp), %eax\n"
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_and_consts_true_true: t0 = 1 && 1; RETURN t0", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_and_consts_true_true: t0 = 1 && 1; RETURN t0", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 
@@ -192,7 +193,8 @@ static void test_codegen_logical_and_consts_true_false(void) {
             "    movl -8(%rbp), %eax\n"
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_and_consts_true_false: t0 = 1 && 0; RETURN t0", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_and_consts_true_false: t0 = 1 && 0; RETURN t0", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 
@@ -230,7 +232,8 @@ static void test_codegen_logical_and_consts_false_true(void) {
             "    movl -8(%rbp), %eax\n"
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_and_consts_false_true: t0 = 0 && 1; RETURN t0", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_and_consts_false_true: t0 = 0 && 1; RETURN t0", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 
@@ -268,7 +271,8 @@ static void test_codegen_logical_and_consts_false_false(void) {
             "    movl -8(%rbp), %eax\n"
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_and_consts_false_false: t0 = 0 && 0; RETURN t0", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_and_consts_false_false: t0 = 0 && 0; RETURN t0", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 
@@ -300,21 +304,22 @@ static void test_codegen_logical_and_temps(void) {
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
             "    subq $32, %rsp\n"
-            "    movl $1, -8(%rbp)\n"    // t0 = 1
-            "    movl $0, -16(%rbp)\n"   // t1 = 0
-            "    movl -8(%rbp), %eax\n"  // load t0
+            "    movl $1, -8(%rbp)\n" // t0 = 1
+            "    movl $0, -16(%rbp)\n" // t1 = 0
+            "    movl -8(%rbp), %eax\n" // load t0
             "    testl %eax, %eax\n"
-            "    setne %dl\n"            // dl = (t0 != 0) -> 1
+            "    setne %dl\n" // dl = (t0 != 0) -> 1
             "    movl -16(%rbp), %eax\n" // load t1
             "    testl %eax, %eax\n"
-            "    setne %al\n"            // al = (t1 != 0) -> 0
-            "    andb %dl, %al\n"        // al = 1 && 0 -> 0
+            "    setne %al\n" // al = (t1 != 0) -> 0
+            "    andb %dl, %al\n" // al = 1 && 0 -> 0
             "    movzbl %al, %eax\n"
             "    movl %eax, -24(%rbp)\n" // t2 = 0
             "    movl -24(%rbp), %eax\n" // return t2
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_and_temps: t0=1; t1=0; t2=t0&&t1; RETURN t2", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_and_temps: t0=1; t1=0; t2=t0&&t1; RETURN t2", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 
@@ -354,7 +359,8 @@ static void test_codegen_logical_or_consts_true_true(void) {
             "    movl -8(%rbp), %eax\n"
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_or_consts_true_true: t0 = 1 || 1; RETURN t0", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_or_consts_true_true: t0 = 1 || 1; RETURN t0", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 
@@ -392,7 +398,8 @@ static void test_codegen_logical_or_consts_true_false(void) {
             "    movl -8(%rbp), %eax\n"
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_or_consts_true_false: t0 = 1 || 0; RETURN t0", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_or_consts_true_false: t0 = 1 || 0; RETURN t0", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 
@@ -430,7 +437,8 @@ static void test_codegen_logical_or_consts_false_true(void) {
             "    movl -8(%rbp), %eax\n"
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_or_consts_false_true: t0 = 0 || 1; RETURN t0", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_or_consts_false_true: t0 = 0 || 1; RETURN t0", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 
@@ -468,7 +476,8 @@ static void test_codegen_logical_or_consts_false_false(void) {
             "    movl -8(%rbp), %eax\n"
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_or_consts_false_false: t0 = 0 || 0; RETURN t0", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_or_consts_false_false: t0 = 0 || 0; RETURN t0", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 
@@ -500,21 +509,22 @@ static void test_codegen_logical_or_temps(void) {
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
             "    subq $32, %rsp\n"
-            "    movl $0, -8(%rbp)\n"    // t0 = 0
-            "    movl $1, -16(%rbp)\n"   // t1 = 1
-            "    movl -8(%rbp), %eax\n"  // load t0
+            "    movl $0, -8(%rbp)\n" // t0 = 0
+            "    movl $1, -16(%rbp)\n" // t1 = 1
+            "    movl -8(%rbp), %eax\n" // load t0
             "    testl %eax, %eax\n"
-            "    setne %dl\n"            // dl = (t0 != 0) -> 0
+            "    setne %dl\n" // dl = (t0 != 0) -> 0
             "    movl -16(%rbp), %eax\n" // load t1
             "    testl %eax, %eax\n"
-            "    setne %al\n"            // al = (t1 != 0) -> 1
-            "    orb %dl, %al\n"         // al = 0 || 1 -> 1
+            "    setne %al\n" // al = (t1 != 0) -> 1
+            "    orb %dl, %al\n" // al = 0 || 1 -> 1
             "    movzbl %al, %eax\n"
             "    movl %eax, -24(%rbp)\n" // t2 = 1
             "    movl -24(%rbp), %eax\n" // return t2
             "    leave\n"
             "    retq\n";
-    verify_asm_for_function("test_codegen_logical_or_temps: t0=0; t1=1; t2=t0||t1; RETURN t2", func, &arena, expected_asm);
+    verify_asm_for_function("test_codegen_logical_or_temps: t0=0; t1=1; t2=t0||t1; RETURN t2", func, &arena,
+                            expected_asm);
     arena_destroy(&arena);
 }
 

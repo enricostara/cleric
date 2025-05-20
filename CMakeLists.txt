@@ -57,7 +57,12 @@ add_executable(test_all
         tests/test_files.c
         tests/test_args.c
         tests/test_ast.c
-        tests/test_parser.c
+        tests/parser/test_parser_program.c
+        tests/parser/test_parser_unary_expressions.c
+        tests/parser/test_parser_binary_expressions.c
+        tests/parser/test_parser_relational_logical_expressions.c
+        tests/parser/test_parser_precedence.c
+        tests/parser/test_parser_errors_and_literals.c
         tests/test_strings.c
         tests/codegen/test_codegen.c
         tests/codegen/test_codegen_logical.c

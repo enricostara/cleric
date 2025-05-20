@@ -124,11 +124,11 @@ static void test_compile_return_addition(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n"       // Stack space for TAC temporary t0
-            "    movl $5, %eax\n"        // Load 5
-            "    addl $3, %eax\n"        // Add 3 (eax is now 8)
-            "    movl %eax, -8(%rbp)\n"  // Store result (8) into t0
-            "    movl -8(%rbp), %eax\n"  // Load t0 for return
+            "    subq $32, %rsp\n" // Stack space for TAC temporary t0
+            "    movl $5, %eax\n" // Load 5
+            "    addl $3, %eax\n" // Add 3 (eax is now 8)
+            "    movl %eax, -8(%rbp)\n" // Store result (8) into t0
+            "    movl -8(%rbp), %eax\n" // Load t0 for return
             "    leave\n"
             "    retq\n";
 
@@ -156,13 +156,13 @@ static void test_compile_return_less_than_false(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n"       // Stack space for TAC temporary t0
-            "    movl $10, %eax\n"       // Load 10
-            "    cmpl $5, %eax\n"        // Compare with 5
-            "    setl %al\n"             // Set AL if 10 < 5 (false, so AL=0)
-            "    movzbl %al, %eax\n"     // Zero-extend AL to EAX (EAX=0)
-            "    movl %eax, -8(%rbp)\n"  // Store result (0) into t0
-            "    movl -8(%rbp), %eax\n"  // Load t0 for return
+            "    subq $32, %rsp\n" // Stack space for TAC temporary t0
+            "    movl $10, %eax\n" // Load 10
+            "    cmpl $5, %eax\n" // Compare with 5
+            "    setl %al\n" // Set AL if 10 < 5 (false, so AL=0)
+            "    movzbl %al, %eax\n" // Zero-extend AL to EAX (EAX=0)
+            "    movl %eax, -8(%rbp)\n" // Store result (0) into t0
+            "    movl -8(%rbp), %eax\n" // Load t0 for return
             "    leave\n"
             "    retq\n";
 
@@ -190,13 +190,13 @@ static void test_compile_logical_not_false(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n"       // Stack space for TAC temporary t0
-            "    movl $0, %eax\n"        // Load 0
-            "    cmpl $0, %eax\n"        // Compare with 0
-            "    sete %al\n"             // Set AL if 0 == 0 (AL=1)
-            "    movzbl %al, %eax\n"     // Zero-extend AL to EAX (EAX=1)
-            "    movl %eax, -8(%rbp)\n"  // Store result (1) into t0
-            "    movl -8(%rbp), %eax\n"  // Load t0 for return
+            "    subq $32, %rsp\n" // Stack space for TAC temporary t0
+            "    movl $0, %eax\n" // Load 0
+            "    cmpl $0, %eax\n" // Compare with 0
+            "    sete %al\n" // Set AL if 0 == 0 (AL=1)
+            "    movzbl %al, %eax\n" // Zero-extend AL to EAX (EAX=1)
+            "    movl %eax, -8(%rbp)\n" // Store result (1) into t0
+            "    movl -8(%rbp), %eax\n" // Load t0 for return
             "    leave\n"
             "    retq\n";
 
@@ -223,20 +223,20 @@ static void test_compile_logical_and_true_false(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n"       // For TAC temporary and labels
-            "    movl $1, %eax\n"        // Load LHS (1)
-            "    testl %eax, %eax\n"     // Is LHS zero?
-            "    jz L0\n"                // If LHS is 0, result is 0 (short-circuit)
-            "    movl $0, %eax\n"        // Load RHS (0)
-            "    cmpl $0, %eax\n"        // Booleanize RHS: (0 == 0) -> false (0)
-            "    setne %al\n"            // al = (RHS != 0)
-            "    movzbl %al, %eax\n"     // eax = booleanized RHS
-            "    movl %eax, -8(%rbp)\n"  // Store booleanized RHS as result
-            "    jmp L1\n"               // Jump to end
-            "L0:\n"                     // Short-circuit path: LHS of && was false
-            "    movl $0, -8(%rbp)\n"  // Store 0 as result (short-circuit path)
+            "    subq $32, %rsp\n" // For TAC temporary and labels
+            "    movl $1, %eax\n" // Load LHS (1)
+            "    testl %eax, %eax\n" // Is LHS zero?
+            "    jz L0\n" // If LHS is 0, result is 0 (short-circuit)
+            "    movl $0, %eax\n" // Load RHS (0)
+            "    cmpl $0, %eax\n" // Booleanize RHS: (0 == 0) -> false (0)
+            "    setne %al\n" // al = (RHS != 0)
+            "    movzbl %al, %eax\n" // eax = booleanized RHS
+            "    movl %eax, -8(%rbp)\n" // Store booleanized RHS as result
+            "    jmp L1\n" // Jump to end
+            "L0:\n" // Short-circuit path: LHS of && was false
+            "    movl $0, -8(%rbp)\n" // Store 0 as result (short-circuit path)
             "L1:\n"
-            "    movl -8(%rbp), %eax\n"  // Load final result for return
+            "    movl -8(%rbp), %eax\n" // Load final result for return
             "    leave\n"
             "    retq\n";
 
@@ -263,21 +263,21 @@ static void test_compile_logical_or_false_true(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n"       // For TAC temporary and labels
-            "    movl $0, %eax\n"        // Load LHS (0)
-            "    testl %eax, %eax\n"     // Is LHS zero?
-            "    jnz L1\n"               // If LHS is non-zero (true), result of || is 1 (short-circuit)
+            "    subq $32, %rsp\n" // For TAC temporary and labels
+            "    movl $0, %eax\n" // Load LHS (0)
+            "    testl %eax, %eax\n" // Is LHS zero?
+            "    jnz L1\n" // If LHS is non-zero (true), result of || is 1 (short-circuit)
             // LHS of || was false (0), evaluate RHS: 1
-            "    movl $1, %eax\n"        // Load RHS (1)
-            "    cmpl $0, %eax\n"        // Booleanize RHS: (1 == 0) -> false (0) -> setne sets al to 1
-            "    setne %al\n"            // al = (RHS != 0)
-            "    movzbl %al, %eax\n"     // eax = booleanized RHS
-            "    movl %eax, -8(%rbp)\n"  // Store booleanized RHS as result
-            "    jmp L2\n"               // Jump to end
+            "    movl $1, %eax\n" // Load RHS (1)
+            "    cmpl $0, %eax\n" // Booleanize RHS: (1 == 0) -> false (0) -> setne sets al to 1
+            "    setne %al\n" // al = (RHS != 0)
+            "    movzbl %al, %eax\n" // eax = booleanized RHS
+            "    movl %eax, -8(%rbp)\n" // Store booleanized RHS as result
+            "    jmp L2\n" // Jump to end
             "L1:\n"
-            "    movl $1, -8(%rbp)\n"  // Store 1 as result (short-circuit path for OR)
+            "    movl $1, -8(%rbp)\n" // Store 1 as result (short-circuit path for OR)
             "L2:\n"
-            "    movl -8(%rbp), %eax\n"  // Load final result for return
+            "    movl -8(%rbp), %eax\n" // Load final result for return
             "    leave\n"
             "    retq\n";
 
@@ -315,8 +315,8 @@ static void test_compile_complex_logical_or(void) {
             "    movl %eax, -16(%rbp)\n" // t1 = (3 < 2) -> t1 = 0
             // Logical OR: t1 || (2 < 3)
             "    movl -16(%rbp), %eax\n" // Load t1 (LHS of ||)
-            "    testl %eax, %eax\n"     // Test if t1 is zero
-            "    jnz L1\n"               // If t1 is non-zero (true), result of || is 1 (short-circuit)
+            "    testl %eax, %eax\n" // Test if t1 is zero
+            "    jnz L1\n" // If t1 is non-zero (true), result of || is 1 (short-circuit)
             // LHS of || was false (t1 = 0), evaluate RHS: 2 < 3
             "    movl $2, %eax\n"
             "    cmpl $3, %eax\n"
@@ -325,15 +325,15 @@ static void test_compile_complex_logical_or(void) {
             "    movl %eax, -24(%rbp)\n" // t2 = (2 < 3) -> t2 = 1
             // Booleanize RHS result for final OR result
             "    movl -24(%rbp), %eax\n" // Load t2
-            "    cmpl $0, %eax\n"        // (t2 == 0)
-            "    setne %al\n"            // al = (t2 != 0)
+            "    cmpl $0, %eax\n" // (t2 == 0)
+            "    setne %al\n" // al = (t2 != 0)
             "    movzbl %al, %eax\n"
-            "    movl %eax, -8(%rbp)\n"  // t0 = result of OR (booleanized t2)
-            "    jmp L2\n"               // Jump to end of OR logic
-            "L1:\n"                     // Short-circuit path: LHS of || was true
-            "    movl $1, -8(%rbp)\n"   // t0 = 1 (result of || operation)
-            "L2:\n"                     // End of OR logic
-            "    movl -8(%rbp), %eax\n"  // Load final result (t0) for return
+            "    movl %eax, -8(%rbp)\n" // t0 = result of OR (booleanized t2)
+            "    jmp L2\n" // Jump to end of OR logic
+            "L1:\n" // Short-circuit path: LHS of || was true
+            "    movl $1, -8(%rbp)\n" // t0 = 1 (result of || operation)
+            "L2:\n" // End of OR logic
+            "    movl -8(%rbp), %eax\n" // Load final result (t0) for return
             "    leave\n"
             "    retq\n";
 
@@ -368,11 +368,11 @@ static void test_compile_complex_logical_and_short_circuit(void) {
             "    cmpl $2, %eax\n"
             "    setl %al\n"
             "    movzbl %al, %eax\n"
-            "    movl %eax, -8(%rbp)\n"  // t0 = (3 < 2) -> t0 = 0
+            "    movl %eax, -8(%rbp)\n" // t0 = (3 < 2) -> t0 = 0
             // Logical AND short-circuit check
-            "    movl -8(%rbp), %eax\n"  // Load t0 (LHS of &&)
-            "    testl %eax, %eax\n"     // Is t0 zero? (t0 is 0, so ZF=1)
-            "    jz L0\n"                // If t0 is 0, result of && is 0 (short-circuit). Jumps to L0.
+            "    movl -8(%rbp), %eax\n" // Load t0 (LHS of &&)
+            "    testl %eax, %eax\n" // Is t0 zero? (t0 is 0, so ZF=1)
+            "    jz L0\n" // If t0 is 0, result of && is 0 (short-circuit). Jumps to L0.
             // ---- This block should NOT be executed due to short-circuit ----
             // Evaluate RHS of &&: (2 < 3)
             "    movl $2, %eax\n"
@@ -388,7 +388,7 @@ static void test_compile_complex_logical_and_short_circuit(void) {
             "    movl %eax, -16(%rbp)\n" // t1 = booleanized t2 (result of && if LHS was true)
             "    jmp L1\n"
             // ---- End of non-executed block ----
-            "L0:\n"                     // Short-circuit path: LHS of && was false
+            "L0:\n" // Short-circuit path: LHS of && was false
             "    movl $0, -16(%rbp)\n" // t1 = 0 (result of && operation)
             "L1:\n"
             "    movl -16(%rbp), %eax\n" // Load final result (t1) for return

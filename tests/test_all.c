@@ -12,7 +12,17 @@ void run_main_args_tests(void);
 
 void run_ast_tests(void);
 
-void run_parser_tests(void);
+void run_parser_program_tests(void);
+
+void run_parser_unary_expressions_tests(void);
+
+void run_parser_binary_expressions_tests(void);
+
+void run_parser_relational_logical_expressions_tests(void);
+
+void run_parser_precedence_tests(void);
+
+void run_parser_errors_and_literals_tests(void);
 
 void run_strings_tests(void); // Forward declaration for string tests
 
@@ -58,7 +68,12 @@ int main(void) {
     run_ast_tests();
 
     printf("\n--- Running Parser Tests --- \n");
-    run_parser_tests();
+    run_parser_program_tests();
+    run_parser_unary_expressions_tests();
+    run_parser_binary_expressions_tests();
+    run_parser_relational_logical_expressions_tests();
+    run_parser_precedence_tests();
+    run_parser_errors_and_literals_tests();
 
     printf("\n--- Running Strings Tests --- \n");
     run_strings_tests();
