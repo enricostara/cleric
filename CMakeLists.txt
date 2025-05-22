@@ -63,6 +63,7 @@ add_executable(test_all
         tests/parser/test_parser_relational_logical_expressions.c
         tests/parser/test_parser_precedence.c
         tests/parser/test_parser_errors_and_literals.c
+        tests/parser/test_parser_blocks_declarations.c
         tests/test_strings.c
         tests/codegen/test_codegen.c
         tests/codegen/test_codegen_logical.c

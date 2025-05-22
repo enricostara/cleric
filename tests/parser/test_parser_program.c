@@ -24,14 +24,20 @@ void test_parse_valid_program(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(program_reworked, "Parser returned NULL for valid input");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag was set for valid input");
 
-    // --- AST Structure Verification ---
+    // --- AST Structure Verification --- //
     TEST_ASSERT_EQUAL(NODE_PROGRAM, program_reworked->base.type);
     TEST_ASSERT_NOT_NULL(program_reworked->function);
     FuncDefNode *func_def = program_reworked->function;
 
     TEST_ASSERT_EQUAL(NODE_FUNC_DEF, func_def->base.type);
-    TEST_ASSERT_NOT_NULL(func_def->body);
-    AstNode *stmt = func_def->body;
+    TEST_ASSERT_NOT_NULL(func_def->body); // Body should now be a BlockNode
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BLOCK, func_def->body->base.type, "Function body should be a BlockNode");
+
+    BlockNode *body_block = func_def->body;
+    TEST_ASSERT_EQUAL_INT_MESSAGE(1, body_block->num_items, "BlockNode should contain 1 item for 'return 42;'");
+    TEST_ASSERT_NOT_NULL_MESSAGE(body_block->items[0], "First item in BlockNode should not be NULL");
+
+    AstNode *stmt = body_block->items[0]; // Get the first statement from the block
     TEST_ASSERT_EQUAL(NODE_RETURN_STMT, stmt->type);
     ReturnStmtNode *return_stmt = (ReturnStmtNode *) stmt;
 
@@ -106,7 +112,10 @@ void test_parse_function_empty_body(void) {
     TEST_ASSERT_EQUAL_MESSAGE(NODE_FUNC_DEF, func_def->base.type, "Function definition node type mismatch");
     TEST_ASSERT_EQUAL_STRING_MESSAGE("main", func_def->name, "Function name mismatch");
 
-    TEST_ASSERT_NULL_MESSAGE(func_def->body, "Function body is not NULL for an empty function");
+    TEST_ASSERT_NOT_NULL_MESSAGE(func_def->body, "Function body (BlockNode) should not be NULL for an empty function");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BLOCK, func_def->body->base.type, "Function body should be a BlockNode for an empty function");
+    BlockNode *empty_body_block = func_def->body;
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, empty_body_block->num_items, "BlockNode should have 0 items for an empty function body {}");
 
     arena_destroy(&test_arena);
 }
