@@ -32,15 +32,28 @@ static void test_create_return_stmt(void) {
 static void test_create_func_def(void) {
     Arena test_arena = arena_create(1024);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    // Create a simple return statement for the function body
     IntLiteralNode *expr = create_int_literal_node(2, &test_arena);
+    TEST_ASSERT_NOT_NULL(expr);
     ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode *) expr, &test_arena);
     TEST_ASSERT_NOT_NULL(ret_stmt);
-    FuncDefNode *func_def_node = create_func_def_node("main", (AstNode *) ret_stmt, &test_arena);
+
+    // Create a block node and add the return statement to it
+    BlockNode *body_block = create_block_node(&test_arena);
+    TEST_ASSERT_NOT_NULL(body_block);
+    TEST_ASSERT_TRUE(block_node_add_item(body_block, (AstNode *)ret_stmt, &test_arena));
+
+    // Create the function definition node with the block node as its body
+    FuncDefNode *func_def_node = create_func_def_node("main", body_block, &test_arena);
     TEST_ASSERT_NOT_NULL(func_def_node);
     TEST_ASSERT_EQUAL(NODE_FUNC_DEF, func_def_node->base.type);
-    const FuncDefNode *func_node = (FuncDefNode *) func_def_node;
-    TEST_ASSERT_EQUAL_PTR(ret_stmt, func_node->body);
-    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, func_node->body->type);
+    TEST_ASSERT_EQUAL_STRING("main", func_def_node->name);
+    TEST_ASSERT_EQUAL_PTR(body_block, func_def_node->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_node->body->base.type);
+    TEST_ASSERT_EQUAL_INT(1, func_def_node->body->num_items);
+    TEST_ASSERT_EQUAL_PTR(ret_stmt, func_def_node->body->items[0]);
+
     arena_destroy(&test_arena);
 }
 
@@ -48,11 +61,23 @@ static void test_create_func_def(void) {
 static void test_create_program(void) {
     Arena test_arena = arena_create(1024);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    // Create a simple return statement
     IntLiteralNode *expr = create_int_literal_node(2, &test_arena);
+    TEST_ASSERT_NOT_NULL(expr);
     ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode *) expr, &test_arena);
-    AstNode *func_body = (AstNode *) ret_stmt;
-    FuncDefNode *func_def = create_func_def_node("main", func_body, &test_arena);
+    TEST_ASSERT_NOT_NULL(ret_stmt);
+
+    // Create a block node for the function body
+    BlockNode *func_body_block = create_block_node(&test_arena);
+    TEST_ASSERT_NOT_NULL(func_body_block);
+    TEST_ASSERT_TRUE(block_node_add_item(func_body_block, (AstNode*)ret_stmt, &test_arena));
+
+    // Create a function definition node
+    FuncDefNode *func_def = create_func_def_node("main", func_body_block, &test_arena);
     TEST_ASSERT_NOT_NULL(func_def);
+
+    // Create the program node
     ProgramNode *program_node = create_program_node(func_def, &test_arena);
     TEST_ASSERT_NOT_NULL(program_node);
     TEST_ASSERT_EQUAL(NODE_PROGRAM, program_node->base.type);
@@ -138,8 +163,11 @@ static void test_ast_pretty_print_output(void) {
     ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode *) mul_op, &test_arena);
     TEST_ASSERT_NOT_NULL_MESSAGE(ret_stmt, "Failed to create ret_stmt for pretty_print");
 
-    AstNode *func_body = (AstNode *) ret_stmt;
-    FuncDefNode *func_def = create_func_def_node("main", func_body, &test_arena);
+    BlockNode *func_body_block = create_block_node(&test_arena);
+    TEST_ASSERT_NOT_NULL(func_body_block);
+    TEST_ASSERT_TRUE(block_node_add_item(func_body_block, (AstNode*)ret_stmt, &test_arena));
+
+    FuncDefNode *func_def = create_func_def_node("main", func_body_block, &test_arena);
     TEST_ASSERT_NOT_NULL_MESSAGE(func_def, "Failed to create func_def for pretty_print");
 
     ProgramNode *program_node = create_program_node(func_def, &test_arena);
@@ -153,6 +181,165 @@ static void test_ast_pretty_print_output(void) {
     TEST_PASS_MESSAGE("AST Pretty Print test executed. Visually inspect output.");
 }
 
+// Test case for creating an identifier node
+static void test_create_identifier_node(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    IdentifierNode *node = create_identifier_node("myVar", &test_arena);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_EQUAL(NODE_IDENTIFIER, node->base.type);
+    TEST_ASSERT_EQUAL_STRING("myVar", node->name);
+    arena_destroy(&test_arena);
+}
+
+// Test case for creating a variable declaration node without initializer
+static void test_create_var_decl_node_no_initializer(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    VarDeclNode *node = create_var_decl_node("int", "x", NULL, &test_arena);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_EQUAL(NODE_VAR_DECL, node->base.type);
+    TEST_ASSERT_EQUAL_STRING("int", node->type_name);
+    TEST_ASSERT_EQUAL_STRING("x", node->var_name);
+    TEST_ASSERT_NULL(node->initializer);
+    arena_destroy(&test_arena);
+}
+
+// Test case for creating a variable declaration node with initializer
+static void test_create_var_decl_node_with_initializer(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    IntLiteralNode *init_expr = create_int_literal_node(100, &test_arena);
+    TEST_ASSERT_NOT_NULL(init_expr);
+    VarDeclNode *node = create_var_decl_node("int", "y", (AstNode*)init_expr, &test_arena);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_EQUAL(NODE_VAR_DECL, node->base.type);
+    TEST_ASSERT_EQUAL_STRING("int", node->type_name);
+    TEST_ASSERT_EQUAL_STRING("y", node->var_name);
+    TEST_ASSERT_EQUAL_PTR(init_expr, node->initializer);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, node->initializer->type);
+    arena_destroy(&test_arena);
+}
+
+// Test case for creating an empty block node
+static void test_create_block_node_empty(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    BlockNode *block = create_block_node(&test_arena);
+    TEST_ASSERT_NOT_NULL(block);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, block->base.type);
+    TEST_ASSERT_EQUAL_INT(0, block->num_items);
+    TEST_ASSERT_EQUAL_INT(0, block->capacity); // Initial capacity is 0 as per ast.c
+    TEST_ASSERT_NULL(block->items); // Initial items is NULL
+    arena_destroy(&test_arena);
+}
+
+// Test case for adding items to a block node and checking capacity
+static void test_block_node_add_items(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+    BlockNode *block = create_block_node(&test_arena);
+    TEST_ASSERT_NOT_NULL(block);
+
+    VarDeclNode *decl1 = create_var_decl_node("int", "a", NULL, &test_arena);
+    TEST_ASSERT_NOT_NULL(decl1);
+    IntLiteralNode *val5 = create_int_literal_node(5, &test_arena);
+    TEST_ASSERT_NOT_NULL(val5);
+    ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode*)val5, &test_arena);
+    TEST_ASSERT_NOT_NULL(ret_stmt);
+
+    TEST_ASSERT_TRUE(block_node_add_item(block, (AstNode*)decl1, &test_arena));
+    TEST_ASSERT_EQUAL_INT(1, block->num_items);
+    TEST_ASSERT_EQUAL_PTR(decl1, block->items[0]);
+    TEST_ASSERT_GREATER_OR_EQUAL_INT(1, block->capacity); // Capacity should be at least 1 (INITIAL_BLOCK_CAPACITY)
+
+    TEST_ASSERT_TRUE(block_node_add_item(block, (AstNode*)ret_stmt, &test_arena));
+    TEST_ASSERT_EQUAL_INT(2, block->num_items);
+    TEST_ASSERT_EQUAL_PTR(ret_stmt, block->items[1]);
+    TEST_ASSERT_GREATER_OR_EQUAL_INT(2, block->capacity);
+
+    // Test adding items to trigger reallocation (INITIAL_BLOCK_CAPACITY is 8)
+    for (int i = 0; i < 10; ++i) {
+        IntLiteralNode *item_val = create_int_literal_node(i, &test_arena);
+        TEST_ASSERT_TRUE(block_node_add_item(block, (AstNode*)item_val, &test_arena));
+    }
+    TEST_ASSERT_EQUAL_INT(12, block->num_items); // 2 existing + 10 new
+    TEST_ASSERT_GREATER_OR_EQUAL_INT(12, block->capacity); // Capacity should have grown
+    // Check if the original items are still there
+    TEST_ASSERT_EQUAL_PTR(decl1, block->items[0]);
+    TEST_ASSERT_EQUAL_PTR(ret_stmt, block->items[1]);
+    // Check one of the newly added items
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, block->items[11]->type);
+
+    arena_destroy(&test_arena);
+}
+
+// Test case for creating a function definition node with a block body
+static void test_create_func_def_with_block_body(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    BlockNode *body_block = create_block_node(&test_arena);
+    TEST_ASSERT_NOT_NULL(body_block);
+
+    VarDeclNode *decl = create_var_decl_node("int", "temp", NULL, &test_arena);
+    TEST_ASSERT_NOT_NULL(decl);
+    IntLiteralNode *ret_val_literal = create_int_literal_node(0, &test_arena);
+    TEST_ASSERT_NOT_NULL(ret_val_literal);
+    IdentifierNode *ident_temp = create_identifier_node("temp", &test_arena);
+    TEST_ASSERT_NOT_NULL(ident_temp);
+    ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode*)ident_temp, &test_arena); // Return the variable
+    TEST_ASSERT_NOT_NULL(ret_stmt);
+
+    TEST_ASSERT_TRUE(block_node_add_item(body_block, (AstNode*)decl, &test_arena));
+    TEST_ASSERT_TRUE(block_node_add_item(body_block, (AstNode*)ret_stmt, &test_arena));
+
+    FuncDefNode *func = create_func_def_node("test_func", body_block, &test_arena);
+    TEST_ASSERT_NOT_NULL(func);
+    TEST_ASSERT_EQUAL(NODE_FUNC_DEF, func->base.type);
+    TEST_ASSERT_EQUAL_STRING("test_func", func->name);
+    TEST_ASSERT_EQUAL_PTR(body_block, func->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func->body->base.type);
+    TEST_ASSERT_EQUAL_INT(2, func->body->num_items);
+    TEST_ASSERT_EQUAL_PTR(decl, func->body->items[0]);
+    TEST_ASSERT_EQUAL_PTR(ret_stmt, func->body->items[1]);
+
+    arena_destroy(&test_arena);
+}
+
+// Test case that calls ast_pretty_print for new node types (visual inspection needed)
+static void test_ast_pretty_print_new_nodes(void) {
+    Arena test_arena = arena_create(2048);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for new_nodes_pretty_print");
+
+    // Build AST for: 
+    // int my_func(void) {
+    //   int x;
+    //   int y = 10;
+    //   return y;
+    // }
+    BlockNode *body_block = create_block_node(&test_arena);
+    VarDeclNode *decl_x = create_var_decl_node("int", "x", NULL, &test_arena);
+    IntLiteralNode *val10 = create_int_literal_node(10, &test_arena);
+    VarDeclNode *decl_y = create_var_decl_node("int", "y", (AstNode*)val10, &test_arena);
+    IdentifierNode *ident_y = create_identifier_node("y", &test_arena);
+    ReturnStmtNode *ret_y = create_return_stmt_node((AstNode*)ident_y, &test_arena);
+
+    block_node_add_item(body_block, (AstNode*)decl_x, &test_arena);
+    block_node_add_item(body_block, (AstNode*)decl_y, &test_arena);
+    block_node_add_item(body_block, (AstNode*)ret_y, &test_arena);
+
+    FuncDefNode *func_def = create_func_def_node("my_func", body_block, &test_arena);
+    ProgramNode *program_node = create_program_node(func_def, &test_arena);
+
+    printf("\n--- AST Pretty Print New Nodes Output Start ---\n");
+    ast_pretty_print((AstNode *) program_node, 0);
+    printf("--- AST Pretty Print New Nodes Output End ---\n");
+
+    arena_destroy(&test_arena);
+    TEST_PASS_MESSAGE("AST Pretty Print for new nodes executed. Visually inspect output.");
+}
+
 // Runner function for AST tests
 void run_ast_tests(void) {
     RUN_TEST(test_create_int_literal);
@@ -160,7 +347,16 @@ void run_ast_tests(void) {
     RUN_TEST(test_create_unary_op_negate);
     RUN_TEST(test_create_unary_op_complement);
     RUN_TEST(test_create_binary_op_add);
-    RUN_TEST(test_create_func_def);
-    RUN_TEST(test_create_program);
-    RUN_TEST(test_ast_pretty_print_output);
+    RUN_TEST(test_create_func_def); // Updated test
+    RUN_TEST(test_create_program); // Updated test
+    RUN_TEST(test_ast_pretty_print_output); // Updated test
+
+    // New tests
+    RUN_TEST(test_create_identifier_node);
+    RUN_TEST(test_create_var_decl_node_no_initializer);
+    RUN_TEST(test_create_var_decl_node_with_initializer);
+    RUN_TEST(test_create_block_node_empty);
+    RUN_TEST(test_block_node_add_items);
+    RUN_TEST(test_create_func_def_with_block_body);
+    RUN_TEST(test_ast_pretty_print_new_nodes);
 }
