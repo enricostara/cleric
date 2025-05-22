@@ -489,50 +489,60 @@ static AstNode *parse_primary_expression(Parser *parser) { // NOLINT(*-no-recurs
 static AstNode *parse_expression_recursive(Parser *parser, int min_precedence) {
     if (parser->error_flag) return NULL;
     AstNode *left_node = parse_primary_expression(parser);
-    if (!left_node) {
-        // Error already reported
+    if (!left_node || parser->error_flag) { // Check error_flag after parse_primary_expression
+        // Error already reported by parse_primary_expression or child call
         return NULL;
     }
 
-    while (parser->peek_token.type != TOKEN_EOF) {
-        int precedence = get_token_precedence(parser->peek_token.type);
-        if (precedence < min_precedence) {
-            break; // Operator has lower precedence, stop consuming
+    while (true) {
+        // Check the CURRENT token as the operator.
+        int op_precedence = get_token_precedence(parser->current_token.type);
+
+        if (op_precedence < min_precedence) {
+            // Not an operator, or operator of lower precedence than we are looking for.
+            break;
         }
 
-        // Consume the operator
-        parser_advance(parser);
-        Token current_token = parser->current_token;
-        TokenType operator_token_type = current_token.type;
-        BinaryOperatorType op_type = token_to_binary_operator_type(operator_token_type);
-        // ReSharper disable once CppDFAConstantConditions
-        // ReSharper disable once CppDFAUnreachableCode
-        if ((int)op_type == -1 && !parser->error_flag) { // Check if conversion failed and no error set yet
-            // ReSharper disable once CppDFAUnreachableCode
+        // current_token is our operator.
+        Token operator_token_details = parser->current_token;
+        BinaryOperatorType op_type = token_to_binary_operator_type(operator_token_details.type);
+        
+        if ((int)op_type == -1 && !parser->error_flag) { // Check if conversion failed
             char current_token_str[128];
             token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
             parser_error(parser, "Internal Error: Unexpected token %s for binary operator in parse_expression_recursive", current_token_str);
-            // No need to free left_node; arena handles it.
             return NULL;
         }
         if(parser->error_flag) return NULL; // If op_type conversion itself failed and set error
 
-        AstNode *right_node = parse_expression_recursive(parser, precedence + 1); // +1 for left-associativity
-        if (parser->error_flag || !right_node) {
-            // No need to free left_node; arena handles it.
-            return NULL; // Error already set or right operand parsing failed
+        parser_advance(parser); // Consume the operator. current_token is now the start of the RHS.
+        if (parser->error_flag) return NULL; // Check error after advance
+
+        // Parse the right-hand side. For left-associativity, recursive call needs higher precedence.
+        AstNode *right_node = parse_expression_recursive(parser, op_precedence + 1);
+        if (!right_node) { 
+            // Error should be set by the recursive call or primary_expression if !right_node
+            // If no specific error was set by a deeper call, provide a generic one here.
+            if (!parser->error_flag) {
+                 char op_str[128];
+                 token_to_string(operator_token_details, op_str, sizeof(op_str));
+                 char next_tok_str[128];
+                 token_to_string(parser->current_token, next_tok_str, sizeof(next_tok_str));
+                 parser_error(parser, "Syntax Error: Expected expression after operator %s, but got %s", op_str, next_tok_str);
+            }
+            return NULL; 
         }
+        // No need to check error_flag again if right_node is valid, as prior calls would return NULL on error.
 
         left_node = (AstNode *) create_binary_op_node(op_type, left_node, right_node, parser->arena);
         if (!left_node) {
-            // Allocation failed, create_binary_op_node should handle internal errors or return NULL.
-            // If it returns NULL, it implies an allocation error, which should ideally be handled by arena or reported.
-            // For now, assume if left_node is NULL, an error has been set or is catastrophic.
-            if (!parser->error_flag) {
+            // Allocation failed
+            if (!parser->error_flag) { // Should be rare if arena is robust
                  parser_error(parser, "Failed to create binary operation node due to allocation failure.");
             }
             return NULL;
         }
+        // Loop continues. current_token is now the token AFTER the parsed RHS.
     }
     return left_node;
 }

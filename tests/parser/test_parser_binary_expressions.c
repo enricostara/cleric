@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 
 #include "unity.h"
 #include "../../src/lexer/lexer.h"      // Adjusted path
@@ -49,10 +50,22 @@ void test_parse_simple_addition(void) {
     Parser parser;
     parser_init(&parser, &lexer, &test_arena);
     ProgramNode *program = parse_program(&parser);
-    TEST_ASSERT_NOT_NULL(program);
-    TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    verify_binary_op_node(return_stmt->expression, OPERATOR_ADD, 1, 2);
+
+    if (program == NULL && parser.error_message) {
+        fprintf(stderr, "Parser error in test_parse_simple_addition: %s\n", parser.error_message);
+    }
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(program, "parse_program() returned NULL. Check stderr for parser error message if available.");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, parser.error_message ? parser.error_message : "Parser error flag set but no specific message available.");
+    FuncDefNode *func_def_add = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_add->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_add->body->base.type);
+    BlockNode *body_block_add = func_def_add->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_add->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_add->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_add->items[0]->type);
+    ReturnStmtNode *return_stmt_add = (ReturnStmtNode *) body_block_add->items[0];
+    verify_binary_op_node(return_stmt_add->expression, OPERATOR_ADD, 1, 2);
     arena_destroy(&test_arena);
 }
 
@@ -66,8 +79,15 @@ void test_parse_simple_subtraction(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    verify_binary_op_node(return_stmt->expression, OPERATOR_SUBTRACT, 3, 1);
+    FuncDefNode *func_def_sub = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_sub->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_sub->body->base.type);
+    BlockNode *body_block_sub = func_def_sub->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_sub->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_sub->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_sub->items[0]->type);
+    ReturnStmtNode *return_stmt_sub = (ReturnStmtNode *) body_block_sub->items[0];
+    verify_binary_op_node(return_stmt_sub->expression, OPERATOR_SUBTRACT, 3, 1);
     arena_destroy(&test_arena);
 }
 
@@ -81,8 +101,15 @@ void test_parse_simple_multiplication(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    verify_binary_op_node(return_stmt->expression, OPERATOR_MULTIPLY, 2, 3);
+    FuncDefNode *func_def_mul = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_mul->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_mul->body->base.type);
+    BlockNode *body_block_mul = func_def_mul->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_mul->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_mul->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_mul->items[0]->type);
+    ReturnStmtNode *return_stmt_mul = (ReturnStmtNode *) body_block_mul->items[0];
+    verify_binary_op_node(return_stmt_mul->expression, OPERATOR_MULTIPLY, 2, 3);
     arena_destroy(&test_arena);
 }
 
@@ -96,8 +123,15 @@ void test_parse_simple_division(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    verify_binary_op_node(return_stmt->expression, OPERATOR_DIVIDE, 4, 2);
+    FuncDefNode *func_def_div = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_div->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_div->body->base.type);
+    BlockNode *body_block_div = func_def_div->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_div->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_div->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_div->items[0]->type);
+    ReturnStmtNode *return_stmt_div = (ReturnStmtNode *) body_block_div->items[0];
+    verify_binary_op_node(return_stmt_div->expression, OPERATOR_DIVIDE, 4, 2);
     arena_destroy(&test_arena);
 }
 
@@ -111,8 +145,15 @@ void test_parse_simple_modulo(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    verify_binary_op_node(return_stmt->expression, OPERATOR_MODULO, 5, 2);
+    FuncDefNode *func_def_mod = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_mod->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_mod->body->base.type);
+    BlockNode *body_block_mod = func_def_mod->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_mod->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_mod->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_mod->items[0]->type);
+    ReturnStmtNode *return_stmt_mod = (ReturnStmtNode *) body_block_mod->items[0];
+    verify_binary_op_node(return_stmt_mod->expression, OPERATOR_MODULO, 5, 2);
     arena_destroy(&test_arena);
 }
 
@@ -126,14 +167,21 @@ void test_parse_precedence_add_mul(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    AstNode *expr = return_stmt->expression;
-    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr->type);
-    BinaryOpNode *add_node = (BinaryOpNode *) expr;
-    TEST_ASSERT_EQUAL(OPERATOR_ADD, add_node->op);
-    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_node->left->type);
-    TEST_ASSERT_EQUAL_INT(1, ((IntLiteralNode *)add_node->left)->value);
-    verify_binary_op_node(add_node->right, OPERATOR_MULTIPLY, 2, 3);
+    FuncDefNode *func_def_prec1 = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_prec1->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_prec1->body->base.type);
+    BlockNode *body_block_prec1 = func_def_prec1->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_prec1->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_prec1->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_prec1->items[0]->type);
+    ReturnStmtNode *return_stmt_prec1 = (ReturnStmtNode *) body_block_prec1->items[0];
+    AstNode *expr_prec1 = return_stmt_prec1->expression;
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_prec1->type);
+    BinaryOpNode *add_node_prec1 = (BinaryOpNode *) expr_prec1;
+    TEST_ASSERT_EQUAL(OPERATOR_ADD, add_node_prec1->op);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_node_prec1->left->type);
+    TEST_ASSERT_EQUAL_INT(1, ((IntLiteralNode *)add_node_prec1->left)->value);
+    verify_binary_op_node(add_node_prec1->right, OPERATOR_MULTIPLY, 2, 3);
     arena_destroy(&test_arena);
 }
 
@@ -147,14 +195,21 @@ void test_parse_precedence_mul_add(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    AstNode *expr = return_stmt->expression;
-    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr->type);
-    BinaryOpNode *add_node = (BinaryOpNode *) expr;
-    TEST_ASSERT_EQUAL(OPERATOR_ADD, add_node->op);
-    verify_binary_op_node(add_node->left, OPERATOR_MULTIPLY, 1, 2);
-    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_node->right->type);
-    TEST_ASSERT_EQUAL_INT(3, ((IntLiteralNode *)add_node->right)->value);
+    FuncDefNode *func_def_prec2 = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_prec2->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_prec2->body->base.type);
+    BlockNode *body_block_prec2 = func_def_prec2->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_prec2->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_prec2->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_prec2->items[0]->type);
+    ReturnStmtNode *return_stmt_prec2 = (ReturnStmtNode *) body_block_prec2->items[0];
+    AstNode *expr_prec2 = return_stmt_prec2->expression;
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_prec2->type);
+    BinaryOpNode *add_node_prec2 = (BinaryOpNode *) expr_prec2;
+    TEST_ASSERT_EQUAL(OPERATOR_ADD, add_node_prec2->op);
+    verify_binary_op_node(add_node_prec2->left, OPERATOR_MULTIPLY, 1, 2);
+    TEST_ASSERT_EQUAL(NODE_INT_LITERAL, add_node_prec2->right->type);
+    TEST_ASSERT_EQUAL_INT(3, ((IntLiteralNode *)add_node_prec2->right)->value);
     arena_destroy(&test_arena);
 }
 
@@ -168,10 +223,17 @@ void test_parse_associativity_subtract(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    AstNode *expr = return_stmt->expression;
-    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr->type);
-    BinaryOpNode *outer_sub_node = (BinaryOpNode *) expr;
+    FuncDefNode *func_def_assoc_sub = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_assoc_sub->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_assoc_sub->body->base.type);
+    BlockNode *body_block_assoc_sub = func_def_assoc_sub->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_assoc_sub->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_assoc_sub->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_assoc_sub->items[0]->type);
+    ReturnStmtNode *return_stmt_assoc_sub = (ReturnStmtNode *) body_block_assoc_sub->items[0];
+    AstNode *expr_assoc_sub = return_stmt_assoc_sub->expression;
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_assoc_sub->type);
+    BinaryOpNode *outer_sub_node = (BinaryOpNode *) expr_assoc_sub;
     TEST_ASSERT_EQUAL(OPERATOR_SUBTRACT, outer_sub_node->op);
     verify_binary_op_node(outer_sub_node->left, OPERATOR_SUBTRACT, 5, 2);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, outer_sub_node->right->type);
@@ -189,10 +251,17 @@ void test_parse_associativity_divide(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    AstNode *expr = return_stmt->expression;
-    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr->type);
-    BinaryOpNode *outer_div_node = (BinaryOpNode *) expr;
+    FuncDefNode *func_def_assoc_div = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_assoc_div->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_assoc_div->body->base.type);
+    BlockNode *body_block_assoc_div = func_def_assoc_div->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_assoc_div->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_assoc_div->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_assoc_div->items[0]->type);
+    ReturnStmtNode *return_stmt_assoc_div = (ReturnStmtNode *) body_block_assoc_div->items[0];
+    AstNode *expr_assoc_div = return_stmt_assoc_div->expression;
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_assoc_div->type);
+    BinaryOpNode *outer_div_node = (BinaryOpNode *) expr_assoc_div;
     TEST_ASSERT_EQUAL(OPERATOR_DIVIDE, outer_div_node->op);
     verify_binary_op_node(outer_div_node->left, OPERATOR_DIVIDE, 8, 4);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, outer_div_node->right->type);
@@ -210,10 +279,18 @@ void test_parse_parentheses_simple(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    AstNode *expr = return_stmt->expression;
-    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr->type);
-    BinaryOpNode *mul_node = (BinaryOpNode *) expr;
+    FuncDefNode *func_def_paren_simple = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_paren_simple->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_paren_simple->body->base.type);
+    BlockNode *body_block_paren_simple = func_def_paren_simple->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_paren_simple->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_paren_simple->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_paren_simple->items[0]->type);
+    ReturnStmtNode *return_stmt_paren_simple = (ReturnStmtNode *) body_block_paren_simple->items[0];
+    AstNode *expr_paren_simple = return_stmt_paren_simple->expression;
+
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_paren_simple->type);
+    BinaryOpNode *mul_node = (BinaryOpNode *) expr_paren_simple;
     TEST_ASSERT_EQUAL(OPERATOR_MULTIPLY, mul_node->op);
     verify_binary_op_node(mul_node->left, OPERATOR_ADD, 1, 2);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, mul_node->right->type);
@@ -231,11 +308,18 @@ void test_parse_parentheses_nested(void) {
     ProgramNode *program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.error_flag);
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    AstNode *expr = return_stmt->expression;
+    FuncDefNode *func_def_paren_nested = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_paren_nested->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_paren_nested->body->base.type);
+    BlockNode *body_block_paren_nested = func_def_paren_nested->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_paren_nested->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_paren_nested->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_paren_nested->items[0]->type);
+    ReturnStmtNode *return_stmt_paren_nested = (ReturnStmtNode *) body_block_paren_nested->items[0];
+    AstNode *expr_paren_nested = return_stmt_paren_nested->expression;
 
-    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr->type);
-    BinaryOpNode *sub_node = (BinaryOpNode *) expr; // Outermost is subtraction
+    TEST_ASSERT_EQUAL(NODE_BINARY_OP, expr_paren_nested->type);
+    BinaryOpNode *sub_node = (BinaryOpNode *) expr_paren_nested; // Outermost is subtraction
     TEST_ASSERT_EQUAL(OPERATOR_SUBTRACT, sub_node->op);
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, sub_node->right->type);
     TEST_ASSERT_EQUAL_INT(4, ((IntLiteralNode*)sub_node->right)->value);
@@ -264,16 +348,20 @@ void test_parse_unary_with_binary_simple(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Program is NULL");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag set");
 
-    FuncDefNode *func_def = program->function;
-    TEST_ASSERT_NOT_NULL_MESSAGE(func_def, "Function definition is NULL");
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) func_def->body;
-    TEST_ASSERT_NOT_NULL_MESSAGE(return_stmt, "Return statement is NULL");
+    FuncDefNode *func_def_unary_bin = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_unary_bin->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_unary_bin->body->base.type);
+    BlockNode *body_block_unary_bin = func_def_unary_bin->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_unary_bin->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_unary_bin->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_unary_bin->items[0]->type);
+    ReturnStmtNode *return_stmt_unary_bin = (ReturnStmtNode *) body_block_unary_bin->items[0];
+    AstNode *expr_unary_bin = return_stmt_unary_bin->expression;
 
-    AstNode *expr = return_stmt->expression;
-    TEST_ASSERT_NOT_NULL_MESSAGE(expr, "Expression is NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr->type, "Expression is not a binary operation");
+    TEST_ASSERT_NOT_NULL_MESSAGE(expr_unary_bin, "Expression is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, expr_unary_bin->type, "Expression is not a binary operation");
 
-    BinaryOpNode *bin_op_node = (BinaryOpNode *) expr;
+    BinaryOpNode *bin_op_node = (BinaryOpNode *) expr_unary_bin;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_ADD, bin_op_node->op, "Binary operator is not ADD");
 
     // Left operand: Unary negation
@@ -308,14 +396,20 @@ void test_parse_unary_on_parenthesized_expr(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "Program is NULL");
     TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, "Parser error flag set");
 
-    ReturnStmtNode *return_stmt = (ReturnStmtNode *) program->function->body;
-    TEST_ASSERT_NOT_NULL_MESSAGE(return_stmt, "Return statement is NULL");
+    FuncDefNode *func_def_unary_paren = program->function;
+    TEST_ASSERT_NOT_NULL(func_def_unary_paren->body);
+    TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_unary_paren->body->base.type);
+    BlockNode *body_block_unary_paren = func_def_unary_paren->body;
+    TEST_ASSERT_EQUAL_INT(1, body_block_unary_paren->num_items);
+    TEST_ASSERT_NOT_NULL(body_block_unary_paren->items[0]);
+    TEST_ASSERT_EQUAL(NODE_RETURN_STMT, body_block_unary_paren->items[0]->type);
+    ReturnStmtNode *return_stmt_unary_paren = (ReturnStmtNode *) body_block_unary_paren->items[0];
+    AstNode *expr_unary_paren = return_stmt_unary_paren->expression;
 
-    AstNode *expr = return_stmt->expression;
-    TEST_ASSERT_NOT_NULL_MESSAGE(expr, "Expression is NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_UNARY_OP, expr->type, "Expression is not a unary operation");
+    TEST_ASSERT_NOT_NULL_MESSAGE(expr_unary_paren, "Expression is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_UNARY_OP, expr_unary_paren->type, "Expression is not a unary operation");
 
-    UnaryOpNode *unary_op_node = (UnaryOpNode *) expr;
+    UnaryOpNode *unary_op_node = (UnaryOpNode *) expr_unary_paren;
     TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_NEGATE, unary_op_node->op, "Unary operator is not NEGATION");
 
     // Operand of unary: Binary addition (1 + 2)
