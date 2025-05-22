@@ -93,6 +93,8 @@ static ReturnStmtNode *parse_return_statement(Parser *parser);
 static AstNode *parse_expression(Parser *parser);
 static AstNode *parse_primary_expression(Parser *parser);
 static AstNode *parse_expression_recursive(Parser *parser, int min_precedence);
+static BlockNode *parse_block(Parser *parser);
+static AstNode *parse_declaration(Parser *parser); // Full implementation will be in parser.c
 
 // Helper function to consume a token and advance
 static bool parser_consume(Parser *parser, TokenType expected_type);
