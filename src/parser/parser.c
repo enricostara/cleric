@@ -279,9 +279,20 @@ static FuncDefNode *parse_function_definition(Parser *parser) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
-    // Simplified: Assume 'void' parameter for now
-    if (!parser_consume(parser, TOKEN_KEYWORD_VOID)) {
-        return NULL; // Error handled and flag set inside parser_consume
+    // Handle parameters: either 'void' or empty '()'
+    if (parser->current_token.type == TOKEN_KEYWORD_VOID) {
+        parser_advance(parser); // Consume 'void'
+        if (parser->error_flag) return NULL; // Check error after explicit advance
+    } else if (parser->current_token.type == TOKEN_SYMBOL_RPAREN) {
+        // This is an empty parameter list like main(), which is fine.
+        // The next parser_consume for ')' will handle it.
+    } else {
+        // For now, any other token here is an error for a function without parameters.
+        // Later, this is where actual parameter parsing (e.g. 'int a, int b') would go.
+        char current_token_str[128];
+        token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
+        parser_error(parser, "Expected 'void' or ')' for function parameters, but got %s", current_token_str);
+        return NULL;
     }
 
     // Expect ')'
@@ -421,9 +432,9 @@ static AstNode *parse_primary_expression(Parser *parser) { // NOLINT(*-no-recurs
         if (parser->error_flag || !operand) {
             if (!parser->error_flag) {
                  // If operand is NULL but no error flag, it means an unexpected EOF or missing operand after unary op.
-                char current_token_str[128];
-                token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
-                parser_error(parser, "Syntax Error: Expected expression after unary operator, but got %s", current_token_str);
+                 char current_token_str[128];
+                 token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
+                 parser_error(parser, "Syntax Error: Expected expression after unary operator, but got %s", current_token_str);
             }
             return NULL; // Error already set or operand missing
         }
@@ -589,21 +600,16 @@ static BlockNode *parse_block(Parser *parser) {
                 }
                 return NULL; // Return NULL as block construction failed
             }
-        } else {
-            // parse_declaration or parse_statement returned NULL without setting error_flag.
-            // This might mean an empty statement (handled by parse_statement) or an issue.
-            // If it's truly an error (e.g. unexpected token), the respective parse function should have set error_flag.
-            if (parser->current_token.type != TOKEN_SYMBOL_RBRACE && parser->current_token.type != TOKEN_EOF) {
-                 char token_str[128];
-                 token_to_string(parser->current_token, token_str, sizeof(token_str));
-                 parser_error(parser, "Unexpected token '%s' inside block. Expected declaration, statement, or '}'.", token_str);
-                 return NULL;
-            }
-            // If it's RBRACE or EOF, the loop condition will handle it.
-        }
+        } 
+        // If item is NULL and error_flag is false (checked above),
+        // it means a skippable construct like an empty statement was parsed.
+        // The sub-parser (e.g., parse_statement) already advanced the token.
+        // No further action is needed here; the loop will continue with the next token.
+        // The previous 'else' block that generated an error here was incorrect.
     }
 
-    if (parser->error_flag) return NULL; // Check for errors accumulated during the loop
+    // After the loop, check for errors one last time (e.g., if loop exited due to error_flag)
+    if (parser->error_flag) return NULL;
 
     if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
         // Error (expected '}') already reported by parser_consume
