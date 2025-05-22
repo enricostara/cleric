@@ -117,6 +117,15 @@ static void visit_statement(AstNode *node, TacFunction *current_function, Arena 
             }
             break;
         }
+        case NODE_BLOCK: {
+            const BlockNode *block_node = (BlockNode *)node;
+            for (size_t i = 0; i < block_node->num_items; ++i) {
+                visit_statement(block_node->items[i], current_function, arena, next_temp_id_ptr, label_counter_ptr);
+                // If an error occurs in a sub-statement, we might need a way to propagate it.
+                // For now, assuming sub-calls will print errors and we continue or bail if they return a specific error code/flag.
+            }
+            break;
+        }
         // Add cases for other statements here
         default:
             fprintf(stderr, "Error: Unexpected AST node type %d in visit_statement.\n", node->type);

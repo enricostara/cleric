@@ -95,9 +95,9 @@ int main(void) {
     run_codegen_logical_tests();
     run_codegen_relational_conditional_tests();
 
-    // /* -- integration tests -- */
-    // printf("\n--- Running Compiler Tests --- \n");
-    // run_compiler_tests();
+    /* -- integration tests -- */
+    printf("\n--- Running Compiler Tests --- \n");
+    run_compiler_tests();
 
     return UNITY_END(); // Use UNITY_END() in the main runner
 }
