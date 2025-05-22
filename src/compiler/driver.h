@@ -2,8 +2,6 @@
 #define DRIVER_H
 
 #include <stdbool.h>
-#include "../parser/ast.h"    // Include AST header (for printing/freeing)
-#include "../strings/strings.h" // Include StringBuffer header
 
 /**
  * Runs the gcc preprocessor on the input file and writes output to .i file.

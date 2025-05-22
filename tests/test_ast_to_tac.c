@@ -301,9 +301,10 @@ static void test_return_relational_less(void) {
     // 1. Construct AST for: int main() { return 3 < 5; }
     IntLiteralNode *lhs_literal = create_int_literal_node(3, &test_arena);
     IntLiteralNode *rhs_literal = create_int_literal_node(5, &test_arena);
-    BinaryOpNode *less_node = create_binary_op_node(OPERATOR_LESS, (AstNode *)lhs_literal, (AstNode *)rhs_literal, &test_arena);
-    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)less_node, &test_arena);
-    FuncDefNode *func_node = create_func_def_node("main", (AstNode *)return_node, &test_arena);
+    BinaryOpNode *less_node = create_binary_op_node(OPERATOR_LESS, (AstNode *) lhs_literal, (AstNode *) rhs_literal,
+                                                    &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) less_node, &test_arena);
+    FuncDefNode *func_node = create_func_def_node("main", (AstNode *) return_node, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
     // 2. Translate AST to TAC
@@ -344,9 +345,10 @@ static void test_return_logical_and_rhs_evaluates(void) {
     // 1. Construct AST for: int main() { return 1 && 0; }
     IntLiteralNode *lhs_literal = create_int_literal_node(1, &test_arena); // LHS is true
     IntLiteralNode *rhs_literal = create_int_literal_node(0, &test_arena); // RHS is false
-    BinaryOpNode *and_node = create_binary_op_node(OPERATOR_LOGICAL_AND, (AstNode *)lhs_literal, (AstNode *)rhs_literal, &test_arena);
-    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)and_node, &test_arena);
-    FuncDefNode *func_node = create_func_def_node("main", (AstNode *)return_node, &test_arena);
+    BinaryOpNode *and_node = create_binary_op_node(OPERATOR_LOGICAL_AND, (AstNode *) lhs_literal,
+                                                   (AstNode *) rhs_literal, &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) and_node, &test_arena);
+    FuncDefNode *func_node = create_func_def_node("main", (AstNode *) return_node, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
     // 2. Translate AST to TAC
@@ -378,9 +380,9 @@ static void test_return_logical_and_rhs_evaluates(void) {
     TEST_ASSERT_EQUAL_INT(TAC_INS_NOT_EQUAL, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.relational_op.dst.type);
     TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.relational_op.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type);    // rhs_result (const 0)
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type); // rhs_result (const 0)
     TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src1.value.constant_value);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type);    // const 0 to compare against
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type); // const 0 to compare against
     TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src2.value.constant_value);
 
     // instr[2]: goto L1
@@ -426,9 +428,10 @@ static void test_return_logical_and_short_circuit(void) {
     // 1. Construct AST for: int main() { return 0 && 1; }
     IntLiteralNode *lhs_literal = create_int_literal_node(0, &test_arena); // LHS is false
     IntLiteralNode *rhs_literal = create_int_literal_node(1, &test_arena); // RHS (should not be 'evaluated' logically)
-    BinaryOpNode *and_node = create_binary_op_node(OPERATOR_LOGICAL_AND, (AstNode *)lhs_literal, (AstNode *)rhs_literal, &test_arena);
-    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)and_node, &test_arena);
-    FuncDefNode *func_node = create_func_def_node("main", (AstNode *)return_node, &test_arena);
+    BinaryOpNode *and_node = create_binary_op_node(OPERATOR_LOGICAL_AND, (AstNode *) lhs_literal,
+                                                   (AstNode *) rhs_literal, &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) and_node, &test_arena);
+    FuncDefNode *func_node = create_func_def_node("main", (AstNode *) return_node, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
     // 2. Translate AST to TAC
@@ -461,9 +464,9 @@ static void test_return_logical_and_short_circuit(void) {
     TEST_ASSERT_EQUAL_INT(TAC_INS_NOT_EQUAL, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.relational_op.dst.type);
     TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.relational_op.dst.value.temp_id); // t0 (dest_temp)
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type);    // rhs_result (const 1)
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type); // rhs_result (const 1)
     TEST_ASSERT_EQUAL_INT(1, instr->operands.relational_op.src1.value.constant_value);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type);    // const 0 to compare against
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type); // const 0 to compare against
     TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src2.value.constant_value);
 
     // instr[2]: goto L1
@@ -509,9 +512,10 @@ static void test_return_logical_or_rhs_evaluates(void) {
     // 1. Construct AST for: int main() { return 0 || 1; }
     IntLiteralNode *lhs_literal = create_int_literal_node(0, &test_arena); // LHS is false
     IntLiteralNode *rhs_literal = create_int_literal_node(1, &test_arena); // RHS is true
-    BinaryOpNode *or_node = create_binary_op_node(OPERATOR_LOGICAL_OR, (AstNode *)lhs_literal, (AstNode *)rhs_literal, &test_arena);
-    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)or_node, &test_arena);
-    FuncDefNode *func_node = create_func_def_node("main", (AstNode *)return_node, &test_arena);
+    BinaryOpNode *or_node = create_binary_op_node(OPERATOR_LOGICAL_OR, (AstNode *) lhs_literal, (AstNode *) rhs_literal,
+                                                  &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) or_node, &test_arena);
+    FuncDefNode *func_node = create_func_def_node("main", (AstNode *) return_node, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
     // 2. Translate AST to TAC
@@ -541,9 +545,9 @@ static void test_return_logical_or_rhs_evaluates(void) {
     TEST_ASSERT_EQUAL_INT(TAC_INS_NOT_EQUAL, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.relational_op.dst.type);
     TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.relational_op.dst.value.temp_id); // t0
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type);    // rhs_result (const 1)
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type); // rhs_result (const 1)
     TEST_ASSERT_EQUAL_INT(1, instr->operands.relational_op.src1.value.constant_value);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type);    // const 0 to compare against
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type); // const 0 to compare against
     TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src2.value.constant_value);
 
     // instr[2]: goto L_end (L2)
@@ -589,9 +593,10 @@ static void test_return_logical_or_short_circuit(void) {
     // 1. Construct AST for: int main() { return 1 || 0; }
     IntLiteralNode *lhs_literal = create_int_literal_node(1, &test_arena); // LHS is true
     IntLiteralNode *rhs_literal = create_int_literal_node(0, &test_arena); // RHS is false
-    BinaryOpNode *or_node = create_binary_op_node(OPERATOR_LOGICAL_OR, (AstNode *)lhs_literal, (AstNode *)rhs_literal, &test_arena);
-    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)or_node, &test_arena);
-    FuncDefNode *func_node = create_func_def_node("main", (AstNode *)return_node, &test_arena);
+    BinaryOpNode *or_node = create_binary_op_node(OPERATOR_LOGICAL_OR, (AstNode *) lhs_literal, (AstNode *) rhs_literal,
+                                                  &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) or_node, &test_arena);
+    FuncDefNode *func_node = create_func_def_node("main", (AstNode *) return_node, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
     // 2. Translate AST to TAC
@@ -621,10 +626,10 @@ static void test_return_logical_or_short_circuit(void) {
     instr = &func->instructions[1];
     TEST_ASSERT_EQUAL_INT(TAC_INS_NOT_EQUAL, instr->type);
     TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr->operands.relational_op.dst.type);
-    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.relational_op.dst.value.temp_id);    // t0 (dest_temp)
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type);       // rhs_result (const 0)
+    TEST_ASSERT_EQUAL_INT(temp_id_dest, instr->operands.relational_op.dst.value.temp_id); // t0 (dest_temp)
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src1.type); // rhs_result (const 0)
     TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src1.value.constant_value);
-    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type);       // const 0 to compare against
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr->operands.relational_op.src2.type); // const 0 to compare against
     TEST_ASSERT_EQUAL_INT(0, instr->operands.relational_op.src2.value.constant_value);
 
     // instr[2]: goto L_end (L2) (Generated, but skipped)

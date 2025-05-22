@@ -30,7 +30,6 @@
  * Test suites are provided in tests/ for each module.
  */
 
-#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include "compiler/driver.h"
