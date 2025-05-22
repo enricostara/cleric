@@ -289,52 +289,81 @@ static FuncDefNode *parse_function_definition(Parser *parser) {
         return NULL; // Error handled and flag set inside parser_consume
     }
 
-    // Expect '{'
-    if (!parser_consume(parser, TOKEN_SYMBOL_LBRACE)) {
-        return NULL; // Error handled and flag set inside parser_consume
-    }
-
-    AstNode *body_statement = NULL; // Initialize to NULL, representing an empty body.
-
-    // If the next token is not '}', then we try to parse a statement.
-    // This allows for an empty body {}
-    if (parser->current_token.type != TOKEN_SYMBOL_RBRACE) {
-        body_statement = parse_statement(parser);
-        if (!body_statement) {
-            // parse_statement failed (and should have set the error flag).
-            return NULL;
+    // The function body is a block, parse it using parse_block()
+    // parse_block() will handle consuming '{' and '}' and parsing declarations/statements.
+    BlockNode *body_block = parse_block(parser);
+    if (!body_block) {
+        // parse_block should have set an error flag if it failed.
+        // If not, it's an unexpected state, but we propagate the NULL anyway.
+        if(!parser->error_flag && func_name) { // Add a more specific error if parse_block didn't
+             parser_error(parser, "Failed to parse function body for '%s'.", func_name);
         }
-    }
-    // Now, body_statement is either NULL (for an empty body) or a parsed statement.
-
-    // Expect '}' to close the function body
-    if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
-        // Error handled by parser_consume.
-        return NULL; // Error handled and flag set inside parser_consume
+        return NULL;
     }
 
     // Create the function definition node using the name from the arena
-    // create_func_def_node and FuncDefNode must be able to handle body_statement being NULL.
-    FuncDefNode *func_node = create_func_def_node(func_name, body_statement, parser->arena);
+    FuncDefNode *func_node = create_func_def_node(func_name, body_block, parser->arena);
     // No need to free func_name; it was allocated in the arena and create_func_def_node
     // now uses the pointer directly (or copies into the arena if it didn't before).
     return func_node;
 }
 
-// Statement: ReturnStatement | ... (more statement types later)
+// Statement: ReturnStatement | Declaration | ... (more statement types later)
 static AstNode *parse_statement(Parser *parser) {
     if (parser->error_flag) return NULL;
 
+    AstNode *stmt_node = NULL;
+
     switch (parser->current_token.type) {
         case TOKEN_KEYWORD_RETURN:
-            return (AstNode *) parse_return_statement(parser);
-        default: {
-            char current_token_str[128];
-            token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
-            parser_error(parser, "Expected statement (e.g., 'return'), but got %s", current_token_str);
-            return NULL;
-        }
+            stmt_node = (AstNode *)parse_return_statement(parser);
+            break;
+        case TOKEN_SYMBOL_LBRACE: // Compound statement (nested block)
+            // Note: parse_block itself returns a BlockNode*, which is an AstNode*.
+            // It handles consuming '{' and '}'.
+            stmt_node = (AstNode *)parse_block(parser);
+            break;
+        case TOKEN_SYMBOL_SEMICOLON: // Empty statement
+            parser_advance(parser); // Consume ';'
+            // Empty statements don't produce an AST node to be added to a block.
+            // parse_block will see a NULL item and skip adding it.
+            stmt_node = NULL; 
+            break;
+        default:
+            // Attempt to parse as an expression statement.
+            // An expression statement is an expression followed by a semicolon.
+            stmt_node = parse_expression(parser);
+            if (parser->error_flag) { // Error during expression parsing
+                return NULL;
+            }
+
+            if (stmt_node) { // If an expression was parsed
+                if (!parser_consume(parser, TOKEN_SYMBOL_SEMICOLON)) {
+                    // Expected semicolon after expression statement.
+                    // parser_consume sets the error. stmt_node from arena, no manual free needed.
+                    return NULL; 
+                }
+                // The expression node itself (stmt_node) serves as the AST representation
+                // for the expression statement.
+            } else {
+                // parse_expression returned NULL without setting error_flag.
+                // This means the current token doesn't start any known expression.
+                // So, it's not a return, block, empty, or expression statement.
+                char current_token_str[128];
+                token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
+                parser_error(parser, "Expected statement (e.g., 'return', expression, '{', ';'), but got %s.", current_token_str);
+                return NULL;
+            }
+            break;
     }
+
+    // If error_flag was set by a sub-parser (e.g. parse_return_statement, parse_block, parse_expression)
+    if (parser->error_flag) {
+        // stmt_node might be partially formed but is from arena, so no leak.
+        return NULL;
+    }
+
+    return stmt_node; // This can be NULL for empty statements, or a valid AST node.
 }
 
 // ReturnStatement: 'return' Expression ';'
@@ -465,47 +494,170 @@ static AstNode *parse_expression_recursive(Parser *parser, int min_precedence) {
         return NULL;
     }
 
-    while (true) { // Loop while there are operators with sufficient precedence
-        // Peek at the current token to decide if it's an operator we should handle
-        TokenType current_op_token_type = parser->current_token.type;
-        int current_op_actual_precedence = get_token_precedence(current_op_token_type);
-
-        // If token is not an operator or its precedence is less than min_precedence, stop.
-        if (current_op_actual_precedence == 0 || current_op_actual_precedence < min_precedence) {
-            break;
+    while (parser->peek_token.type != TOKEN_EOF) {
+        int precedence = get_token_precedence(parser->peek_token.type);
+        if (precedence < min_precedence) {
+            break; // Operator has lower precedence, stop consuming
         }
 
-        // We have an operator to process
-        BinaryOperatorType bin_op_enum = token_to_binary_operator_type(current_op_token_type);
-        if (bin_op_enum == (BinaryOperatorType)-1) { // Error from conversion
-            // token_to_binary_operator_type should have set an error or printed one.
-            // If not, we might need to set parser->error_flag here.
-            // For now, assume it handles its own error reporting if type is unexpected.
-            parser_error(parser, "Internal parser error: Unexpected token for binary operator.");
+        // Consume the operator
+        parser_advance(parser);
+        Token current_token = parser->current_token;
+        TokenType operator_token_type = current_token.type;
+        BinaryOperatorType op_type = token_to_binary_operator_type(operator_token_type);
+        // ReSharper disable once CppDFAConstantConditions
+        // ReSharper disable once CppDFAUnreachableCode
+        if ((int)op_type == -1 && !parser->error_flag) { // Check if conversion failed and no error set yet
+            // ReSharper disable once CppDFAUnreachableCode
+            char current_token_str[128];
+            token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
+            parser_error(parser, "Internal Error: Unexpected token %s for binary operator in parse_expression_recursive", current_token_str);
+            // No need to free left_node; arena handles it.
             return NULL;
         }
+        if(parser->error_flag) return NULL; // If op_type conversion itself failed and set error
 
-        parser_advance(parser); // Consume the operator
-        if (parser->error_flag) return NULL;
+        AstNode *right_node = parse_expression_recursive(parser, precedence + 1); // +1 for left-associativity
+        if (parser->error_flag || !right_node) {
+            // No need to free left_node; arena handles it.
+            return NULL; // Error already set or right operand parsing failed
+        }
 
-        // For left-associative operators, the next minimum precedence for the RHS is current_op_precedence + 1
-        // For right-associative (not used here yet), it would be current_op_precedence
-        // This ensures expressions like a - b - c are grouped as (a - b) - c
-        const int next_min_precedence_for_rhs = current_op_actual_precedence + 1;
-        AstNode *right_node = parse_expression_recursive(parser, next_min_precedence_for_rhs);
-        if (!right_node) {
-            // Error already reported
+        left_node = (AstNode *) create_binary_op_node(op_type, left_node, right_node, parser->arena);
+        if (!left_node) {
+            // Allocation failed, create_binary_op_node should handle internal errors or return NULL.
+            // If it returns NULL, it implies an allocation error, which should ideally be handled by arena or reported.
+            // For now, assume if left_node is NULL, an error has been set or is catastrophic.
+            if (!parser->error_flag) {
+                 parser_error(parser, "Failed to create binary operation node due to allocation failure.");
+            }
             return NULL;
         }
+    }
+    return left_node;
+}
 
-        // Create the BinaryOpNode
-        BinaryOpNode* binary_node = create_binary_op_node(bin_op_enum, left_node, right_node, parser->arena);
-        if (!binary_node) {
-             parser_error(parser, "Memory allocation failed for binary operator node");
-             return NULL;
-        }
-        left_node = (AstNode*)binary_node; // The result becomes the new left_node for the next iteration
+// --- Implementation of Block and Declaration Parsing ---
+
+// Parses a block of code: '{' (declaration | statement)* '}'
+static BlockNode *parse_block(Parser *parser) {
+    if (!parser_consume(parser, TOKEN_SYMBOL_LBRACE)) {
+        // Error already reported by parser_consume
+        return NULL;
     }
 
-    return left_node;
+    BlockNode *block_node = create_block_node(parser->arena);
+    if (!block_node) {
+        if (!parser->error_flag) {
+            parser_error(parser, "Memory allocation failed for block node.");
+        }
+        return NULL;
+    }
+
+    // Loop to parse declarations or statements until '}' or EOF
+    while (parser->current_token.type != TOKEN_SYMBOL_RBRACE && 
+           parser->current_token.type != TOKEN_EOF && 
+           !parser->error_flag) {
+        
+        AstNode *item = NULL;
+        // Check if the current token indicates the start of a declaration.
+        // For now, we only check for 'int'. This can be expanded later.
+        if (parser->current_token.type == TOKEN_KEYWORD_INT) {
+            item = parse_declaration(parser);
+        } else {
+            // Otherwise, assume it's a statement.
+            item = parse_statement(parser);
+        }
+
+        if (parser->error_flag) { // If parse_declaration or parse_statement encountered an error
+            return NULL; // Error already set, propagate up.
+        }
+        if (item) { // If a declaration or statement was successfully parsed
+            if (!block_node_add_item(block_node, item, parser->arena)) {
+                if (!parser->error_flag) {
+                    parser_error(parser, "Memory allocation failed when adding item to block node.");
+                }
+                return NULL; // Return NULL as block construction failed
+            }
+        } else {
+            // parse_declaration or parse_statement returned NULL without setting error_flag.
+            // This might mean an empty statement (handled by parse_statement) or an issue.
+            // If it's truly an error (e.g. unexpected token), the respective parse function should have set error_flag.
+            if (parser->current_token.type != TOKEN_SYMBOL_RBRACE && parser->current_token.type != TOKEN_EOF) {
+                 char token_str[128];
+                 token_to_string(parser->current_token, token_str, sizeof(token_str));
+                 parser_error(parser, "Unexpected token '%s' inside block. Expected declaration, statement, or '}'.", token_str);
+                 return NULL;
+            }
+            // If it's RBRACE or EOF, the loop condition will handle it.
+        }
+    }
+
+    if (parser->error_flag) return NULL; // Check for errors accumulated during the loop
+
+    if (!parser_consume(parser, TOKEN_SYMBOL_RBRACE)) {
+        // Error (expected '}') already reported by parser_consume
+        return NULL;
+    }
+
+    return block_node;
+}
+
+// Parses a variable declaration, e.g., "int x;"
+// For now, only supports "int" type.
+static AstNode *parse_declaration(Parser *parser) {
+    const char* type_str = NULL;
+
+    // 1. Expect a type keyword (currently only TOKEN_KEYWORD_INT)
+    if (parser->current_token.type == TOKEN_KEYWORD_INT) {
+        type_str = "int"; 
+    } else {
+        // This function is called when a declaration is expected.
+        // If it's not 'int', it's an error for this simplified version.
+        // A more advanced parser might check for other type keywords here.
+        char token_str_buf[128];
+        token_to_string(parser->current_token, token_str_buf, sizeof(token_str_buf));
+        parser_error(parser, "Expected type keyword (e.g., 'int') for declaration, got %s.", token_str_buf);
+        return NULL;
+    }
+
+    parser_advance(parser); // Consume the type token (e.g., 'int')
+    if (parser->error_flag) return NULL;
+
+    // 2. Expect an identifier for the variable name
+    if (parser->current_token.type != TOKEN_IDENTIFIER) {
+        char token_str_buf[128];
+        token_to_string(parser->current_token, token_str_buf, sizeof(token_str_buf));
+        parser_error(parser, "Expected identifier for variable name, got %s.", token_str_buf);
+        return NULL;
+    }
+    
+    // The lexeme from the token is allocated in the arena, so it's safe to use.
+    char *var_name = parser->current_token.lexeme;
+
+    parser_advance(parser); // Consume the identifier token
+    if (parser->error_flag) return NULL;
+
+    // 3. Expect a semicolon
+    if (!parser_consume(parser, TOKEN_SYMBOL_SEMICOLON)) {
+        // parser_consume already sets an error if the token doesn't match
+        // and reports "Expected ';' after variable declaration."
+        // Ensure a more specific message if needed, or rely on parser_consume's default.
+        if (!parser->error_flag) { // If parser_consume didn't set one for some reason (should not happen)
+            parser_error(parser, "Expected ';' after variable declaration name '%s'.", var_name);
+        }
+        return NULL;
+    }
+
+    // 4. Create and return the VarDeclNode
+    // type_str is already set (e.g., to "int")
+    VarDeclNode *decl_node = create_var_decl_node(type_str, var_name, NULL, parser->arena); // Pass NULL for initializer
+    if (!decl_node) {
+        if (!parser->error_flag) { // If create_node failed and didn't set an error
+            parser_error(parser, "Memory allocation failed for variable declaration node for '%s'.", var_name);
+        }
+        return NULL;
+    }
+
+    return (AstNode *)decl_node;
 }

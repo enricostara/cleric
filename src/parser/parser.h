@@ -49,4 +49,8 @@ ProgramNode *parse_program(Parser *parser);
 // parse_* grammar rule functions here because they are internal implementation
 // details managed within parser.c.
 
+// Forward declarations for parsing blocks and declarations (internal to parser.c)
+static BlockNode *parse_block(Parser *parser);
+static AstNode *parse_declaration(Parser *parser); // Full implementation will be in parser.c
+
 #endif // PARSER_H
