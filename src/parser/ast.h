@@ -41,7 +41,11 @@ typedef enum {
 
     // Logical Operators
     OPERATOR_LOGICAL_AND,   // &&
-    OPERATOR_LOGICAL_OR     // ||
+    OPERATOR_LOGICAL_OR,    // ||
+
+    // Assignment and Sequencing
+    OPERATOR_ASSIGN,        // =
+    OPERATOR_COMMA          // , (for future use)
 } BinaryOperatorType;
 
 // Base structure for all AST nodes

@@ -270,6 +270,8 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
                 case OPERATOR_NOT_EQUAL: op_str = "NotEqual"; break;
                 case OPERATOR_LOGICAL_AND: op_str = "LogicalAnd"; break;
                 case OPERATOR_LOGICAL_OR: op_str = "LogicalOr"; break;
+                case OPERATOR_ASSIGN: op_str = "Assign"; break;
+                case OPERATOR_COMMA: op_str = "Comma"; break;
                 default: op_str = "UnknownBinaryOp"; break;
             }
             printf("BinaryOp(op=%s,\n", op_str);
