@@ -26,6 +26,8 @@ void run_parser_errors_and_literals_tests(void);
 
 void run_parser_blocks_declarations_tests(void); // Forward declaration for the new suite
 
+void run_parser_assignments_tests(void); // Forward declaration for assignments tests
+
 void run_strings_tests(void); // Forward declaration for string tests
 
 void run_codegen_tests(void); // Forward declaration for codegen tests
@@ -77,6 +79,7 @@ int main(void) {
     run_parser_precedence_tests();
     run_parser_errors_and_literals_tests();
     run_parser_blocks_declarations_tests();
+    run_parser_assignments_tests();
 
     printf("\n--- Running Strings Tests --- \n");
     run_strings_tests();

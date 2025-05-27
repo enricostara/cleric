@@ -22,8 +22,8 @@ void verify_parser_error(const char *input, const char *expected_error_substring
         if (parser.error_message) {
             // Defensive check before strstr
             char msg[256];
-            sprintf(msg, "Error message mismatch. Expected substring '%s' not found in '%s'", expected_error_substring,
-                    parser.error_message);
+            snprintf(msg, sizeof(msg), "Error message mismatch. Expected substring '%s' not found in '%s'", expected_error_substring,
+                     parser.error_message);
             TEST_ASSERT_NOT_NULL_MESSAGE(strstr(parser.error_message, expected_error_substring), msg);
         }
     }
@@ -36,7 +36,7 @@ void verify_parser_error(const char *input, const char *expected_error_substring
 // Test parsing an invalid unary expression (missing operand)
 void test_parse_invalid_unary_expression(void) {
     verify_parser_error("int main(void) { return -; }",
-                        "Parse Error (near pos 25): Expected expression (integer, unary op, or '('), but got ';'");
+                        "Parse Error (near pos 25): Expected expression (identifier, integer, unary op, or '('), but got ';'");
 }
 
 // Test parsing a program with mismatched parentheses
@@ -119,12 +119,12 @@ void test_parse_integer_overflow(void) {
 
 void test_parse_error_missing_rhs_after_binary_op(void) {
     verify_parser_error("int main(void) { return 1 + ; }",
-                        "Parse Error (near pos 28): Expected expression (integer, unary op, or '('), but got ';'");
+                        "Parse Error (near pos 28): Expected expression (identifier, integer, unary op, or '('), but got ';'");
 }
 
 void test_parse_error_consecutive_binary_operators(void) {
     verify_parser_error("int main(void) { return 1 + * 2; }",
-                        "Parse Error (near pos 28): Expected expression (integer, unary op, or '('), but got '*'");
+                        "Parse Error (near pos 28): Expected expression (identifier, integer, unary op, or '('), but got '*'");
     // Or more specific error
 }
 

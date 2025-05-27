@@ -1,7 +1,7 @@
 #include "arena.h"
 #include <stdlib.h> // For malloc, free
 #include <string.h> // For NULL
-#include <stdio.h> // For fprintf, stderr
+#include <stdio.h> // For fprintf, stderr, printf, fflush
 #include <stddef.h> // For size_t
 
 // Define alignment using compiler extension __alignof__ for C99 compatibility

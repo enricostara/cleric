@@ -463,6 +463,18 @@ static AstNode *parse_primary_expression(Parser *parser) { // NOLINT(*-no-recurs
         return (AstNode *) create_unary_op_node(un_op_type, operand, parser->arena);
     }
 
+    // Handle Identifiers as primary expressions
+    if (parser->current_token.type == TOKEN_IDENTIFIER) {
+        char *ident_name = parser->current_token.lexeme;
+        IdentifierNode *node = create_identifier_node(ident_name, parser->arena);
+        if (!node) {
+            parser_error(parser, "Memory allocation failed for identifier node");
+            return NULL;
+        }
+        parser_advance(parser); // Consume the identifier token
+        return (AstNode *) node;
+    }
+
     // Handle Integer Literals
     if (parser->current_token.type == TOKEN_CONSTANT) {
         char *end_ptr;
@@ -517,7 +529,7 @@ static AstNode *parse_primary_expression(Parser *parser) { // NOLINT(*-no-recurs
     // Handle Error Case
     char current_token_str[128];
     token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
-    parser_error(parser, "Expected expression (integer, unary op, or '('), but got %s", current_token_str);
+    parser_error(parser, "Expected expression (identifier, integer, unary op, or '('), but got %s", current_token_str);
     return NULL;
 }
 
