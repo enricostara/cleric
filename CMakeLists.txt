@@ -44,6 +44,7 @@ add_executable(cleric
         src/parser/ast.c
         src/parser/parser.c
         src/strings/strings.c
+        src/validator/symbol_table.c
         src/codegen/codegen.c
         src/memory/arena.h
         src/memory/arena.c
@@ -73,6 +74,7 @@ add_executable(test_all
         tests/parser/test_parser_blocks_declarations.c
         tests/parser/test_parser_assignments.c
         tests/test_strings.c
+        tests/validator/test_symbol_table.c
         tests/codegen/test_codegen.c
         tests/codegen/test_codegen_logical.c
         tests/codegen/test_codegen_relational_conditional.c
@@ -88,6 +90,7 @@ add_executable(test_all
         src/parser/ast.c
         src/parser/parser.c
         src/strings/strings.c
+        src/validator/symbol_table.c
         src/codegen/codegen.c
         src/memory/arena.c
         src/ir/tac.c
