@@ -29,7 +29,7 @@ static void test_compile_return_4(void) {
     string_buffer_init(&sb, &test_arena, 256); // Initialize buffer
 
     // Run the core compiler pipeline (no _only flags)
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
 
     // Assert compilation succeeded
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed");
@@ -67,7 +67,7 @@ static void test_compile_return_negated_parenthesized_constant(void) {
 
     // Run the core compiler pipeline
     // Parameters: input_c, lex_only, parse_only, tac_only, silent_mode, output_buffer, arena
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
 
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for negated parenthesized constant");
 
@@ -103,7 +103,7 @@ static void test_compile_return_double_negation(void) {
     StringBuffer sb;
     string_buffer_init(&sb, &test_arena, 512);
 
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
 
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for double negation");
 
@@ -135,7 +135,7 @@ static void test_compile_return_addition(void) {
     StringBuffer sb;
     string_buffer_init(&sb, &test_arena, 512); // Initialize buffer
 
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
 
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for addition");
 
@@ -169,7 +169,7 @@ static void test_compile_return_less_than_false(void) {
     StringBuffer sb;
     string_buffer_init(&sb, &test_arena, 512); // Initialize buffer
 
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
 
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for less_than_false");
 
@@ -203,7 +203,7 @@ static void test_compile_logical_not_false(void) {
     StringBuffer sb;
     string_buffer_init(&sb, &test_arena, 512);
 
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for logical NOT");
 
     const char *actual_asm = string_buffer_content_str(&sb);
@@ -243,7 +243,7 @@ static void test_compile_logical_and_true_false(void) {
     StringBuffer sb;
     string_buffer_init(&sb, &test_arena, 512);
 
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for logical AND");
 
     const char *actual_asm = string_buffer_content_str(&sb);
@@ -284,7 +284,7 @@ static void test_compile_logical_or_false_true(void) {
     StringBuffer sb;
     string_buffer_init(&sb, &test_arena, 512);
 
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for logical OR");
 
     const char *actual_asm = string_buffer_content_str(&sb);
@@ -340,7 +340,7 @@ static void test_compile_complex_logical_or(void) {
     StringBuffer sb;
     string_buffer_init(&sb, &test_arena, 1024); // Increased buffer slightly for more complex asm
 
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for complex logical OR");
 
     const char *actual_asm = string_buffer_content_str(&sb);
@@ -398,7 +398,7 @@ static void test_compile_complex_logical_and_short_circuit(void) {
     StringBuffer sb;
     string_buffer_init(&sb, &test_arena, 1024);
 
-    bool const success = compile(input_c, false, false, false, true, &sb, &test_arena);
+    bool const success = compile(input_c, false, false, false, false, true, &sb, &test_arena);
     TEST_ASSERT_TRUE_MESSAGE(success, "compile failed for complex logical AND");
 
     const char *actual_asm = string_buffer_content_str(&sb);

@@ -41,7 +41,7 @@ void test_run_compiler_creates_s_file_and_removes_i(void) {
     fclose(f);
 
     // Run the compile function
-    const int result = run_compiler(test_i_file, false, false, false, false);
+    const int result = run_compiler(test_i_file, false, false, false, false, false);
     TEST_ASSERT_EQUAL_INT(0, result);
 
     // Check that the .s file exists
@@ -69,7 +69,7 @@ void test_run_compiler_lex_only(void) {
     fprintf(f, "int main(void) { return 2; }\n");
     fclose(f);
     // Run the compiler in lex_only mode
-    const int result = run_compiler(test_i_file, true, false, false, false);
+    const int result = run_compiler(test_i_file, true, false, false, false, false);
     TEST_ASSERT_EQUAL_INT(0, result);
     // Should NOT produce a .s file
     char s_file[64];
@@ -93,7 +93,7 @@ void test_run_compiler_parse_only(void) {
     fprintf(f, "int main(void) { return 3; }\n");
     fclose(f);
     // Run the compiler in parse_only mode
-    const int result = run_compiler(test_i_file, false, true, false, false);
+    const int result = run_compiler(test_i_file, false, true, false, false, false);
     TEST_ASSERT_EQUAL_INT(0, result);
     // Should NOT produce a .s file
     char s_file[64];
@@ -117,7 +117,7 @@ void test_run_compiler_codegen_only(void) {
     fprintf(f, "int main(void) { return 4; }\n");
     fclose(f);
     // Run the compiler in codegen_only mode
-    const int result = run_compiler(test_i_file, false, false, true, false);
+    const int result = run_compiler(test_i_file, false, false, false, false, true);
     TEST_ASSERT_EQUAL_INT(0, result);
     // Should NOT produce a .s file
     char s_file[64];

@@ -92,6 +92,7 @@ add_executable(test_all
         src/parser/parser.c
         src/strings/strings.c
         src/validator/symbol_table.c
+        src/validator/validator.c
         src/codegen/codegen.c
         src/memory/arena.c
         src/ir/tac.c
