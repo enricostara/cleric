@@ -14,7 +14,8 @@
  * @param source_code The C source code string to compile.
  * @param lex_only If true, stop after lexing and print tokens.
  * @param parse_only If true, stop after parsing and print AST.
- * @param irgen_only If true, stop after IR generation.
+ * @param validate_only If true, stop after validation.
+ * @param tac_only If true, stop after IR generation.
  * @param codegen_only If true, stop after code generation and print assembly to stdout.
  * @param output_assembly_sb Pointer to an initialized StringBuffer where the generated assembly code will be stored (if not codegen_only).
  *                           The caller is responsible for destroying this buffer.
@@ -24,7 +25,8 @@
 bool compile(const char *source_code,
              bool lex_only,
              bool parse_only,
-             bool irgen_only,
+             bool validate_only,
+             bool tac_only,
              bool codegen_only,
              StringBuffer *output_assembly_sb,
              Arena *arena);

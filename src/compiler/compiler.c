@@ -5,6 +5,7 @@
 #include "../codegen/codegen.h"
 #include "../strings/strings.h"
 #include "../ir/tac.h"           // For TacProgram and tac_print_program
+#include "../validator/validator.h" // Added validator include
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -22,6 +23,8 @@ static bool run_lexer(Lexer *lexer, bool print_tokens);
 
 static bool run_parser(Parser *parser, bool print_ast, ProgramNode **out_program);
 
+static bool run_validator(ProgramNode *program, Arena *arena);
+
 static bool run_irgen(ProgramNode *ast_root, Arena *arena, TacProgram **out_tac_program, bool print_tac);
 
 static bool run_codegen(TacProgram *tac_program, StringBuffer *output_assembly_sb, bool print_assembly);
@@ -31,7 +34,8 @@ static bool run_codegen(TacProgram *tac_program, StringBuffer *output_assembly_s
 bool compile(const char *source_code,
              const bool lex_only,
              const bool parse_only,
-             const bool irgen_only,
+             const bool validate_only,
+             const bool tac_only,
              const bool codegen_only,
              StringBuffer *output_assembly_sb,
              Arena *arena) {
@@ -58,25 +62,39 @@ bool compile(const char *source_code,
 
     // --- Parsing Phase ---
     ProgramNode *program;
-    const bool parse_success = run_parser(&parser, parse_only || codegen_only, &program);
+    const bool parse_success = run_parser(&parser, parse_only || codegen_only || tac_only || validate_only, &program);
     if (!parse_success) {
         return false;
     }
 
+    // If only parsing, we're done.
     if (parse_only) {
-        return true; // Parsing succeeded, stop here
+        return true;
+    }
+
+    // --- Semantic Validation Phase ---
+    // This phase always runs unless parse_only was true (handled above) or lex_only was true (handled earlier).
+    // The validate_only flag determines if we stop *after* this phase.
+    const bool validation_succeeded = run_validator(program, arena);
+    if (!validation_succeeded) {
+        return false; // Validation failed, stop.
+    }
+
+    // If validate_only is true, and validation succeeded, stop here.
+    if (validate_only) {
+        return true;
     }
 
     // --- IR Generation Phase (AST -> TAC) ---
     TacProgram *tac_program; // Declare variable to hold the result
-    const bool irgen_success = run_irgen(program, arena, &tac_program, codegen_only || irgen_only);
+    const bool irgen_success = run_irgen(program, arena, &tac_program, codegen_only || tac_only);
     if (!irgen_success) {
         // Error message printed by run_irgen
         return false; // IR generation failed
     }
 
-    // If irgen_only is requested, stop here after successful IR generation
-    if (irgen_only) {
+    // If tac_only is requested, stop here after successful IR generation
+    if (tac_only) {
         return true;
     }
 
@@ -154,6 +172,18 @@ static bool run_parser(Parser *parser, const bool print_ast, ProgramNode **out_p
 
     *out_program = ast_root_local; // Store AST root
 
+    return true;
+}
+
+// --- Semantic Validation --- 
+static bool run_validator(ProgramNode *program, Arena *arena) {
+    printf("Validating program...\n");
+    if (!validate_program((AstNode*)program, arena)) {
+        // Specific errors are printed by validate_program and its callees.
+        fprintf(stderr, "Semantic validation failed.\n"); 
+        return false;
+    }
+    printf("Semantic validation successful.\n");
     return true;
 }
 

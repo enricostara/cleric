@@ -36,7 +36,7 @@ int run_preprocessor(const char *input_file) {
 }
 
 // Function: compilation from .i file to .s file (using the core compiler logic)
-int run_compiler(const char *input_file, const bool lex_only, const bool parse_only, const bool irgen_only,
+int run_compiler(const char *input_file, const bool lex_only, const bool parse_only, const bool validate_only, const bool tac_only,
                  const bool codegen_only) {
     // Use utility to check extension
     if (!filename_has_ext(input_file, ".i")) {
@@ -70,11 +70,11 @@ int run_compiler(const char *input_file, const bool lex_only, const bool parse_o
     // ReSharper disable once CppDFAUnusedValue
     int result = 1; // Default to error
 
-    const bool core_success = compile(src, lex_only, parse_only, irgen_only, codegen_only, &sb, &main_arena);
+    const bool core_success = compile(src, lex_only, parse_only, validate_only, tac_only, codegen_only, &sb, &main_arena);
 
     if (core_success) {
         // If only lexing, parsing, irgen or codegen-to-stdout was requested, we are done successfully.
-        if (lex_only || parse_only || irgen_only || codegen_only) {
+        if (lex_only || parse_only || validate_only || tac_only || codegen_only) {
             result = 0;
         } else {
             // Full compilation succeeded, write assembly to file
