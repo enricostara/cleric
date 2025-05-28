@@ -1,6 +1,7 @@
 #include "unity.h"
 #include "../src/strings/strings.h"
 #include "../src/memory/arena.h"
+#include <string.h> // For strlen
 
 // --- Test Cases ---
 
@@ -201,6 +202,77 @@ static void test_string_buffer_free_data_empty(void) {
     TEST_PASS(); // If we didn't crash
 }
 
+// --- Tests for arena_strdup ---
+
+static void test_arena_strdup_basic(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(test_arena.start);
+
+    const char *original = "Hello, arena_strdup!";
+    char *duplicated = arena_strdup(&test_arena, original);
+
+    TEST_ASSERT_NOT_NULL(duplicated);
+    TEST_ASSERT_EQUAL_STRING(original, duplicated);
+    TEST_ASSERT_NOT_EQUAL(original, duplicated); // Should be a new memory location
+
+    arena_destroy(&test_arena);
+}
+
+static void test_arena_strdup_empty_string(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(test_arena.start);
+
+    const char *original = "";
+    char *duplicated = arena_strdup(&test_arena, original);
+
+    TEST_ASSERT_NOT_NULL(duplicated);
+    TEST_ASSERT_EQUAL_STRING("", duplicated);
+    TEST_ASSERT_EQUAL(0, strlen(duplicated));
+
+    arena_destroy(&test_arena);
+}
+
+static void test_arena_strdup_null_input(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(test_arena.start);
+
+    char *duplicated = arena_strdup(&test_arena, NULL);
+    TEST_ASSERT_NULL(duplicated);
+
+    // Test with NULL arena as well (though arena_strdup checks this)
+    duplicated = arena_strdup(NULL, "test");
+    TEST_ASSERT_NULL(duplicated);
+
+    arena_destroy(&test_arena);
+}
+
+static void test_arena_strdup_multiple(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL(test_arena.start);
+
+    const char *s1_orig = "First string";
+    const char *s2_orig = "Second string, longer";
+    const char *s3_orig = "";
+
+    char *s1_dup = arena_strdup(&test_arena, s1_orig);
+    char *s2_dup = arena_strdup(&test_arena, s2_orig);
+    char *s3_dup = arena_strdup(&test_arena, s3_orig);
+
+    TEST_ASSERT_NOT_NULL(s1_dup);
+    TEST_ASSERT_EQUAL_STRING(s1_orig, s1_dup);
+    TEST_ASSERT_NOT_EQUAL(s1_orig, s1_dup);
+
+    TEST_ASSERT_NOT_NULL(s2_dup);
+    TEST_ASSERT_EQUAL_STRING(s2_orig, s2_dup);
+    TEST_ASSERT_NOT_EQUAL(s2_orig, s2_dup);
+    TEST_ASSERT_NOT_EQUAL(s1_dup, s2_dup); // Ensure they are distinct allocations
+
+    TEST_ASSERT_NOT_NULL(s3_dup);
+    TEST_ASSERT_EQUAL_STRING(s3_orig, s3_dup);
+
+    arena_destroy(&test_arena);
+}
+
 // --- Test Runner --- -
 
 // We need a function to run all tests in this suite
@@ -216,4 +288,10 @@ void run_strings_tests(void) {
     RUN_TEST(test_string_buffer_content_access_and_reset);
     RUN_TEST(test_string_buffer_free_data_simple);
     RUN_TEST(test_string_buffer_free_data_empty);
+
+    // Add arena_strdup tests
+    RUN_TEST(test_arena_strdup_basic);
+    RUN_TEST(test_arena_strdup_empty_string);
+    RUN_TEST(test_arena_strdup_null_input);
+    RUN_TEST(test_arena_strdup_multiple);
 }
