@@ -174,3 +174,16 @@ void string_buffer_reset(StringBuffer *sb) {
         sb->buffer[0] = '\0'; // Ensure it's an empty string
     }
 }
+
+// --- String Duplication ---
+char* arena_strdup(Arena *arena, const char *s) {
+    if (!s) return NULL;
+    if (!arena) return NULL; // Cannot allocate without an arena
+
+    size_t len = strlen(s);
+    char *new_str = (char *)arena_alloc(arena, len + 1);
+    if (!new_str) return NULL; // Allocation failed
+    
+    memcpy(new_str, s, len + 1); // Copy including the null terminator
+    return new_str;
+}

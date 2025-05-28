@@ -44,4 +44,12 @@ const char *string_buffer_content_str(const StringBuffer *sb);
  */
 void string_buffer_reset(StringBuffer *sb);
 
+/**
+ * @brief Duplicates a string into the given arena.
+ * @param arena The Arena to use for allocating the new string.
+ * @param s The null-terminated string to duplicate.
+ * @return Pointer to the newly allocated string in the arena, or NULL if allocation fails or s is NULL.
+ */
+char* arena_strdup(Arena *arena, const char *s);
+
 #endif // STRINGS_H
