@@ -46,6 +46,8 @@ void run_ast_to_tac_tests(void);
 
 void run_symbol_table_tests(void); // Forward declaration for symbol table tests
 
+void run_validator_tests(void); // Added validator test runner
+
 // Global setUp and tearDown for all tests run by this main runner
 void setUp(void) {
     // Optional global setup for all tests
@@ -88,6 +90,7 @@ int main(void) {
 
     printf("\n--- Running Validator Tests --- \n");
     run_symbol_table_tests();
+    run_validator_tests(); // Added validator test runner call
 
     printf("\n--- Running Arena Tests --- \n");
     run_arena_tests();

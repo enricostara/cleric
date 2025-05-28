@@ -76,6 +76,7 @@ add_executable(test_all
         tests/parser/test_parser_assignments.c
         tests/test_strings.c
         tests/validator/test_symbol_table.c
+        tests/validator/test_validator.c
         tests/codegen/test_codegen.c
         tests/codegen/test_codegen_logical.c
         tests/codegen/test_codegen_relational_conditional.c
