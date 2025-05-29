@@ -13,6 +13,7 @@ static void test_validate_undeclared_variable(void);
 static void test_validate_redeclared_variable_same_scope(void);
 static void test_validate_shadowed_variable_inner_scope(void);
 static void test_validate_valid_variable_usage(void);
+static void test_validate_invalid_assignment_lvalue(void);
 
 // Test Suite Runner
 void run_validator_tests(void) {
@@ -21,6 +22,7 @@ void run_validator_tests(void) {
     RUN_TEST(test_validate_redeclared_variable_same_scope);
     RUN_TEST(test_validate_shadowed_variable_inner_scope);
     RUN_TEST(test_validate_valid_variable_usage);
+    RUN_TEST(test_validate_invalid_assignment_lvalue);
     // Add more tests here
 }
 
@@ -169,6 +171,52 @@ static void test_validate_valid_variable_usage(void) {
 
     // Assert: The program should be valid
     TEST_ASSERT_TRUE(is_valid);
+
+    // Cleanup
+    arena_destroy(&test_arena);
+}
+
+static void test_validate_invalid_assignment_lvalue(void) {
+    // Arrange: AST for "int main() { int a = 2; a + 3 = 4; return a; }"
+    Arena test_arena = arena_create(1024 * 4);
+
+    // int a = 2;
+    IntLiteralNode* val_2 = create_int_literal_node(2, &test_arena);
+    VarDeclNode* var_decl_a = create_var_decl_node("int", "a", (AstNode*)val_2, &test_arena);
+
+    // Expression: a + 3
+    IdentifierNode* ident_a_lhs_expr = create_identifier_node("a", &test_arena);
+    IntLiteralNode* val_3 = create_int_literal_node(3, &test_arena);
+    // Assuming OP_ADD is defined in BinaryOperatorType
+    BinaryOpNode* add_expr = create_binary_op_node(OPERATOR_ADD, (AstNode*)ident_a_lhs_expr, (AstNode*)val_3, &test_arena);
+
+    // Assignment statement: (a + 3) = 4
+    IntLiteralNode* val_4 = create_int_literal_node(4, &test_arena);
+    // Use OPERATOR_ASSIGN
+    BinaryOpNode* assign_expr_stmt = create_binary_op_node(OPERATOR_ASSIGN, (AstNode*)add_expr, (AstNode*)val_4, &test_arena);
+
+    // return a;
+    IdentifierNode* ident_a_ret = create_identifier_node("a", &test_arena);
+    ReturnStmtNode* return_stmt = create_return_stmt_node((AstNode*)ident_a_ret, &test_arena);
+
+    // Block node
+    BlockNode* block_node = create_block_node(&test_arena);
+    block_node_add_item(block_node, (AstNode*)var_decl_a, &test_arena);
+    // In C, an assignment expression can be a statement. So, add assign_expr_stmt directly.
+    block_node_add_item(block_node, (AstNode*)assign_expr_stmt, &test_arena);
+    block_node_add_item(block_node, (AstNode*)return_stmt, &test_arena);
+
+    // Function definition
+    FuncDefNode* func_def = create_func_def_node("main", block_node, &test_arena);
+
+    // Program node
+    ProgramNode* program_node = create_program_node(func_def, &test_arena);
+
+    // Act: Validate the program
+    bool is_valid = validate_program((AstNode*)program_node, &test_arena);
+
+    // Assert: The program should be invalid due to incorrect l-value in assignment
+    TEST_ASSERT_FALSE(is_valid);
 
     // Cleanup
     arena_destroy(&test_arena);

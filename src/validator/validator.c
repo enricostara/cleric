@@ -153,11 +153,25 @@ static bool validate_unary_op_node(UnaryOpNode* node, SymbolTable* st, Arena* er
 static bool validate_binary_op_node(BinaryOpNode* node, SymbolTable* st, Arena* error_arena) {
     bool left_valid = true;
     bool right_valid = true;
+
+    // Specific check for assignment operator's left-hand side (l-value)
+    if (node->op == OPERATOR_ASSIGN) {
+        if (!node->left || node->left->type != NODE_IDENTIFIER) {
+            // TODO: Improve error message with line/col if available from the AST node.
+            fprintf(stderr, "Error: Left-hand side of assignment must be an l-value (e.g., a variable name).\n"); // Should use error_arena
+            return false; // Invalid assignment
+        }
+    }
+
+    // Validate left and right sub-expressions regardless of the operator
+    // (unless assignment check already failed)
     if (node->left) {
         left_valid = validate_node(node->left, st, error_arena);
+        if (!left_valid) return false; // Propagate error early
     }
     if (node->right) {
         right_valid = validate_node(node->right, st, error_arena);
+        if (!right_valid) return false; // Propagate error early
     }
     return left_valid && right_valid;
 }
