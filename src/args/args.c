@@ -6,7 +6,6 @@
 void print_usage(const char *prog_name) {
     fprintf(stderr, "Usage: %s [<options>] <input_file.c>\n", prog_name);
     fprintf(stderr, "Options:\n");
-    fprintf(stderr, "  --help         Display this information.\n");
     fprintf(stderr, "  --lex          Lex the input, print tokens to stdout, and exit.\n");
     fprintf(stderr, "  --parse        Lex and parse the input, print the AST to stdout, and exit.\n");
     fprintf(stderr, "  --validate     Lex, parse, and validate the input, then exit.\n");

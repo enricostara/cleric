@@ -12,6 +12,7 @@ static void test_validate_empty_function(void);
 static void test_validate_undeclared_variable(void);
 static void test_validate_redeclared_variable_same_scope(void);
 static void test_validate_shadowed_variable_inner_scope(void);
+static void test_validate_valid_variable_usage(void);
 
 // Test Suite Runner
 void run_validator_tests(void) {
@@ -19,6 +20,7 @@ void run_validator_tests(void) {
     RUN_TEST(test_validate_undeclared_variable);
     RUN_TEST(test_validate_redeclared_variable_same_scope);
     RUN_TEST(test_validate_shadowed_variable_inner_scope);
+    RUN_TEST(test_validate_valid_variable_usage);
     // Add more tests here
 }
 
@@ -138,7 +140,36 @@ static void test_validate_shadowed_variable_inner_scope(void) {
     arena_destroy(&test_arena);
 }
 
-// Add more test cases for different scenarios:
-// - Valid variable usage
-// - Nested blocks with correct scoping
-// - Etc.
+static void test_validate_valid_variable_usage(void) {
+    // Arrange: AST for "int main() { int a; return a; }"
+    Arena test_arena = arena_create(1024 * 4);
+
+    // Variable declaration: int a;
+    VarDeclNode* var_decl_a = create_var_decl_node("int", "a", NULL, &test_arena);
+
+    // Identifier for 'a' in return statement
+    IdentifierNode* ident_a = create_identifier_node("a", &test_arena);
+
+    // Return statement: return a;
+    ReturnStmtNode* return_stmt = create_return_stmt_node((AstNode*)ident_a, &test_arena);
+
+    // Block node containing the declaration and return statement
+    BlockNode* block_node = create_block_node(&test_arena);
+    block_node_add_item(block_node, (AstNode*)var_decl_a, &test_arena);
+    block_node_add_item(block_node, (AstNode*)return_stmt, &test_arena);
+
+    // Function definition: int main() { ... }
+    FuncDefNode* func_def = create_func_def_node("main", block_node, &test_arena);
+
+    // Program node
+    ProgramNode* program_node = create_program_node(func_def, &test_arena);
+
+    // Act: Validate the program
+    bool is_valid = validate_program((AstNode*)program_node, &test_arena);
+
+    // Assert: The program should be valid
+    TEST_ASSERT_TRUE(is_valid);
+
+    // Cleanup
+    arena_destroy(&test_arena);
+}
