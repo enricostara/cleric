@@ -51,7 +51,7 @@ static void test_return_int_literal(void) {
     IntLiteralNode *int_node = create_int_literal_node(5, &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) int_node, &test_arena);
     BlockNode *body_block = create_block_node(&test_arena);
-    block_node_add_item(body_block, (AstNode*)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *) return_node, &test_arena);
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
@@ -86,7 +86,7 @@ static void test_return_unary_negate(void) {
     UnaryOpNode *unary_node_neg = create_unary_op_node(OPERATOR_NEGATE, (AstNode *) int_node_neg, &test_arena);
     ReturnStmtNode *return_node_neg = create_return_stmt_node((AstNode *) unary_node_neg, &test_arena);
     BlockNode *body_block_neg = create_block_node(&test_arena);
-    block_node_add_item(body_block_neg, (AstNode*)return_node_neg, &test_arena);
+    block_node_add_item(body_block_neg, (AstNode *) return_node_neg, &test_arena);
     FuncDefNode *func_node_neg = create_func_def_node("main", body_block_neg, &test_arena);
     ProgramNode *ast = create_program_node(func_node_neg, &test_arena);
 
@@ -129,7 +129,7 @@ static void test_return_unary_complement(void) {
     UnaryOpNode *unary_node_comp = create_unary_op_node(OPERATOR_COMPLEMENT, (AstNode *) int_node_comp, &test_arena);
     ReturnStmtNode *return_node_comp = create_return_stmt_node((AstNode *) unary_node_comp, &test_arena);
     BlockNode *body_block_comp = create_block_node(&test_arena);
-    block_node_add_item(body_block_comp, (AstNode*)return_node_comp, &test_arena);
+    block_node_add_item(body_block_comp, (AstNode *) return_node_comp, &test_arena);
     FuncDefNode *func_node_comp = create_func_def_node("main", body_block_comp, &test_arena);
     ProgramNode *ast = create_program_node(func_node_comp, &test_arena);
 
@@ -174,7 +174,7 @@ static void test_return_unary_complement_negate(void) {
     UnaryOpNode *complement_node = create_unary_op_node(OPERATOR_COMPLEMENT, (AstNode *) negate_node, &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) complement_node, &test_arena);
     BlockNode *body_block = create_block_node(&test_arena);
-    block_node_add_item(body_block, (AstNode*)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *) return_node, &test_arena);
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
@@ -228,7 +228,7 @@ static void test_return_binary_add_literals(void) {
                                                           (AstNode *) rhs_literal, &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) binary_add_node, &test_arena);
     BlockNode *body_block = create_block_node(&test_arena);
-    block_node_add_item(body_block, (AstNode*)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *) return_node, &test_arena);
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
@@ -273,7 +273,7 @@ static void test_return_logical_not(void) {
     UnaryOpNode *logical_not_node = create_unary_op_node(OPERATOR_LOGICAL_NOT, (AstNode *) zero_literal, &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) logical_not_node, &test_arena);
     BlockNode *body_block = create_block_node(&test_arena);
-    block_node_add_item(body_block, (AstNode*)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *) return_node, &test_arena);
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
@@ -317,7 +317,7 @@ static void test_return_relational_less(void) {
                                                     &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) less_node, &test_arena);
     BlockNode *body_block = create_block_node(&test_arena);
-    block_node_add_item(body_block, (AstNode*)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *) return_node, &test_arena);
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
@@ -363,7 +363,7 @@ static void test_return_logical_and_rhs_evaluates(void) {
                                                    (AstNode *) rhs_literal, &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) and_node, &test_arena);
     BlockNode *body_block = create_block_node(&test_arena);
-    block_node_add_item(body_block, (AstNode*)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *) return_node, &test_arena);
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
@@ -448,7 +448,7 @@ static void test_return_logical_and_short_circuit(void) {
                                                    (AstNode *) rhs_literal, &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) and_node, &test_arena);
     BlockNode *body_block = create_block_node(&test_arena);
-    block_node_add_item(body_block, (AstNode*)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *) return_node, &test_arena);
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
@@ -534,7 +534,7 @@ static void test_return_logical_or_rhs_evaluates(void) {
                                                   &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) or_node, &test_arena);
     BlockNode *body_block = create_block_node(&test_arena);
-    block_node_add_item(body_block, (AstNode*)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *) return_node, &test_arena);
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 
@@ -617,7 +617,7 @@ static void test_return_logical_or_short_circuit(void) {
                                                   &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *) or_node, &test_arena);
     BlockNode *body_block = create_block_node(&test_arena);
-    block_node_add_item(body_block, (AstNode*)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *) return_node, &test_arena);
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
 

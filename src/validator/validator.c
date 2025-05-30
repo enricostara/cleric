@@ -56,14 +56,14 @@ static void validator_error(ValidatorContext *ctx, AstNode *node, const char *fo
 
 // --- Forward declarations for static visitor functions --- 
 static bool validate_node(AstNode* node, ValidatorContext* ctx);
-static bool validate_program_node(ProgramNode* node, ValidatorContext* ctx);
-static bool validate_func_def_node(FuncDefNode* node, ValidatorContext* ctx);
-static bool validate_block_node(BlockNode* node, ValidatorContext* ctx);
+static bool validate_program_node(const ProgramNode* node, ValidatorContext* ctx);
+static bool validate_func_def_node(const FuncDefNode* node, ValidatorContext* ctx);
+static bool validate_block_node(const BlockNode* node, ValidatorContext* ctx);
 static bool validate_var_decl_node(VarDeclNode* node, ValidatorContext* ctx);
 static bool validate_identifier_node(IdentifierNode* node, ValidatorContext* ctx);
-static bool validate_return_stmt_node(ReturnStmtNode* node, ValidatorContext* ctx);
-static bool validate_unary_op_node(UnaryOpNode* node, ValidatorContext* ctx);
-static bool validate_binary_op_node(BinaryOpNode* node, ValidatorContext* ctx);
+static bool validate_return_stmt_node(const ReturnStmtNode* node, ValidatorContext* ctx);
+static bool validate_unary_op_node(const UnaryOpNode* node, ValidatorContext* ctx);
+static bool validate_binary_op_node(const BinaryOpNode* node, ValidatorContext* ctx);
 static bool validate_int_literal_node(IntLiteralNode* node, ValidatorContext* ctx);
 static bool validate_assignment_exp_node(AssignmentExpNode* node, ValidatorContext* ctx);
 
@@ -85,10 +85,8 @@ bool validate_program(AstNode *program_node, Arena* error_arena) {
 
     symbol_table_init(ctx.st, ctx.arena);
 
-    bool is_valid = validate_node(program_node, &ctx);
+    validate_node(program_node, &ctx);
 
-    // symbol_table_free(ctx.st); // Arena handles memory
-    
     if (ctx.error_flag && ctx.error_message) {
         // Optionally, make error_message accessible to the caller if needed
         // For now, it's printed by validator_error
@@ -122,14 +120,14 @@ static bool validate_node(AstNode* node, ValidatorContext* ctx) {
 
 // --- Implementations for specific node types --- 
 
-static bool validate_program_node(ProgramNode* node, ValidatorContext* ctx) {
+static bool validate_program_node(const ProgramNode* node, ValidatorContext* ctx) {
     // ProgramNode should contain one or more function definitions (or global declarations)
     // For now, assuming one function definition as per current grammar
     if (!validate_node((AstNode*)node->function, ctx)) return false;
     return !ctx->error_flag;
 }
 
-static bool validate_func_def_node(FuncDefNode* node, ValidatorContext* ctx) {
+static bool validate_func_def_node(const FuncDefNode* node, ValidatorContext* ctx) {
     // TODO: Add function symbol to a global function symbol table if needed
     // For now, functions don't have parameters or complex return types to validate here
     // but we'd check for redefinition, validate parameter types, etc.
@@ -144,7 +142,7 @@ static bool validate_func_def_node(FuncDefNode* node, ValidatorContext* ctx) {
     return !ctx->error_flag;
 }
 
-static bool validate_block_node(BlockNode* node, ValidatorContext* ctx) {
+static bool validate_block_node(const BlockNode* node, ValidatorContext* ctx) {
     symbol_table_enter_scope(ctx->st);
     for (size_t i = 0; i < node->num_items; ++i) {
         if (!validate_node(node->items[i], ctx)) {
@@ -161,7 +159,7 @@ static bool validate_block_node(BlockNode* node, ValidatorContext* ctx) {
 }
 
 // Placeholder for generate_decorated_name - to be implemented next
-static char* generate_decorated_name(ValidatorContext *ctx, const char *original_name, int id) {
+static char* generate_decorated_name(ValidatorContext *ctx, const char *original_name, const int id) {
     // Max length: original_name + '.' + 10 digits for id + null terminator
     // Ensure buffer is large enough or use dynamic allocation with arena
     char buffer[256]; // Adjust size as needed, or use arena_sprintf
@@ -182,9 +180,17 @@ static bool validate_var_decl_node(VarDeclNode* node, ValidatorContext* ctx) {
         return false;
     }
 
-    // 2. Generate TAC ID and decorated name
+    // 2. Check for redeclaration in current symbol table
+    const Symbol* existing_symbol = symbol_table_lookup_symbol_in_current_scope(ctx->st, node->var_name);
+    if (existing_symbol) {
+        validator_error(ctx, (AstNode*)node, "Variable '%s' redeclared in the same scope.", node->var_name);
+        // decorated_name was arena_alloc'd, will be cleaned up with arena, no explicit free needed
+        return false;
+    }
+
+    // 2.1. Generate TAC ID and decorated name
     ctx->tac_temp_id_counter++;
-    int current_tac_id = ctx->tac_temp_id_counter;
+    const int current_tac_id = ctx->tac_temp_id_counter;
     char* decorated_name = generate_decorated_name(ctx, node->var_name, current_tac_id);
     if (!decorated_name) {
         // Error already set by generate_decorated_name
@@ -192,13 +198,6 @@ static bool validate_var_decl_node(VarDeclNode* node, ValidatorContext* ctx) {
     }
 
     // 3. Add to symbol table
-    Symbol* existing_symbol = symbol_table_lookup_symbol_in_current_scope(ctx->st, node->var_name);
-    if (existing_symbol) {
-        validator_error(ctx, (AstNode*)node, "Variable '%s' redeclared in the same scope.", node->var_name);
-        // decorated_name was arena_alloc'd, will be cleaned up with arena, no explicit free needed
-        return false;
-    }
-
     if (!symbol_table_add_symbol(ctx->st, node->var_name, node->declaration_token, current_tac_id, decorated_name)) {
         // This typically means an allocation error within symbol_table_add_symbol
         validator_error(ctx, (AstNode*)node, "Failed to add variable '%s' to symbol table.", node->var_name);
@@ -218,7 +217,7 @@ static bool validate_var_decl_node(VarDeclNode* node, ValidatorContext* ctx) {
 }
 
 static bool validate_identifier_node(IdentifierNode* node, ValidatorContext* ctx) {
-    Symbol* symbol = symbol_table_lookup_symbol(ctx->st, node->name);
+    const Symbol* symbol = symbol_table_lookup_symbol(ctx->st, node->name);
     if (!symbol) {
         validator_error(ctx, (AstNode*)node, "Undeclared identifier '%s'.", node->name);
         return false;
@@ -233,7 +232,7 @@ static bool validate_identifier_node(IdentifierNode* node, ValidatorContext* ctx
     return !ctx->error_flag;
 }
 
-static bool validate_return_stmt_node(ReturnStmtNode* node, ValidatorContext* ctx) {
+static bool validate_return_stmt_node(const ReturnStmtNode* node, ValidatorContext* ctx) {
     if (node->expression) {
         if (!validate_node(node->expression, ctx)) return false;
         // TODO: Type check: return expression type must match function's declared return type.
@@ -244,7 +243,7 @@ static bool validate_return_stmt_node(ReturnStmtNode* node, ValidatorContext* ct
     return !ctx->error_flag;
 }
 
-static bool validate_unary_op_node(UnaryOpNode* node, ValidatorContext* ctx) {
+static bool validate_unary_op_node(const UnaryOpNode* node, ValidatorContext* ctx) {
     if (!validate_node(node->operand, ctx)) return false;
     // TODO: Type check: operand must be of a type compatible with the unary operator.
     // E.g., for '!', operand should be convertible to boolean (int in C).
@@ -253,7 +252,7 @@ static bool validate_unary_op_node(UnaryOpNode* node, ValidatorContext* ctx) {
     return !ctx->error_flag;
 }
 
-static bool validate_binary_op_node(BinaryOpNode* node, ValidatorContext* ctx) {
+static bool validate_binary_op_node(const BinaryOpNode* node, ValidatorContext* ctx) {
     if (!validate_node(node->left, ctx)) return false;
     if (!validate_node(node->right, ctx)) return false;
     // TODO: Type check: left and right operands must be compatible with the binary operator.
@@ -272,7 +271,9 @@ static bool validate_int_literal_node(IntLiteralNode* node, ValidatorContext* ct
 }
 
 static bool validate_assignment_exp_node(AssignmentExpNode* node, ValidatorContext* ctx) {
+    // ReSharper disable once CppDFAConstantConditions
     if (!node) {
+        // ReSharper disable once CppDFAUnreachableCode
         validator_error(ctx, NULL, "Assignment node itself is NULL.");
         return false;
     }
@@ -281,8 +282,8 @@ static bool validate_assignment_exp_node(AssignmentExpNode* node, ValidatorConte
         return false;
     }
 
-    NodeType target_type = node->target->type;
-    bool is_target_identifier = (target_type == NODE_IDENTIFIER);
+    const NodeType target_type = node->target->type;
+    const bool is_target_identifier = target_type == NODE_IDENTIFIER;
 
     if (!is_target_identifier) { // This is equivalent to target_type != NODE_IDENTIFIER
         validator_error(ctx, node->target, "Invalid left-hand side in assignment expression. Expected an identifier.");

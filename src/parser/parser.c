@@ -543,6 +543,8 @@ static AstNode *parse_expression_recursive(Parser *parser, int min_precedence) {
     }
 
     while (true) {
+        // ReSharper disable once CppDFAConstantConditions
+        // ReSharper disable once CppDFAUnreachableCode
         if (parser->error_flag) return NULL;
 
         // Peek at the current token to see if it's an operator we care about
@@ -567,16 +569,18 @@ static AstNode *parse_expression_recursive(Parser *parser, int min_precedence) {
         }
 
         AstNode *rhs;
-        if (op_type == OPERATOR_ASSIGN) { // Right-associative
+        if (op_type == OPERATOR_ASSIGN) {
+            // Right-associative
             // For right-associative operators, the min_precedence for the recursive call
             // is the same as the current operator's precedence.
             // This allows chaining, e.g., a = b = c is parsed as a = (b = c).
             if (lhs->type != NODE_IDENTIFIER) {
-                 parser_error(parser, "Invalid left-hand side in assignment expression. Expected an identifier.");
-                 return NULL;
+                parser_error(parser, "Invalid left-hand side in assignment expression. Expected an identifier.");
+                return NULL;
             }
             rhs = parse_expression_recursive(parser, current_op_precedence);
-        } else { // Left-associative
+        } else {
+            // Left-associative
             // For left-associative operators, the min_precedence for the recursive call
             // is one higher than the current operator's precedence.
             // This ensures left-associativity, e.g., a + b + c is parsed as (a + b) + c.
@@ -590,16 +594,18 @@ static AstNode *parse_expression_recursive(Parser *parser, int min_precedence) {
 
         // Create the AST node for the operation
         if (op_type == OPERATOR_ASSIGN) {
-            lhs = (AstNode *)create_assignment_exp_node(lhs, rhs, parser->arena);
+            lhs = (AstNode *) create_assignment_exp_node(lhs, rhs, parser->arena);
         } else {
-            lhs = (AstNode *)create_binary_op_node(op_type, lhs, rhs, parser->arena);
+            lhs = (AstNode *) create_binary_op_node(op_type, lhs, rhs, parser->arena);
         }
 
         if (!lhs) {
             // Node creation failed (e.g., arena allocation error)
             // create_..._node functions should set parser->error_flag or handle errors internally.
             // If not, we might need a generic error here.
-            if (!parser->error_flag) { // Defensive error
+            // ReSharper disable once CppDFAConstantConditions
+            if (!parser->error_flag) {
+                // Defensive error
                 parser_error(parser, "Failed to create AST node for binary/assignment operation.");
             }
             return NULL;
@@ -720,7 +726,8 @@ static AstNode *parse_declaration(Parser *parser) {
             // Error already reported by parse_expression or its children.
             // If somehow not, ensure a generic message.
             if (!parser->error_flag) {
-                parser_error(parser, "Expected expression after '=' in variable declaration for '%s'.", var_name_token.lexeme);
+                parser_error(parser, "Expected expression after '=' in variable declaration for '%s'.",
+                             var_name_token.lexeme);
             }
             return NULL;
         }

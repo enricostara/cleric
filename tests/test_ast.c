@@ -214,7 +214,7 @@ static void test_create_var_decl_node_with_initializer(void) {
     IntLiteralNode *init_expr = create_int_literal_node(100, &test_arena);
     TEST_ASSERT_NOT_NULL(init_expr);
     Token dummy_token_y = {.type = TOKEN_IDENTIFIER, .lexeme = "y", .position = 0}; // Dummy token
-    VarDeclNode *node = create_var_decl_node("int", "y", dummy_token_y, (AstNode*)init_expr, &test_arena);
+    VarDeclNode *node = create_var_decl_node("int", "y", dummy_token_y, (AstNode *) init_expr, &test_arena);
     TEST_ASSERT_NOT_NULL(node);
     TEST_ASSERT_EQUAL(NODE_VAR_DECL, node->base.type);
     TEST_ASSERT_EQUAL_STRING("int", node->type_name);
@@ -244,11 +244,12 @@ static void test_block_node_add_items(void) {
     BlockNode *block = create_block_node(&test_arena);
     TEST_ASSERT_NOT_NULL(block);
 
-    VarDeclNode *decl1 = create_var_decl_node("int", "a", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "a", .position = 0}, NULL, &test_arena);
+    VarDeclNode *decl1 = create_var_decl_node(
+        "int", "a", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "a", .position = 0}, NULL, &test_arena);
     TEST_ASSERT_NOT_NULL(decl1);
     IntLiteralNode *val5 = create_int_literal_node(5, &test_arena);
     TEST_ASSERT_NOT_NULL(val5);
-    ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode*)val5, &test_arena);
+    ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode *) val5, &test_arena);
     TEST_ASSERT_NOT_NULL(ret_stmt);
 
     TEST_ASSERT_TRUE(block_node_add_item(block, (AstNode*)decl1, &test_arena));
@@ -285,13 +286,15 @@ static void test_create_func_def_with_block_body(void) {
     BlockNode *body_block = create_block_node(&test_arena);
     TEST_ASSERT_NOT_NULL(body_block);
 
-    VarDeclNode *decl = create_var_decl_node("int", "temp", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "temp", .position = 0}, NULL, &test_arena);
+    VarDeclNode *decl = create_var_decl_node("int", "temp",
+                                             (Token){.type = TOKEN_IDENTIFIER, .lexeme = "temp", .position = 0}, NULL,
+                                             &test_arena);
     TEST_ASSERT_NOT_NULL(decl);
     IntLiteralNode *ret_val_literal = create_int_literal_node(0, &test_arena);
     TEST_ASSERT_NOT_NULL(ret_val_literal);
     IdentifierNode *ident_temp = create_identifier_node("temp", &test_arena);
     TEST_ASSERT_NOT_NULL(ident_temp);
-    ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode*)ident_temp, &test_arena); // Return the variable
+    ReturnStmtNode *ret_stmt = create_return_stmt_node((AstNode *) ident_temp, &test_arena); // Return the variable
     TEST_ASSERT_NOT_NULL(ret_stmt);
 
     TEST_ASSERT_TRUE(block_node_add_item(body_block, (AstNode*)decl, &test_arena));
@@ -322,15 +325,17 @@ static void test_ast_pretty_print_new_nodes(void) {
     //   return y;
     // }
     BlockNode *body_block = create_block_node(&test_arena);
-    VarDeclNode *decl_x = create_var_decl_node("int", "x", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "x", .position = 0}, NULL, &test_arena);
+    VarDeclNode *decl_x = create_var_decl_node(
+        "int", "x", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "x", .position = 0}, NULL, &test_arena);
     IntLiteralNode *val10 = create_int_literal_node(10, &test_arena);
-    VarDeclNode *decl_y = create_var_decl_node("int", "y", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "y", .position = 0}, (AstNode*)val10, &test_arena);
+    VarDeclNode *decl_y = create_var_decl_node(
+        "int", "y", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "y", .position = 0}, (AstNode *) val10, &test_arena);
     IdentifierNode *ident_y = create_identifier_node("y", &test_arena);
-    ReturnStmtNode *ret_y = create_return_stmt_node((AstNode*)ident_y, &test_arena);
+    ReturnStmtNode *ret_y = create_return_stmt_node((AstNode *) ident_y, &test_arena);
 
-    block_node_add_item(body_block, (AstNode*)decl_x, &test_arena);
-    block_node_add_item(body_block, (AstNode*)decl_y, &test_arena);
-    block_node_add_item(body_block, (AstNode*)ret_y, &test_arena);
+    block_node_add_item(body_block, (AstNode *) decl_x, &test_arena);
+    block_node_add_item(body_block, (AstNode *) decl_y, &test_arena);
+    block_node_add_item(body_block, (AstNode *) ret_y, &test_arena);
 
     FuncDefNode *func_def = create_func_def_node("my_func", body_block, &test_arena);
     ProgramNode *program_node = create_program_node(func_def, &test_arena);

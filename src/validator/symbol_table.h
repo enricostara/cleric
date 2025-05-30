@@ -8,7 +8,6 @@
 // Represents a declared symbol (e.g., a variable)
 typedef struct {
     char *name;                // Name of the symbol
-    Token declaration_token;   // Token where the symbol was declared (for error reporting)
     // Future: Add data type information here, e.g., DataType type;
 
     // --- For TAC Generation ---
@@ -74,7 +73,7 @@ void symbol_table_exit_scope(SymbolTable *st);
  * @return true if the symbol was added successfully, false if it's a re-declaration
  *         in the current scope or if memory allocation failed.
  */
-bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaration_token, int tac_temp_id, const char *decorated_name);
+bool symbol_table_add_symbol(const SymbolTable *st, const char *name, Token declaration_token, int tac_temp_id, const char *decorated_name);
 
 /**
  * @brief Looks up a symbol by name, searching from the current scope outwards to global.

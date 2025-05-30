@@ -9,7 +9,7 @@
 
 void symbol_table_init(SymbolTable *st, Arena *arena) {
     st->arena = arena;
-    st->scopes = NULL; 
+    st->scopes = NULL;
     st->scope_count = 0;
     st->scope_capacity = 0;
 
@@ -33,8 +33,8 @@ void symbol_table_free(SymbolTable *st) {
 
 bool symbol_table_enter_scope(SymbolTable *st) {
     if (st->scope_count >= st->scope_capacity) {
-        int new_capacity = (st->scope_capacity == 0) ? INITIAL_SCOPE_CAPACITY : st->scope_capacity * 2;
-        Scope *new_scopes_array = (Scope *)arena_alloc(st->arena, new_capacity * sizeof(Scope));
+        const int new_capacity = st->scope_capacity == 0 ? INITIAL_SCOPE_CAPACITY : st->scope_capacity * 2;
+        Scope *new_scopes_array = arena_alloc(st->arena, new_capacity * sizeof(Scope));
         if (!new_scopes_array) return false; // Arena allocation failed
 
         if (st->scopes) {
@@ -55,7 +55,8 @@ bool symbol_table_enter_scope(SymbolTable *st) {
 }
 
 void symbol_table_exit_scope(SymbolTable *st) {
-    if (st->scope_count > 0) { // Should not exit global scope if only 1, but allow for now
+    if (st->scope_count > 0) {
+        // Should not exit global scope if only 1, but allow for now
         // Memory for the scope and its symbols remains in the arena.
         // If arena had a per-scope sub-allocator or stack marker, it could be reset here.
         st->scope_count--;
@@ -74,7 +75,8 @@ const Symbol *symbol_table_lookup_symbol_in_current_scope(const SymbolTable *st,
     return NULL;
 }
 
-bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaration_token, int tac_temp_id, const char *decorated_name) {
+bool symbol_table_add_symbol(const SymbolTable *st, const char *name, const Token declaration_token,
+                             const int tac_temp_id, const char *decorated_name) {
     if (st->scope_count == 0) return false; // Should not happen if global scope is always present
 
     Scope *current_scope = &st->scopes[st->scope_count - 1];
@@ -85,8 +87,10 @@ bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaratio
     }
 
     if (current_scope->symbol_count >= current_scope->symbol_capacity) {
-        int new_capacity = (current_scope->symbol_capacity == 0) ? INITIAL_SYMBOL_CAPACITY : current_scope->symbol_capacity * 2;
-        Symbol *new_symbols_array = (Symbol *)arena_alloc(st->arena, new_capacity * sizeof(Symbol));
+        const int new_capacity = current_scope->symbol_capacity == 0
+                               ? INITIAL_SYMBOL_CAPACITY
+                               : current_scope->symbol_capacity * 2;
+        Symbol *new_symbols_array = arena_alloc(st->arena, new_capacity * sizeof(Symbol));
         if (!new_symbols_array) return false; // Arena allocation failed
 
         if (current_scope->symbols) {
@@ -100,10 +104,9 @@ bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaratio
     Symbol *new_symbol = &current_scope->symbols[current_scope->symbol_count];
     new_symbol->name = arena_strdup(st->arena, name);
     if (!new_symbol->name) return false; // arena_strdup failed
-    
-    new_symbol->declaration_token = declaration_token;
+
     new_symbol->tac_temp_id = tac_temp_id;
-    new_symbol->decorated_name = (char*)decorated_name; // Store the pointer, validator owns allocation via arena
+    new_symbol->decorated_name = (char *) decorated_name; // Store the pointer, validator owns allocation via arena
 
     current_scope->symbol_count++;
     return true;

@@ -113,9 +113,11 @@ void test_parse_function_empty_body(void) {
     TEST_ASSERT_EQUAL_STRING_MESSAGE("main", func_def->name, "Function name mismatch");
 
     TEST_ASSERT_NOT_NULL_MESSAGE(func_def->body, "Function body (BlockNode) should not be NULL for an empty function");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_BLOCK, func_def->body->base.type, "Function body should be a BlockNode for an empty function");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BLOCK, func_def->body->base.type,
+                              "Function body should be a BlockNode for an empty function");
     BlockNode *empty_body_block = func_def->body;
-    TEST_ASSERT_EQUAL_INT_MESSAGE(0, empty_body_block->num_items, "BlockNode should have 0 items for an empty function body {}");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, empty_body_block->num_items,
+                                  "BlockNode should have 0 items for an empty function body {}");
 
     arena_destroy(&test_arena);
 }

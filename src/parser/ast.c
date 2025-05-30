@@ -4,7 +4,7 @@
 #include <string.h>        // For strlen, strcpy
 
 // Function to create an integer literal node
-IntLiteralNode *create_int_literal_node(const int value, Arena* arena) {
+IntLiteralNode *create_int_literal_node(const int value, Arena *arena) {
     IntLiteralNode *node = arena_alloc(arena, sizeof(IntLiteralNode));
     if (!node) {
         // arena_alloc already prints errors, just return NULL
@@ -16,7 +16,7 @@ IntLiteralNode *create_int_literal_node(const int value, Arena* arena) {
 }
 
 // Function to create a return statement node
-ReturnStmtNode *create_return_stmt_node(AstNode *expression, Arena* arena) {
+ReturnStmtNode *create_return_stmt_node(AstNode *expression, Arena *arena) {
     ReturnStmtNode *node = arena_alloc(arena, sizeof(ReturnStmtNode));
     if (!node) {
         return NULL;
@@ -27,7 +27,7 @@ ReturnStmtNode *create_return_stmt_node(AstNode *expression, Arena* arena) {
 }
 
 // Function to create a function definition node
-FuncDefNode *create_func_def_node(const char *name, BlockNode *body, Arena* arena) {
+FuncDefNode *create_func_def_node(const char *name, BlockNode *body, Arena *arena) {
     FuncDefNode *node = arena_alloc(arena, sizeof(FuncDefNode));
     if (!node) {
         return NULL;
@@ -56,7 +56,7 @@ FuncDefNode *create_func_def_node(const char *name, BlockNode *body, Arena* aren
 }
 
 // Function to create the program node
-ProgramNode *create_program_node(FuncDefNode *function, Arena* arena) {
+ProgramNode *create_program_node(FuncDefNode *function, Arena *arena) {
     ProgramNode *node = arena_alloc(arena, sizeof(ProgramNode));
     if (!node) {
         return NULL;
@@ -86,13 +86,14 @@ BinaryOpNode *create_binary_op_node(const BinaryOperatorType op, AstNode *left, 
     }
     node->base.type = NODE_BINARY_OP;
     node->op = op;
-    node->left = left;   // Left operand node allocated previously
+    node->left = left; // Left operand node allocated previously
     node->right = right; // Right operand node allocated previously
     return node;
 }
 
 // Function to create a variable declaration node
-VarDeclNode *create_var_decl_node(const char *type_name, const char *var_name, Token declaration_token, AstNode *initializer, Arena *arena) {
+VarDeclNode *create_var_decl_node(const char *type_name, const char *var_name, Token declaration_token,
+                                  AstNode *initializer, Arena *arena) {
     VarDeclNode *node = arena_alloc(arena, sizeof(VarDeclNode));
     if (!node) {
         return NULL;
@@ -178,14 +179,15 @@ bool block_node_add_item(BlockNode *block, AstNode *item, Arena *arena) {
         }
 
         // Copy existing items to the new array
-        if (block->items) { // Check if block->items is not NULL before copying
+        if (block->items) {
+            // Check if block->items is not NULL before copying
             for (size_t i = 0; i < block->num_items; ++i) {
                 new_items[i] = block->items[i];
             }
             // The old block->items array was allocated from the arena, so it doesn't need to be freed here.
             // It will be reclaimed when the arena is reset or destroyed.
         }
-        
+
         block->items = new_items;
         block->capacity = new_capacity;
     }
@@ -202,7 +204,7 @@ AssignmentExpNode *create_assignment_exp_node(AstNode *target, AstNode *value, A
     }
     node->base.type = NODE_ASSIGNMENT_EXP;
     node->target = target; // Target node allocated previously
-    node->value = value;   // Value node allocated previously
+    node->value = value; // Value node allocated previously
     return node;
 }
 
@@ -251,14 +253,19 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
             printf(")\n");
             break;
         }
-        case NODE_UNARY_OP: { // Added case for unary operators
+        case NODE_UNARY_OP: {
+            // Added case for unary operators
             const UnaryOpNode *unary_node = (UnaryOpNode *) node;
             const char *op_str;
             switch (unary_node->op) {
-                case OPERATOR_NEGATE: op_str = "Negate"; break;
-                case OPERATOR_COMPLEMENT: op_str = "Complement"; break;
-                case OPERATOR_LOGICAL_NOT: op_str = "LogicalNot"; break;
-                default: op_str = "UnknownUnaryOp"; break;
+                case OPERATOR_NEGATE: op_str = "Negate";
+                    break;
+                case OPERATOR_COMPLEMENT: op_str = "Complement";
+                    break;
+                case OPERATOR_LOGICAL_NOT: op_str = "LogicalNot";
+                    break;
+                default: op_str = "UnknownUnaryOp";
+                    break;
             }
             printf("UnaryOp(op=%s,\n", op_str);
             ast_pretty_print(unary_node->operand, indent_level + 1);
@@ -270,22 +277,38 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
             const BinaryOpNode *bin_node = (BinaryOpNode *) node;
             const char *op_str;
             switch (bin_node->op) {
-                case OPERATOR_ADD: op_str = "Add"; break;
-                case OPERATOR_SUBTRACT: op_str = "Subtract"; break;
-                case OPERATOR_MULTIPLY: op_str = "Multiply"; break;
-                case OPERATOR_DIVIDE: op_str = "Divide"; break;
-                case OPERATOR_MODULO: op_str = "Modulo"; break;
-                case OPERATOR_LESS: op_str = "Less"; break;
-                case OPERATOR_GREATER: op_str = "Greater"; break;
-                case OPERATOR_LESS_EQUAL: op_str = "LessEqual"; break;
-                case OPERATOR_GREATER_EQUAL: op_str = "GreaterEqual"; break;
-                case OPERATOR_EQUAL_EQUAL: op_str = "EqualEqual"; break;
-                case OPERATOR_NOT_EQUAL: op_str = "NotEqual"; break;
-                case OPERATOR_LOGICAL_AND: op_str = "LogicalAnd"; break;
-                case OPERATOR_LOGICAL_OR: op_str = "LogicalOr"; break;
-                case OPERATOR_ASSIGN: op_str = "Assign"; break;
-                case OPERATOR_COMMA: op_str = "Comma"; break;
-                default: op_str = "UnknownBinaryOp"; break;
+                case OPERATOR_ADD: op_str = "Add";
+                    break;
+                case OPERATOR_SUBTRACT: op_str = "Subtract";
+                    break;
+                case OPERATOR_MULTIPLY: op_str = "Multiply";
+                    break;
+                case OPERATOR_DIVIDE: op_str = "Divide";
+                    break;
+                case OPERATOR_MODULO: op_str = "Modulo";
+                    break;
+                case OPERATOR_LESS: op_str = "Less";
+                    break;
+                case OPERATOR_GREATER: op_str = "Greater";
+                    break;
+                case OPERATOR_LESS_EQUAL: op_str = "LessEqual";
+                    break;
+                case OPERATOR_GREATER_EQUAL: op_str = "GreaterEqual";
+                    break;
+                case OPERATOR_EQUAL_EQUAL: op_str = "EqualEqual";
+                    break;
+                case OPERATOR_NOT_EQUAL: op_str = "NotEqual";
+                    break;
+                case OPERATOR_LOGICAL_AND: op_str = "LogicalAnd";
+                    break;
+                case OPERATOR_LOGICAL_OR: op_str = "LogicalOr";
+                    break;
+                case OPERATOR_ASSIGN: op_str = "Assign";
+                    break;
+                case OPERATOR_COMMA: op_str = "Comma";
+                    break;
+                default: op_str = "UnknownBinaryOp";
+                    break;
             }
             printf("BinaryOp(op=%s,\n", op_str);
             print_indent(indent_level + 1);
@@ -303,7 +326,8 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
             printf("Constant(%d)\n", int_node->value);
             break;
         }
-        case NODE_BLOCK: { // Added case for block nodes
+        case NODE_BLOCK: {
+            // Added case for block nodes
             const BlockNode *block_node = (BlockNode *) node;
             printf("Block(\n");
             for (size_t i = 0; i < block_node->num_items; ++i) {
@@ -313,9 +337,10 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
             printf(")\n");
             break;
         }
-        case NODE_VAR_DECL: { // Added case for variable declarations
+        case NODE_VAR_DECL: {
+            // Added case for variable declarations
             const VarDeclNode *var_decl_node = (VarDeclNode *) node;
-            printf("VarDecl(type=%s, name=%s", 
+            printf("VarDecl(type=%s, name=%s",
                    var_decl_node->type_name ? var_decl_node->type_name : "<null_type>",
                    var_decl_node->var_name ? var_decl_node->var_name : "<null_name>");
             if (var_decl_node->initializer) {
@@ -330,13 +355,14 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
             }
             break;
         }
-        case NODE_IDENTIFIER: { // Added case for identifiers
+        case NODE_IDENTIFIER: {
+            // Added case for identifiers
             const IdentifierNode *id_node = (IdentifierNode *) node;
             printf("Identifier(name=%s)\n", id_node->name ? id_node->name : "<null_id_name>");
             break;
         }
         case NODE_ASSIGNMENT_EXP: {
-            AssignmentExpNode *assign_node = (AssignmentExpNode *)node;
+            AssignmentExpNode *assign_node = (AssignmentExpNode *) node;
             print_indent(indent_level);
             printf("Assignment:\n");
             print_indent(indent_level + 1);
