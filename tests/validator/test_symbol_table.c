@@ -6,7 +6,7 @@
 #include <string.h> // For strcmp
 
 // Helper to create a dummy token for tests
-static Token create_dummy_token(Arena* arena, TokenType type, const char* lexeme, int line_unused, int col_unused) {
+static Token create_dummy_token(Arena *arena, TokenType type, const char *lexeme, int line_unused, int col_unused) {
     Token t;
     t.type = type;
     // Duplicate the lexeme into the provided arena to avoid const issues and manage memory
@@ -84,13 +84,13 @@ static void test_symbol_table_enter_exit_scopes(void) {
 
     Token token_c = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "c_inner", 4, 5);
     symbol_table_add_symbol(&local_st, "c_inner", token_c, -1, "c_inner_dec");
-    const Symbol* found_c = symbol_table_lookup_symbol(&local_st, "c_inner");
+    const Symbol *found_c = symbol_table_lookup_symbol(&local_st, "c_inner");
     TEST_ASSERT_NOT_NULL(found_c);
     TEST_ASSERT_EQUAL_STRING("c_inner", found_c->name);
 
     symbol_table_exit_scope(&local_st);
     TEST_ASSERT_EQUAL(1, local_st.scope_count);
-    const Symbol* found_c_after_exit = symbol_table_lookup_symbol(&local_st, "c_inner");
+    const Symbol *found_c_after_exit = symbol_table_lookup_symbol(&local_st, "c_inner");
     TEST_ASSERT_NULL(found_c_after_exit); // c_inner should not be found in global scope
 
     arena_destroy(&local_arena);
@@ -108,12 +108,12 @@ static void test_symbol_table_shadowing_and_lookup_order(void) {
     Token token_x_local = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "x", 6, 5);
     symbol_table_add_symbol(&local_st, "x", token_x_local, -1, "x_local_dec"); // Shadowing x
 
-    const Symbol* found_x = symbol_table_lookup_symbol(&local_st, "x");
+    const Symbol *found_x = symbol_table_lookup_symbol(&local_st, "x");
     TEST_ASSERT_NOT_NULL(found_x);
     TEST_ASSERT_EQUAL_STRING("x", found_x->name);
 
     symbol_table_exit_scope(&local_st);
-    const Symbol* found_x_global_again = symbol_table_lookup_symbol(&local_st, "x");
+    const Symbol *found_x_global_again = symbol_table_lookup_symbol(&local_st, "x");
     TEST_ASSERT_NOT_NULL(found_x_global_again);
 
     arena_destroy(&local_arena);
@@ -131,14 +131,14 @@ static void test_symbol_table_lookup_in_current_scope_only(void) {
     Token token_l = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "l_local", 8, 5);
     symbol_table_add_symbol(&local_st, "l_local", token_l, -1, "l_local_dec");
 
-    const Symbol* found_l_curr = symbol_table_lookup_symbol_in_current_scope(&local_st, "l_local");
+    const Symbol *found_l_curr = symbol_table_lookup_symbol_in_current_scope(&local_st, "l_local");
     TEST_ASSERT_NOT_NULL(found_l_curr);
     TEST_ASSERT_EQUAL_STRING("l_local", found_l_curr->name);
 
-    const Symbol* found_g_curr = symbol_table_lookup_symbol_in_current_scope(&local_st, "g_global");
+    const Symbol *found_g_curr = symbol_table_lookup_symbol_in_current_scope(&local_st, "g_global");
     TEST_ASSERT_NULL(found_g_curr); // g_global is not in the current (inner) scope
 
-    const Symbol* found_g_any = symbol_table_lookup_symbol(&local_st, "g_global");
+    const Symbol *found_g_any = symbol_table_lookup_symbol(&local_st, "g_global");
     TEST_ASSERT_NOT_NULL(found_g_any); // but it is findable in any scope
 
     symbol_table_exit_scope(&local_st);

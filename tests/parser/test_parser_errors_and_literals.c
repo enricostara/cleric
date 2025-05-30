@@ -22,7 +22,8 @@ void verify_parser_error(const char *input, const char *expected_error_substring
         if (parser.error_message) {
             // Defensive check before strstr
             char msg[256];
-            snprintf(msg, sizeof(msg), "Error message mismatch. Expected substring '%s' not found in '%s'", expected_error_substring,
+            snprintf(msg, sizeof(msg), "Error message mismatch. Expected substring '%s' not found in '%s'",
+                     expected_error_substring,
                      parser.error_message);
             TEST_ASSERT_NOT_NULL_MESSAGE(strstr(parser.error_message, expected_error_substring), msg);
         }
@@ -61,15 +62,19 @@ void test_parse_integer_bounds(void) {
         fprintf(stderr, "Parser error in test_parse_integer_bounds (INT_MAX): %s\n", parser_max.error_message);
     }
     TEST_ASSERT_NOT_NULL_MESSAGE(program_max, "parse_program() returned NULL for test_parse_integer_bounds (INT_MAX)");
-    TEST_ASSERT_FALSE_MESSAGE(parser_max.error_flag, parser_max.error_message ? parser_max.error_message : "Parser error flag set in test_parse_integer_bounds (INT_MAX)");
+    TEST_ASSERT_FALSE_MESSAGE(parser_max.error_flag,
+                              parser_max.error_message ? parser_max.error_message :
+                              "Parser error flag set in test_parse_integer_bounds (INT_MAX)");
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program_max->function, "Function node is NULL (INT_MAX)");
     TEST_ASSERT_NOT_NULL_MESSAGE(program_max->function->body, "Function body (BlockNode) is NULL (INT_MAX)");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_BLOCK, program_max->function->body->base.type, "Function body is not a BlockNode (INT_MAX)");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BLOCK, program_max->function->body->base.type,
+                              "Function body is not a BlockNode (INT_MAX)");
     BlockNode *body_block_max = program_max->function->body;
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, body_block_max->num_items, "Expected 1 item in function body block (INT_MAX)");
     TEST_ASSERT_NOT_NULL_MESSAGE(body_block_max->items[0], "First item in block is NULL (INT_MAX)");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block_max->items[0]->type, "First item in block is not a return statement (INT_MAX)");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block_max->items[0]->type,
+                              "First item in block is not a return statement (INT_MAX)");
     ReturnStmtNode *ret_stmt_max = (ReturnStmtNode *) body_block_max->items[0];
 
     TEST_ASSERT_EQUAL(NODE_INT_LITERAL, ret_stmt_max->expression->type);
@@ -87,16 +92,21 @@ void test_parse_integer_bounds(void) {
     if (program_min == NULL && parser_min.error_message) {
         fprintf(stderr, "Parser error in test_parse_integer_bounds (NEG_INT_MAX): %s\n", parser_min.error_message);
     }
-    TEST_ASSERT_NOT_NULL_MESSAGE(program_min, "parse_program() returned NULL for test_parse_integer_bounds (NEG_INT_MAX)");
-    TEST_ASSERT_FALSE_MESSAGE(parser_min.error_flag, parser_min.error_message ? parser_min.error_message : "Parser error flag set in test_parse_integer_bounds (NEG_INT_MAX)");
+    TEST_ASSERT_NOT_NULL_MESSAGE(program_min,
+                                 "parse_program() returned NULL for test_parse_integer_bounds (NEG_INT_MAX)");
+    TEST_ASSERT_FALSE_MESSAGE(parser_min.error_flag,
+                              parser_min.error_message ? parser_min.error_message :
+                              "Parser error flag set in test_parse_integer_bounds (NEG_INT_MAX)");
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program_min->function, "Function node is NULL (NEG_INT_MAX)");
     TEST_ASSERT_NOT_NULL_MESSAGE(program_min->function->body, "Function body (BlockNode) is NULL (NEG_INT_MAX)");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_BLOCK, program_min->function->body->base.type, "Function body is not a BlockNode (NEG_INT_MAX)");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_BLOCK, program_min->function->body->base.type,
+                              "Function body is not a BlockNode (NEG_INT_MAX)");
     BlockNode *body_block_min = program_min->function->body;
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, body_block_min->num_items, "Expected 1 item in function body block (NEG_INT_MAX)");
     TEST_ASSERT_NOT_NULL_MESSAGE(body_block_min->items[0], "First item in block is NULL (NEG_INT_MAX)");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block_min->items[0]->type, "First item in block is not a return statement (NEG_INT_MAX)");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block_min->items[0]->type,
+                              "First item in block is not a return statement (NEG_INT_MAX)");
     ReturnStmtNode *ret_stmt_min = (ReturnStmtNode *) body_block_min->items[0];
 
     TEST_ASSERT_EQUAL(NODE_UNARY_OP, ret_stmt_min->expression->type);

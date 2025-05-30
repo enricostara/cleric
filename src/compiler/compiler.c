@@ -178,9 +178,9 @@ static bool run_parser(Parser *parser, const bool print_ast, ProgramNode **out_p
 // --- Semantic Validation --- 
 static bool run_validator(ProgramNode *program, Arena *arena) {
     printf("Validating program...\n");
-    if (!validate_program((AstNode*)program, arena)) {
+    if (!validate_program((AstNode *) program, arena)) {
         // Specific errors are printed by validate_program and its callees.
-        fprintf(stderr, "Semantic validation failed.\n"); 
+        fprintf(stderr, "Semantic validation failed.\n");
         return false;
     }
     printf("Semantic validation successful.\n");

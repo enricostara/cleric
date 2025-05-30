@@ -60,7 +60,9 @@ void test_parse_complex_nested_expression(void) {
         fprintf(stderr, "Parser error in test_parse_complex_nested_expression: %s\n", parser.error_message);
     }
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "parse_program() returned NULL for test_parse_complex_nested_expression");
-    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, parser.error_message ? parser.error_message : "Parser error flag set in test_parse_complex_nested_expression");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag,
+                              parser.error_message ? parser.error_message :
+                              "Parser error flag set in test_parse_complex_nested_expression");
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function, "Function node is NULL");
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function->body, "Function body (BlockNode) is NULL");
@@ -68,7 +70,8 @@ void test_parse_complex_nested_expression(void) {
     BlockNode *body_block = program->function->body;
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, body_block->num_items, "Expected 1 item in function body block");
     TEST_ASSERT_NOT_NULL_MESSAGE(body_block->items[0], "First item in block is NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type, "First item in block is not a return statement");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type,
+                              "First item in block is not a return statement");
     ReturnStmtNode *return_stmt = (ReturnStmtNode *) body_block->items[0];
     AstNode *expr = return_stmt->expression;
 
@@ -126,7 +129,9 @@ void test_precedence_logical_or_and(void) {
         fprintf(stderr, "Parser error in test_precedence_logical_or_and: %s\n", parser.error_message);
     }
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "parse_program() returned NULL for test_precedence_logical_or_and");
-    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, parser.error_message ? parser.error_message : "Parser error flag set in test_precedence_logical_or_and");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag,
+                              parser.error_message ? parser.error_message :
+                              "Parser error flag set in test_precedence_logical_or_and");
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function, "Function node is NULL");
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function->body, "Function body (BlockNode) is NULL");
@@ -134,7 +139,8 @@ void test_precedence_logical_or_and(void) {
     BlockNode *body_block = program->function->body;
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, body_block->num_items, "Expected 1 item in function body block");
     TEST_ASSERT_NOT_NULL_MESSAGE(body_block->items[0], "First item in block is NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type, "First item in block is not a return statement");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type,
+                              "First item in block is not a return statement");
     ReturnStmtNode *return_stmt = (ReturnStmtNode *) body_block->items[0];
     AstNode *expr = return_stmt->expression;
 
@@ -161,7 +167,9 @@ void test_precedence_relational_and_logical(void) {
         fprintf(stderr, "Parser error in test_precedence_relational_and_logical: %s\n", parser.error_message);
     }
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "parse_program() returned NULL for test_precedence_relational_and_logical");
-    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, parser.error_message ? parser.error_message : "Parser error flag set in test_precedence_relational_and_logical");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag,
+                              parser.error_message ? parser.error_message :
+                              "Parser error flag set in test_precedence_relational_and_logical");
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function, "Function node is NULL");
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function->body, "Function body (BlockNode) is NULL");
@@ -169,7 +177,8 @@ void test_precedence_relational_and_logical(void) {
     BlockNode *body_block = program->function->body;
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, body_block->num_items, "Expected 1 item in function body block");
     TEST_ASSERT_NOT_NULL_MESSAGE(body_block->items[0], "First item in block is NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type, "First item in block is not a return statement");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type,
+                              "First item in block is not a return statement");
     ReturnStmtNode *return_stmt = (ReturnStmtNode *) body_block->items[0];
     AstNode *expr = return_stmt->expression;
 
@@ -194,8 +203,11 @@ void test_precedence_arithmetic_relational_logical(void) {
     if (program == NULL && parser.error_message) {
         fprintf(stderr, "Parser error in test_precedence_arithmetic_relational_logical: %s\n", parser.error_message);
     }
-    TEST_ASSERT_NOT_NULL_MESSAGE(program, "parse_program() returned NULL for test_precedence_arithmetic_relational_logical");
-    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, parser.error_message ? parser.error_message : "Parser error flag set in test_precedence_arithmetic_relational_logical");
+    TEST_ASSERT_NOT_NULL_MESSAGE(
+        program, "parse_program() returned NULL for test_precedence_arithmetic_relational_logical");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag,
+                              parser.error_message ? parser.error_message :
+                              "Parser error flag set in test_precedence_arithmetic_relational_logical");
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function, "Function node is NULL");
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function->body, "Function body (BlockNode) is NULL");
@@ -203,7 +215,8 @@ void test_precedence_arithmetic_relational_logical(void) {
     BlockNode *body_block = program->function->body;
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, body_block->num_items, "Expected 1 item in function body block");
     TEST_ASSERT_NOT_NULL_MESSAGE(body_block->items[0], "First item in block is NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type, "First item in block is not a return statement");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type,
+                              "First item in block is not a return statement");
     ReturnStmtNode *return_stmt = (ReturnStmtNode *) body_block->items[0];
     AstNode *expr = return_stmt->expression;
 
@@ -246,7 +259,9 @@ void test_precedence_unary_not_with_logical(void) {
         fprintf(stderr, "Parser error in test_precedence_unary_not_with_logical: %s\n", parser.error_message);
     }
     TEST_ASSERT_NOT_NULL_MESSAGE(program, "parse_program() returned NULL for test_precedence_unary_not_with_logical");
-    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, parser.error_message ? parser.error_message : "Parser error flag set in test_precedence_unary_not_with_logical");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag,
+                              parser.error_message ? parser.error_message :
+                              "Parser error flag set in test_precedence_unary_not_with_logical");
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function, "Function node is NULL");
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function->body, "Function body (BlockNode) is NULL");
@@ -254,7 +269,8 @@ void test_precedence_unary_not_with_logical(void) {
     BlockNode *body_block = program->function->body;
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, body_block->num_items, "Expected 1 item in function body block");
     TEST_ASSERT_NOT_NULL_MESSAGE(body_block->items[0], "First item in block is NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type, "First item in block is not a return statement");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type,
+                              "First item in block is not a return statement");
     ReturnStmtNode *return_stmt = (ReturnStmtNode *) body_block->items[0];
     AstNode *expr = return_stmt->expression;
 
@@ -278,10 +294,14 @@ void test_precedence_unary_not_on_parenthesized_logical(void) {
     ProgramNode *program = parse_program(&parser);
 
     if (program == NULL && parser.error_message) {
-        fprintf(stderr, "Parser error in test_precedence_unary_not_on_parenthesized_logical: %s\n", parser.error_message);
+        fprintf(stderr, "Parser error in test_precedence_unary_not_on_parenthesized_logical: %s\n",
+                parser.error_message);
     }
-    TEST_ASSERT_NOT_NULL_MESSAGE(program, "parse_program() returned NULL for test_precedence_unary_not_on_parenthesized_logical");
-    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, parser.error_message ? parser.error_message : "Parser error flag set in test_precedence_unary_not_on_parenthesized_logical");
+    TEST_ASSERT_NOT_NULL_MESSAGE(
+        program, "parse_program() returned NULL for test_precedence_unary_not_on_parenthesized_logical");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag,
+                              parser.error_message ? parser.error_message :
+                              "Parser error flag set in test_precedence_unary_not_on_parenthesized_logical");
 
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function, "Function node is NULL");
     TEST_ASSERT_NOT_NULL_MESSAGE(program->function->body, "Function body (BlockNode) is NULL");
@@ -289,7 +309,8 @@ void test_precedence_unary_not_on_parenthesized_logical(void) {
     BlockNode *body_block = program->function->body;
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, body_block->num_items, "Expected 1 item in function body block");
     TEST_ASSERT_NOT_NULL_MESSAGE(body_block->items[0], "First item in block is NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type, "First item in block is not a return statement");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_RETURN_STMT, body_block->items[0]->type,
+                              "First item in block is not a return statement");
     ReturnStmtNode *return_stmt = (ReturnStmtNode *) body_block->items[0];
     AstNode *expr = return_stmt->expression;
 

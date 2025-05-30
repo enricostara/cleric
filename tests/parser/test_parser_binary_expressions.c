@@ -55,8 +55,11 @@ void test_parse_simple_addition(void) {
         fprintf(stderr, "Parser error in test_parse_simple_addition: %s\n", parser.error_message);
     }
 
-    TEST_ASSERT_NOT_NULL_MESSAGE(program, "parse_program() returned NULL. Check stderr for parser error message if available.");
-    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag, parser.error_message ? parser.error_message : "Parser error flag set but no specific message available.");
+    TEST_ASSERT_NOT_NULL_MESSAGE(
+        program, "parse_program() returned NULL. Check stderr for parser error message if available.");
+    TEST_ASSERT_FALSE_MESSAGE(parser.error_flag,
+                              parser.error_message ? parser.error_message :
+                              "Parser error flag set but no specific message available.");
     FuncDefNode *func_def_add = program->function;
     TEST_ASSERT_NOT_NULL(func_def_add->body);
     TEST_ASSERT_EQUAL(NODE_BLOCK, func_def_add->body->base.type);

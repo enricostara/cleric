@@ -42,7 +42,8 @@ void test_parse_args_valid_file(void) {
     bool validate_only = false;
     bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_EQUAL_STRING("input.c", parse_args(argc, argv, &lex_only, &parse_only, &validate_only, &irgen_only, &codegen_only));
+    TEST_ASSERT_EQUAL_STRING(
+        "input.c", parse_args(argc, argv, &lex_only, &parse_only, &validate_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
     TEST_ASSERT_FALSE(validate_only);
@@ -58,7 +59,8 @@ void test_parse_args_lex_only_valid(void) {
     bool validate_only = false;
     bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_EQUAL_STRING("prog.c", parse_args(argc, argv, &lex_only, &parse_only, &validate_only, &irgen_only, &codegen_only));
+    TEST_ASSERT_EQUAL_STRING(
+        "prog.c", parse_args(argc, argv, &lex_only, &parse_only, &validate_only, &irgen_only, &codegen_only));
     TEST_ASSERT_TRUE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
     TEST_ASSERT_FALSE(validate_only);
@@ -106,7 +108,8 @@ void test_parse_args_parse_only_valid(void) {
     bool validate_only = false;
     bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_EQUAL_STRING("prog.c", parse_args(argc, argv, &lex_only, &parse_only, &validate_only, &irgen_only, &codegen_only));
+    TEST_ASSERT_EQUAL_STRING(
+        "prog.c", parse_args(argc, argv, &lex_only, &parse_only, &validate_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_TRUE(parse_only);
     TEST_ASSERT_FALSE(validate_only);
@@ -140,7 +143,8 @@ void test_parse_args_codegen_only_valid(void) {
     bool validate_only = false;
     bool irgen_only = false;
     bool codegen_only = false;
-    TEST_ASSERT_EQUAL_STRING("asm_me.c", parse_args(argc, argv, &lex_only, &parse_only, &validate_only, &irgen_only, &codegen_only));
+    TEST_ASSERT_EQUAL_STRING(
+        "asm_me.c", parse_args(argc, argv, &lex_only, &parse_only, &validate_only, &irgen_only, &codegen_only));
     TEST_ASSERT_FALSE(lex_only);
     TEST_ASSERT_FALSE(parse_only);
     TEST_ASSERT_FALSE(validate_only);

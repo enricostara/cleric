@@ -8,12 +8,12 @@
 
 // Parser state structure
 typedef struct {
-    Lexer *lexer;           // Pointer to the lexer providing tokens
-    Token current_token;    // The current token being processed
-    Token peek_token;       // The next token (lookahead)
-    Arena *arena;           // Pointer to the arena for AST allocations
-    bool error_flag;        // Flag to indicate if a syntax error occurred
-    char *error_message;    // Buffer to store the first error message encountered
+    Lexer *lexer; // Pointer to the lexer providing tokens
+    Token current_token; // The current token being processed
+    Token peek_token; // The next token (lookahead)
+    Arena *arena; // Pointer to the arena for AST allocations
+    bool error_flag; // Flag to indicate if a syntax error occurred
+    char *error_message; // Buffer to store the first error message encountered
     // Add more fields later if needed (e.g., symbol table, error messages buffer)
 } Parser;
 

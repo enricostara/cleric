@@ -7,28 +7,27 @@
 
 // Represents a declared symbol (e.g., a variable)
 typedef struct {
-    char *name;                // Name of the symbol
-    Token declaration_token;   // Token where the symbol was declared (for error reporting)
+    char *name; // Name of the symbol
     // Future: Add data type information here, e.g., DataType type;
 
     // --- For TAC Generation ---
-    int tac_temp_id;           // Unique ID for the TAC temporary representing this symbol
-    char *decorated_name;      // Decorated name for TAC (e.g., "x.0"), owned by arena
+    int tac_temp_id; // Unique ID for the TAC temporary representing this symbol
+    char *decorated_name; // Decorated name for TAC (e.g., "x.0"), owned by arena
 } Symbol;
 
 // Represents a single scope (e.g., a block or function body)
 typedef struct {
-    Symbol *symbols;           // Dynamic array of symbols in this scope
-    int symbol_count;          // Number of symbols in this scope
-    int symbol_capacity;       // Capacity of the symbols array
+    Symbol *symbols; // Dynamic array of symbols in this scope
+    int symbol_count; // Number of symbols in this scope
+    int symbol_capacity; // Capacity of the symbols array
 } Scope;
 
 // Represents the symbol table, managing a stack of scopes
 typedef struct {
-    Scope *scopes;             // Dynamic array acting as a stack of scopes
-    int scope_count;           // Number of active scopes (current stack depth)
-    int scope_capacity;        // Capacity of the scopes array
-    Arena *arena;              // Arena allocator for all symbol table memory
+    Scope *scopes; // Dynamic array acting as a stack of scopes
+    int scope_count; // Number of active scopes (current stack depth)
+    int scope_capacity; // Capacity of the scopes array
+    Arena *arena; // Arena allocator for all symbol table memory
 } SymbolTable;
 
 // --- Public Symbol Table Interface ---
@@ -74,7 +73,8 @@ void symbol_table_exit_scope(SymbolTable *st);
  * @return true if the symbol was added successfully, false if it's a re-declaration
  *         in the current scope or if memory allocation failed.
  */
-bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaration_token, int tac_temp_id, const char *decorated_name);
+bool symbol_table_add_symbol(const SymbolTable *st, const char *name, Token declaration_token, int tac_temp_id,
+                             const char *decorated_name);
 
 /**
  * @brief Looks up a symbol by name, searching from the current scope outwards to global.
