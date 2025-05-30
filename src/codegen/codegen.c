@@ -53,8 +53,8 @@ int calculate_max_temp_id(const TacFunction *func) {
 
         for (int j = 0; j < num_ops_to_inspect; ++j) {
             if (operands_to_inspect[j] && operands_to_inspect[j]->type == TAC_OPERAND_TEMP) {
-                if (operands_to_inspect[j]->value.temp_id > max_id) {
-                    max_id = operands_to_inspect[j]->value.temp_id;
+                if (operands_to_inspect[j]->value.temp.id > max_id) {
+                    max_id = operands_to_inspect[j]->value.temp.id;
                 }
             }
         }
@@ -237,7 +237,7 @@ static bool emit_unary_op_instruction(const TacInstruction *instr, StringBuffer 
 
     if (src_op->type == TAC_OPERAND_TEMP &&
         dst_op->type == TAC_OPERAND_TEMP &&
-        src_op->value.temp_id == dst_op->value.temp_id) {
+        src_op->value.temp.id == dst_op->value.temp.id) {
         // Operate in place: op_mnemonic memory_operand
         string_buffer_append(sb, "    %s %s\n", op_mnemonic, dest_str);
     } else {
@@ -592,7 +592,7 @@ bool operand_to_assembly_string(const TacOperand *op, char *out_buffer, size_t b
         case TAC_OPERAND_TEMP:
             // Assuming 8-byte alignment for each temporary on the stack.
             // temp_id 0 -> -8(%rbp), temp_id 1 -> -16(%rbp), etc.
-            written = snprintf(out_buffer, buffer_size, "-%d(%%rbp)", (op->value.temp_id + 1) * 8);
+            written = snprintf(out_buffer, buffer_size, "-%d(%%rbp)", (op->value.temp.id + 1) * 8);
             break;
         case TAC_OPERAND_LABEL:
             // For TAC_OPERAND_LABEL, op->value.label_name is expected to be a string

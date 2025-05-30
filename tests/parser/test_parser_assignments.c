@@ -45,23 +45,24 @@ static void verify_var_decl_node(AstNode *node, const char *expected_type_name, 
     }
 }
 
-// Helper function to verify an assignment operation node (BinaryOpNode with OPERATOR_ASSIGN)
+// Helper function to verify an assignment operation node (AssignmentExpNode)
 // The left side is expected to be an IdentifierNode.
 // The right side's general type is checked; detailed verification is done by the test case.
 static void verify_assignment_node(AstNode *node, const char *expected_left_var_name, NodeType expected_right_node_type) {
-    TEST_ASSERT_NOT_NULL_MESSAGE(node, "Assignment Node (BinaryOpNode) should not be NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(NODE_BINARY_OP, node->type, "Node type should be NODE_BINARY_OP for assignment");
+    TEST_ASSERT_NOT_NULL_MESSAGE(node, "Assignment node is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_ASSIGNMENT_EXP, node->type, "Node is not an assignment expression.");
 
-    BinaryOpNode *assign_node = (BinaryOpNode *) node;
-    TEST_ASSERT_EQUAL_MESSAGE(OPERATOR_ASSIGN, assign_node->op, "Binary operator type should be OPERATOR_ASSIGN");
+    AssignmentExpNode *assign_node = (AssignmentExpNode*) node;
 
-    // Verify left side (identifier)
-    verify_identifier_node(assign_node->left, expected_left_var_name);
+    // Verify left side (target)
+    TEST_ASSERT_NOT_NULL_MESSAGE(assign_node->target, "Assignment target (left side) is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(NODE_IDENTIFIER, assign_node->target->type, "Assignment target is not an identifier.");
+    IdentifierNode *left_ident = (IdentifierNode*) assign_node->target;
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_left_var_name, left_ident->name, "Assignment target variable name mismatch.");
 
-    // Verify right side's general type
-    TEST_ASSERT_NOT_NULL_MESSAGE(assign_node->right, "Right operand of assignment should not be NULL");
-    TEST_ASSERT_EQUAL_MESSAGE(expected_right_node_type, assign_node->right->type, "Right operand node type mismatch for assignment");
-    // Detailed verification of the right-hand side (e.g., its value or structure) is now done by the calling test case.
+    // Verify right side (value) type
+    TEST_ASSERT_NOT_NULL_MESSAGE(assign_node->value, "Assignment value (right side) is NULL");
+    TEST_ASSERT_EQUAL_MESSAGE(expected_right_node_type, assign_node->value->type, "Assignment value node type mismatch.");
 }
 
 // Helper to verify a BinaryOpNode (for arithmetic/logical ops, not assignment)
@@ -167,12 +168,12 @@ void test_parse_simple_assignment_statement(void) {
     verify_var_decl_node(decl_item, "int", "y", false, NODE_INT_LITERAL);
 
     // Verify Assignment Statement: y = 25;
-    // This is an expression statement, so the item itself is the BinaryOpNode for assignment.
+    // This is an expression statement, so the item itself is the AssignmentExpNode for assignment.
     AstNode* assign_stmt_item = body_block->items[1];
     verify_assignment_node(assign_stmt_item, "y", NODE_INT_LITERAL);
     // Detailed check of RHS
-    BinaryOpNode *assign_node = (BinaryOpNode*) assign_stmt_item;
-    verify_int_literal_node(assign_node->right, 25);
+    AssignmentExpNode *assign_node = (AssignmentExpNode*) assign_stmt_item;
+    verify_int_literal_node(assign_node->value, 25);
 
     // Verify ReturnStmtNode: return y;
     AstNode* return_item = body_block->items[2];

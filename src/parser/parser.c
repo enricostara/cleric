@@ -15,26 +15,27 @@
 // Returns precedence level (0 if not a relevant binary operator)
 static int get_token_precedence(const TokenType type) {
     switch (type) {
-        case TOKEN_SYMBOL_ASSIGN: return 1; // Lowest precedence, right-associative (handled in recursive step)
-        case TOKEN_SYMBOL_LOGICAL_OR: // ||
+        case TOKEN_SYMBOL_LOGICAL_OR:
             return 2;
-        case TOKEN_SYMBOL_LOGICAL_AND: // &&
+        case TOKEN_SYMBOL_LOGICAL_AND:
             return 3;
-        case TOKEN_SYMBOL_EQUAL_EQUAL: // ==
-        case TOKEN_SYMBOL_NOT_EQUAL: // !=
+        case TOKEN_SYMBOL_EQUAL_EQUAL:
+        case TOKEN_SYMBOL_NOT_EQUAL:
             return 4;
-        case TOKEN_SYMBOL_LESS: // <
-        case TOKEN_SYMBOL_GREATER: // >
-        case TOKEN_SYMBOL_LESS_EQUAL: // <=
-        case TOKEN_SYMBOL_GREATER_EQUAL: // >=
+        case TOKEN_SYMBOL_LESS:
+        case TOKEN_SYMBOL_GREATER:
+        case TOKEN_SYMBOL_LESS_EQUAL:
+        case TOKEN_SYMBOL_GREATER_EQUAL:
             return 5;
         case TOKEN_SYMBOL_PLUS:
         case TOKEN_SYMBOL_MINUS: // Binary minus
-            return 6; // Adjusted from 1
+            return 6;
         case TOKEN_SYMBOL_STAR:
         case TOKEN_SYMBOL_SLASH:
         case TOKEN_SYMBOL_PERCENT:
-            return 7; // Adjusted from 2
+            return 7;
+        case TOKEN_SYMBOL_ASSIGN: // Assignment operator
+            return 1; // Low precedence, right-associative
         default:
             return 0; // Not a binary operator we handle with precedence climbing here
     }
@@ -70,11 +71,11 @@ static BinaryOperatorType token_to_binary_operator_type(const TokenType type) {
             return OPERATOR_GREATER_EQUAL;
         case TOKEN_SYMBOL_ASSIGN:
             return OPERATOR_ASSIGN;
+        // Add other binary operators here as needed
         default:
-            // Should not happen if called correctly
-            fprintf(stderr, "Parser Internal Error: Invalid token type for binary operator conversion: %d\n", type);
-            // Potentially set an error flag on parser or return a specific error type if AST allows
-            return (BinaryOperatorType) -1; // Indicate error
+            // This case should ideally not be reached if get_token_precedence filters correctly.
+            // However, as a safeguard:
+            return OPERATOR_UNKNOWN; // Signifies an unhandled or error token type
     }
 }
 
@@ -535,80 +536,76 @@ static AstNode *parse_primary_expression(Parser *parser) { // NOLINT(*-no-recurs
 
 static AstNode *parse_expression_recursive(Parser *parser, int min_precedence) {
     if (parser->error_flag) return NULL;
-    AstNode *left_node = parse_primary_expression(parser);
-    if (!left_node || parser->error_flag) {
-        // Check error_flag after parse_primary_expression
-        // Error already reported by parse_primary_expression or child call
-        return NULL;
+
+    AstNode *lhs = parse_primary_expression(parser);
+    if (!lhs || parser->error_flag) {
+        return NULL; // Error in primary expression or already errored
     }
 
     while (true) {
-        // Check the CURRENT token as the operator.
-        int op_precedence = get_token_precedence(parser->current_token.type);
+        if (parser->error_flag) return NULL;
 
-        if (op_precedence < min_precedence) {
-            // Not an operator, or operator of lower precedence than we are looking for.
+        // Peek at the current token to see if it's an operator we care about
+        TokenType current_op_token_type = parser->current_token.type;
+        int current_op_precedence = get_token_precedence(current_op_token_type);
+
+        // If the operator's precedence is less than min_precedence, or it's not an operator (precedence 0),
+        // then we are done with this level of recursion.
+        if (current_op_precedence < min_precedence) {
             break;
         }
 
-        // current_token is our operator.
-        Token operator_token_details = parser->current_token;
-        BinaryOperatorType op_type = token_to_binary_operator_type(operator_token_details.type);
+        // Consume the operator token
+        parser_advance(parser);
 
-        // ReSharper disable once CppDFAConstantConditions
-        // ReSharper disable once CppDFAUnreachableCode
-        if ((int) op_type == -1 && !parser->error_flag) {
-            // Check if conversion failed
-            // ReSharper disable once CppDFAUnreachableCode
-            char current_token_str[128];
-            token_to_string(parser->current_token, current_token_str, sizeof(current_token_str));
-            parser_error(
-                parser, "Internal Error: Unexpected token %s for binary operator in parse_expression_recursive",
-                current_token_str);
+        BinaryOperatorType op_type = token_to_binary_operator_type(current_op_token_type);
+        if (op_type == OPERATOR_UNKNOWN) {
+            char token_str[128];
+            token_to_string(parser->current_token, token_str, sizeof(token_str));
+            parser_error(parser, "Unexpected token '%s' while parsing binary operator.", token_str);
             return NULL;
         }
-        if (parser->error_flag) return NULL; // If op_type conversion itself failed and set error
 
-        parser_advance(parser); // Consume the operator. current_token is now the start of the RHS.
-        if (parser->error_flag) return NULL; // Check error after advance
+        AstNode *rhs;
+        if (op_type == OPERATOR_ASSIGN) { // Right-associative
+            // For right-associative operators, the min_precedence for the recursive call
+            // is the same as the current operator's precedence.
+            // This allows chaining, e.g., a = b = c is parsed as a = (b = c).
+            if (lhs->type != NODE_IDENTIFIER) {
+                 parser_error(parser, "Invalid left-hand side in assignment expression. Expected an identifier.");
+                 return NULL;
+            }
+            rhs = parse_expression_recursive(parser, current_op_precedence);
+        } else { // Left-associative
+            // For left-associative operators, the min_precedence for the recursive call
+            // is one higher than the current operator's precedence.
+            // This ensures left-associativity, e.g., a + b + c is parsed as (a + b) + c.
+            rhs = parse_expression_recursive(parser, current_op_precedence + 1);
+        }
 
-        // Determine precedence for the right-hand side based on associativity
-        int next_min_precedence;
-        // Assignment and other future right-associative operators
-        if (op_type == OPERATOR_ASSIGN /* || op_type == OPERATOR_TERNARY_COND etc. */) {
-            next_min_precedence = op_precedence; // For right-associativity
+        if (!rhs || parser->error_flag) {
+            // Error parsing RHS or already errored
+            return NULL;
+        }
+
+        // Create the AST node for the operation
+        if (op_type == OPERATOR_ASSIGN) {
+            lhs = (AstNode *)create_assignment_exp_node(lhs, rhs, parser->arena);
         } else {
-            // Other operators are left-associative by default in this structure
-            next_min_precedence = op_precedence + 1; // For left-associativity
+            lhs = (AstNode *)create_binary_op_node(op_type, lhs, rhs, parser->arena);
         }
-        AstNode *right_node = parse_expression_recursive(parser, next_min_precedence);
-        if (!right_node) {
-            // Error should be set by the recursive call or primary_expression if !right_node
-            // If no specific error was set by a deeper call, provide a generic one here.
-            if (!parser->error_flag) {
-                char op_str[128];
-                token_to_string(operator_token_details, op_str, sizeof(op_str));
-                char next_tok_str[128];
-                token_to_string(parser->current_token, next_tok_str, sizeof(next_tok_str));
-                parser_error(parser, "Syntax Error: Expected expression after operator %s, but got %s", op_str,
-                             next_tok_str);
-            }
-            return NULL;
-        }
-        // No need to check error_flag again if right_node is valid, as prior calls would return NULL on error.
 
-        left_node = (AstNode *) create_binary_op_node(op_type, left_node, right_node, parser->arena);
-        if (!left_node) {
-            // Allocation failed
-            if (!parser->error_flag) {
-                // Should be rare if arena is robust
-                parser_error(parser, "Failed to create binary operation node due to allocation failure.");
+        if (!lhs) {
+            // Node creation failed (e.g., arena allocation error)
+            // create_..._node functions should set parser->error_flag or handle errors internally.
+            // If not, we might need a generic error here.
+            if (!parser->error_flag) { // Defensive error
+                parser_error(parser, "Failed to create AST node for binary/assignment operation.");
             }
             return NULL;
         }
-        // Loop continues. current_token is now the token AFTER the parsed RHS.
     }
-    return left_node;
+    return lhs;
 }
 
 // --- Implementation of Block and Declaration Parsing ---
@@ -704,7 +701,8 @@ static AstNode *parse_declaration(Parser *parser) {
     }
 
     // The lexeme from the token is allocated in the arena, so it's safe to use.
-    char *var_name = parser->current_token.lexeme;
+    Token var_name_token = parser->current_token; // Store the identifier token
+    char *var_name = var_name_token.lexeme; // Keep the char* for var_name
 
     parser_advance(parser); // Consume the identifier token
     if (parser->error_flag) return NULL;
@@ -722,7 +720,7 @@ static AstNode *parse_declaration(Parser *parser) {
             // Error already reported by parse_expression or its children.
             // If somehow not, ensure a generic message.
             if (!parser->error_flag) {
-                parser_error(parser, "Expected expression after '=' in variable declaration for '%s'.", var_name);
+                parser_error(parser, "Expected expression after '=' in variable declaration for '%s'.", var_name_token.lexeme);
             }
             return NULL;
         }
@@ -736,14 +734,14 @@ static AstNode *parse_declaration(Parser *parser) {
         // A more specific message might be desired if parser_consume's default isn't sufficient.
         if (!parser->error_flag) {
             // Fallback, should not be needed
-            parser_error(parser, "Expected ';' after variable declaration of '%s'.", var_name);
+            parser_error(parser, "Expected ';' after variable declaration of '%s'.", var_name_token.lexeme);
         }
         return NULL;
     }
 
     // 5. Create and return the VarDeclNode
     // type_str is already set (e.g., to "int")
-    VarDeclNode *decl_node = create_var_decl_node(type_str, var_name, initializer_node, parser->arena);
+    VarDeclNode *decl_node = create_var_decl_node(type_str, var_name, var_name_token, initializer_node, parser->arena);
     if (!decl_node) {
         if (!parser->error_flag) {
             // If create_node failed and didn't set an error

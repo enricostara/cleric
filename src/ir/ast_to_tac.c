@@ -36,6 +36,68 @@ static bool is_valid_operand(TacOperand op) {
     return op.type != -1;
 }
 
+// Placeholder: Represents looking up a variable in a symbol table
+// In a real compiler, this would involve a symbol table lookup
+// and return the TacOperand (likely a temp) associated with the variable.
+static TacOperand lookup_variable_operand(const char* var_name, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr) {
+    // For now, let's assume every variable read creates a new temporary and
+    // would require a load from memory. This is a simplification.
+    // A proper implementation would use a symbol table to find the existing operand for 'var_name'.
+    fprintf(stdout, "lookup_variable_operand: Placeholder for '%s'. Creating a new temp.\n", var_name);
+    // This is not correct for a real compiler but serves as a placeholder
+    // to ensure a valid TacOperand is returned.
+    return create_tac_operand_temp((*next_temp_id_ptr)++, var_name);
+}
+
+// Helper to get the TacOperand for an l-value, typically an identifier.
+// This is simplified; a real version would handle memory addresses, struct fields, etc.
+static TacOperand visit_lvalue_expression(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr) {
+    if (!node) return create_invalid_operand();
+
+    switch (node->type) {
+        case NODE_IDENTIFIER: {
+            const IdentifierNode *id_node = (IdentifierNode *) node;
+            // For an l-value, we'd typically get its address or the temp assigned to it.
+            // This is simplified: assumes we use the same operand as r-value lookup.
+            return lookup_variable_operand(id_node->name, current_function, arena, next_temp_id_ptr);
+        }
+        // Add cases for other l-value expressions like array indexing, dereferences, etc.
+        default:
+            fprintf(stderr, "Error: Unexpected AST node type %d for l-value in visit_lvalue_expression.\n", node->type);
+            return create_invalid_operand();
+    }
+}
+
+// Visitor for assignment expressions
+static TacOperand visit_assignment_expression(AssignmentExpNode *assign_node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr) {
+    // 1. Evaluate the right-hand side (the value to be assigned)
+    TacOperand rhs_operand = visit_expression(assign_node->value, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+    if (!is_valid_operand(rhs_operand)) {
+        fprintf(stderr, "Error: Assignment expression's right-hand side did not yield a valid result.\n");
+        return create_invalid_operand();
+    }
+
+    // 2. Determine the target (l-value) operand
+    // The target of an assignment must be an l-value (e.g., variable, array element).
+    // For simplicity, we assume it's an identifier for now.
+    TacOperand lhs_operand = visit_lvalue_expression(assign_node->target, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+    if (!is_valid_operand(lhs_operand)) {
+        fprintf(stderr, "Error: Assignment expression's left-hand side is not a valid l-value.\n");
+        return create_invalid_operand();
+    }
+
+    // 3. Create the TAC_INS_COPY instruction (target = value)
+    const TacInstruction *copy_instr = create_tac_instruction_copy(lhs_operand, rhs_operand, arena);
+    if (!copy_instr) {
+        fprintf(stderr, "Error: Failed to create TAC instruction for assignment.\n");
+        return create_invalid_operand();
+    }
+    add_instruction_to_function(current_function, copy_instr, arena);
+
+    // 4. The result of an assignment expression is the value assigned (rhs_operand)
+    return rhs_operand;
+}
+
 // --- Main Translation Function ---
 
 TacProgram *ast_to_tac(ProgramNode *ast_root, Arena *arena) {
@@ -76,7 +138,7 @@ TacProgram *ast_to_tac(ProgramNode *ast_root, Arena *arena) {
     // For now, assume the body is a single statement (like the ReturnStmt)
     // A real implementation would handle blocks/sequences of statements.
     if (func_def->body) {
-        visit_statement(func_def->body, tac_function, arena, &next_temp_id, &label_counter);
+        visit_statement((AstNode*)func_def->body, tac_function, arena, &next_temp_id, &label_counter);
     } else {
         // Handle functions with empty bodies if necessary
         fprintf(stderr, "Warning: Function '%s' has an empty body.\n", func_def->name);
@@ -137,8 +199,8 @@ static void visit_statement(AstNode *node, TacFunction *current_function, Arena 
 static TacOperand visit_unary_op_expression(const UnaryOpNode *unary_node, TacFunction *current_function, Arena *arena,
                                             int *next_temp_id_ptr, int *label_counter_ptr) {
     // 1. Visit the operand expression first
-    const TacOperand operand_result = visit_expression(unary_node->operand, current_function, arena,
-                                                       next_temp_id_ptr, label_counter_ptr);
+    const TacOperand operand_result = visit_expression(unary_node->operand, current_function, arena, next_temp_id_ptr,
+                                                       label_counter_ptr);
     if (!is_valid_operand(operand_result)) {
         fprintf(stderr, "Error: Unary operator's operand did not yield a valid result.\n");
         return create_invalid_operand();
@@ -146,7 +208,7 @@ static TacOperand visit_unary_op_expression(const UnaryOpNode *unary_node, TacFu
 
     // 2. Create a new temporary to store the result of the unary operation
     //    Use the counter passed via pointer.
-    const TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
+    const TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++, "t");
 
     // 3. Create the specific TAC instruction based on the operator
     const TacInstruction *unary_instr = NULL;
@@ -204,7 +266,7 @@ static TacOperand visit_logical_and_expression(const BinaryOpNode *binary_node, 
     }
 
     // 2. Create a temporary for the final result of the AND expression
-    const TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
+    const TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++, "t");
 
     // 3. Create labels for short-circuiting
     const char *false_exit_label_name = generate_label_name(arena, label_counter_ptr);
@@ -278,7 +340,7 @@ static TacOperand visit_logical_or_expression(const BinaryOpNode *binary_node, T
                                               Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr) {
     // LHS || RHS
     // 1. Allocate a temporary for the result of the OR expression.
-    const TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
+    const TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++, "t");
 
     // 2. Create labels
     const char *eval_rhs_label_name = generate_label_name(arena, label_counter_ptr);
@@ -375,7 +437,7 @@ static TacOperand visit_binary_op_expression(const BinaryOpNode *binary_node, Ta
     }
 
     // 2. Create a new temporary to store the result
-    const TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++);
+    const TacOperand dest_temp = create_tac_operand_temp((*next_temp_id_ptr)++, "t");
 
     // 3. Create the specific TAC instruction based on the operator
     const TacInstruction *binary_instr = NULL;
@@ -445,6 +507,16 @@ static TacOperand visit_expression(AstNode *node, TacFunction *current_function,
             // Integer literals directly translate to constant operands
             return create_tac_operand_const(int_node->value);
         }
+        case NODE_IDENTIFIER: { 
+            const IdentifierNode *id_node = (IdentifierNode *) node;
+            // This is for r-value usage of an identifier.
+            // A proper implementation would look up id_node->name in a symbol table.
+            return lookup_variable_operand(id_node->name, current_function, arena, next_temp_id_ptr);
+        }
+        case NODE_ASSIGNMENT_EXP: { 
+            AssignmentExpNode *assign_node = (AssignmentExpNode *) node;
+            return visit_assignment_expression(assign_node, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+        }
         case NODE_UNARY_OP: {
             const UnaryOpNode *unary_node = (UnaryOpNode *) node;
             return visit_unary_op_expression(unary_node, current_function, arena, next_temp_id_ptr, label_counter_ptr);
@@ -456,7 +528,7 @@ static TacOperand visit_expression(AstNode *node, TacFunction *current_function,
         }
         // Add cases for other expressions (FunctionCall, etc.)
         default:
-            fprintf(stderr, "Error: Unexpected AST node type %d in visit_expression.\n", node->type);
+            fprintf(stderr, "Error: Unexpected AST node type %d in visit_expression. File: %s, Line: %d\n", node->type, __FILE__, __LINE__);
             return create_invalid_operand();
     }
 }

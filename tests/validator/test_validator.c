@@ -84,9 +84,10 @@ static void test_validate_undeclared_variable(void) {
 static void test_validate_redeclared_variable_same_scope(void) {
     // Arrange: AST for "int main() { int a; int a; return 0; }"
     Arena test_arena = arena_create(1024 * 4);
+    Token dummy_token_a = {.type = TOKEN_IDENTIFIER, .lexeme = "a", .position = 0};
 
-    VarDeclNode* var_decl_a1 = create_var_decl_node("int", "a", NULL, &test_arena);
-    VarDeclNode* var_decl_a2 = create_var_decl_node("int", "a", NULL, &test_arena); // Redeclaration
+    VarDeclNode* var_decl_a1 = create_var_decl_node("int", "a", dummy_token_a, NULL, &test_arena);
+    VarDeclNode* var_decl_a2 = create_var_decl_node("int", "a", dummy_token_a, NULL, &test_arena); // Redeclaration
     IntLiteralNode* int_literal_0 = create_int_literal_node(0, &test_arena);
     ReturnStmtNode* return_stmt = create_return_stmt_node((AstNode*)int_literal_0, &test_arena);
 
@@ -111,13 +112,15 @@ static void test_validate_redeclared_variable_same_scope(void) {
 static void test_validate_shadowed_variable_inner_scope(void) {
     // Arrange: AST for "int main() { int a; { int a; } return 0; }"
     Arena test_arena = arena_create(1024 * 4);
+    Token dummy_token_a_outer = {.type = TOKEN_IDENTIFIER, .lexeme = "a", .position = 0};
+    Token dummy_token_a_inner = {.type = TOKEN_IDENTIFIER, .lexeme = "a", .position = 0}; // Position can be same for distinct tokens if lexeme/type differs or context implies uniqueness
 
-    // Outer scope
-    VarDeclNode* var_decl_a_outer = create_var_decl_node("int", "a", NULL, &test_arena);
+    // Outer scope 'a'
+    VarDeclNode* var_decl_a_outer = create_var_decl_node("int", "a", dummy_token_a_outer, NULL, &test_arena);
 
     // Inner scope
     BlockNode* inner_block_node = create_block_node(&test_arena);
-    VarDeclNode* var_decl_a_inner = create_var_decl_node("int", "a", NULL, &test_arena); // Shadows outer 'a'
+    VarDeclNode* var_decl_a_inner = create_var_decl_node("int", "a", dummy_token_a_inner, NULL, &test_arena); // Shadows outer 'a'
     block_node_add_item(inner_block_node, (AstNode*)var_decl_a_inner, &test_arena);
 
     IntLiteralNode* int_literal_0 = create_int_literal_node(0, &test_arena);
@@ -143,21 +146,22 @@ static void test_validate_shadowed_variable_inner_scope(void) {
 }
 
 static void test_validate_valid_variable_usage(void) {
-    // Arrange: AST for "int main() { int a; return a; }"
+    // Arrange: AST for "int main() { int a; a = 5; return a; }"
     Arena test_arena = arena_create(1024 * 4);
+    Token dummy_token_a = {.type = TOKEN_IDENTIFIER, .lexeme = "a", .position = 0};
 
-    // Variable declaration: int a;
-    VarDeclNode* var_decl_a = create_var_decl_node("int", "a", NULL, &test_arena);
+    VarDeclNode* var_decl_a = create_var_decl_node("int", "a", dummy_token_a, NULL, &test_arena);
+    IdentifierNode* ident_a_assign_lhs = create_identifier_node("a", &test_arena);
+    IntLiteralNode* val_5 = create_int_literal_node(5, &test_arena);
+    BinaryOpNode* assign_stmt = create_binary_op_node(OPERATOR_ASSIGN, (AstNode*)ident_a_assign_lhs, (AstNode*)val_5, &test_arena);
 
-    // Identifier for 'a' in return statement
-    IdentifierNode* ident_a = create_identifier_node("a", &test_arena);
-
-    // Return statement: return a;
-    ReturnStmtNode* return_stmt = create_return_stmt_node((AstNode*)ident_a, &test_arena);
+    IdentifierNode* ident_a_ret = create_identifier_node("a", &test_arena);
+    ReturnStmtNode* return_stmt = create_return_stmt_node((AstNode*)ident_a_ret, &test_arena);
 
     // Block node containing the declaration and return statement
     BlockNode* block_node = create_block_node(&test_arena);
     block_node_add_item(block_node, (AstNode*)var_decl_a, &test_arena);
+    block_node_add_item(block_node, (AstNode*)assign_stmt, &test_arena);
     block_node_add_item(block_node, (AstNode*)return_stmt, &test_arena);
 
     // Function definition: int main() { ... }
@@ -180,30 +184,31 @@ static void test_validate_invalid_assignment_lvalue(void) {
     // Arrange: AST for "int main() { int a = 2; a + 3 = 4; return a; }"
     Arena test_arena = arena_create(1024 * 4);
 
-    // int a = 2;
-    IntLiteralNode* val_2 = create_int_literal_node(2, &test_arena);
-    VarDeclNode* var_decl_a = create_var_decl_node("int", "a", (AstNode*)val_2, &test_arena);
+    // 'int a = 2;'
+    IntLiteralNode* val_2_for_decl = create_int_literal_node(2, &test_arena);
+    Token dummy_token_a = {.type = TOKEN_IDENTIFIER, .lexeme = "a", .position = 0};
+    VarDeclNode* var_decl_a = create_var_decl_node("int", "a", dummy_token_a, (AstNode*)val_2_for_decl, &test_arena);
 
-    // Expression: a + 3
-    IdentifierNode* ident_a_lhs_expr = create_identifier_node("a", &test_arena);
-    IntLiteralNode* val_3 = create_int_literal_node(3, &test_arena);
-    // Assuming OP_ADD is defined in BinaryOperatorType
-    BinaryOpNode* add_expr = create_binary_op_node(OPERATOR_ADD, (AstNode*)ident_a_lhs_expr, (AstNode*)val_3, &test_arena);
+    // 'a + 3'
+    IdentifierNode* ident_a_lhs = create_identifier_node("a", &test_arena);
+    IntLiteralNode* val_3_lhs = create_int_literal_node(3, &test_arena);
+    BinaryOpNode* bin_op_lhs = create_binary_op_node(OPERATOR_ADD, (AstNode*)ident_a_lhs, (AstNode*)val_3_lhs, &test_arena);
 
-    // Assignment statement: (a + 3) = 4
-    IntLiteralNode* val_4 = create_int_literal_node(4, &test_arena);
-    // Use OPERATOR_ASSIGN
-    BinaryOpNode* assign_expr_stmt = create_binary_op_node(OPERATOR_ASSIGN, (AstNode*)add_expr, (AstNode*)val_4, &test_arena);
+    // '4'
+    IntLiteralNode* val_4_rhs = create_int_literal_node(4, &test_arena);
 
-    // return a;
+    // 'a + 3 = 4;' (invalid assignment)
+    // The target of the assignment is the binary operation 'a + 3'
+    AssignmentExpNode* assign_exp = create_assignment_exp_node((AstNode*)bin_op_lhs, (AstNode*)val_4_rhs, &test_arena);
+
+    // 'return a;'
     IdentifierNode* ident_a_ret = create_identifier_node("a", &test_arena);
     ReturnStmtNode* return_stmt = create_return_stmt_node((AstNode*)ident_a_ret, &test_arena);
 
     // Block node
     BlockNode* block_node = create_block_node(&test_arena);
     block_node_add_item(block_node, (AstNode*)var_decl_a, &test_arena);
-    // In C, an assignment expression can be a statement. So, add assign_expr_stmt directly.
-    block_node_add_item(block_node, (AstNode*)assign_expr_stmt, &test_arena);
+    block_node_add_item(block_node, (AstNode*)assign_exp, &test_arena); // Add the AssignmentExpNode
     block_node_add_item(block_node, (AstNode*)return_stmt, &test_arena);
 
     // Function definition

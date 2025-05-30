@@ -92,12 +92,13 @@ BinaryOpNode *create_binary_op_node(const BinaryOperatorType op, AstNode *left, 
 }
 
 // Function to create a variable declaration node
-VarDeclNode *create_var_decl_node(const char *type_name, const char *var_name, AstNode *initializer, Arena *arena) {
+VarDeclNode *create_var_decl_node(const char *type_name, const char *var_name, Token declaration_token, AstNode *initializer, Arena *arena) {
     VarDeclNode *node = arena_alloc(arena, sizeof(VarDeclNode));
     if (!node) {
         return NULL;
     }
     node->base.type = NODE_VAR_DECL;
+    node->declaration_token = declaration_token; // Store the token
     node->initializer = initializer; // Initializer is already an AST node from the arena
 
     // Allocate space for type_name in the arena and copy it
@@ -191,6 +192,18 @@ bool block_node_add_item(BlockNode *block, AstNode *item, Arena *arena) {
 
     block->items[block->num_items++] = item;
     return true;
+}
+
+// Function to create an assignment expression node
+AssignmentExpNode *create_assignment_exp_node(AstNode *target, AstNode *value, Arena *arena) {
+    AssignmentExpNode *node = arena_alloc(arena, sizeof(AssignmentExpNode));
+    if (!node) {
+        return NULL; // Allocation failed
+    }
+    node->base.type = NODE_ASSIGNMENT_EXP;
+    node->target = target; // Target node allocated previously
+    node->value = value;   // Value node allocated previously
+    return node;
 }
 
 // Helper function to print indentation
@@ -320,6 +333,18 @@ void ast_pretty_print(AstNode *node, const int indent_level) { // NOLINT(*-no-re
         case NODE_IDENTIFIER: { // Added case for identifiers
             const IdentifierNode *id_node = (IdentifierNode *) node;
             printf("Identifier(name=%s)\n", id_node->name ? id_node->name : "<null_id_name>");
+            break;
+        }
+        case NODE_ASSIGNMENT_EXP: {
+            AssignmentExpNode *assign_node = (AssignmentExpNode *)node;
+            print_indent(indent_level);
+            printf("Assignment:\n");
+            print_indent(indent_level + 1);
+            printf("Target:\n");
+            ast_pretty_print(assign_node->target, indent_level + 2);
+            print_indent(indent_level + 1);
+            printf("Value:\n");
+            ast_pretty_print(assign_node->value, indent_level + 2);
             break;
         }
         default:

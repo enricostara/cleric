@@ -1,6 +1,7 @@
 #include "_unity/unity.h"
 #include "../src/parser/ast.h"
 #include "../src/memory/arena.h"
+#include "../src/lexer/lexer.h" // For Token struct
 
 // Test case for creating and checking an integer literal node
 static void test_create_int_literal(void) {
@@ -196,7 +197,8 @@ static void test_create_identifier_node(void) {
 static void test_create_var_decl_node_no_initializer(void) {
     Arena test_arena = arena_create(1024);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
-    VarDeclNode *node = create_var_decl_node("int", "x", NULL, &test_arena);
+    Token dummy_token_x = {.type = TOKEN_IDENTIFIER, .lexeme = "x", .position = 0}; // Dummy token
+    VarDeclNode *node = create_var_decl_node("int", "x", dummy_token_x, NULL, &test_arena);
     TEST_ASSERT_NOT_NULL(node);
     TEST_ASSERT_EQUAL(NODE_VAR_DECL, node->base.type);
     TEST_ASSERT_EQUAL_STRING("int", node->type_name);
@@ -211,7 +213,8 @@ static void test_create_var_decl_node_with_initializer(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
     IntLiteralNode *init_expr = create_int_literal_node(100, &test_arena);
     TEST_ASSERT_NOT_NULL(init_expr);
-    VarDeclNode *node = create_var_decl_node("int", "y", (AstNode*)init_expr, &test_arena);
+    Token dummy_token_y = {.type = TOKEN_IDENTIFIER, .lexeme = "y", .position = 0}; // Dummy token
+    VarDeclNode *node = create_var_decl_node("int", "y", dummy_token_y, (AstNode*)init_expr, &test_arena);
     TEST_ASSERT_NOT_NULL(node);
     TEST_ASSERT_EQUAL(NODE_VAR_DECL, node->base.type);
     TEST_ASSERT_EQUAL_STRING("int", node->type_name);
@@ -241,7 +244,7 @@ static void test_block_node_add_items(void) {
     BlockNode *block = create_block_node(&test_arena);
     TEST_ASSERT_NOT_NULL(block);
 
-    VarDeclNode *decl1 = create_var_decl_node("int", "a", NULL, &test_arena);
+    VarDeclNode *decl1 = create_var_decl_node("int", "a", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "a", .position = 0}, NULL, &test_arena);
     TEST_ASSERT_NOT_NULL(decl1);
     IntLiteralNode *val5 = create_int_literal_node(5, &test_arena);
     TEST_ASSERT_NOT_NULL(val5);
@@ -282,7 +285,7 @@ static void test_create_func_def_with_block_body(void) {
     BlockNode *body_block = create_block_node(&test_arena);
     TEST_ASSERT_NOT_NULL(body_block);
 
-    VarDeclNode *decl = create_var_decl_node("int", "temp", NULL, &test_arena);
+    VarDeclNode *decl = create_var_decl_node("int", "temp", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "temp", .position = 0}, NULL, &test_arena);
     TEST_ASSERT_NOT_NULL(decl);
     IntLiteralNode *ret_val_literal = create_int_literal_node(0, &test_arena);
     TEST_ASSERT_NOT_NULL(ret_val_literal);
@@ -319,9 +322,9 @@ static void test_ast_pretty_print_new_nodes(void) {
     //   return y;
     // }
     BlockNode *body_block = create_block_node(&test_arena);
-    VarDeclNode *decl_x = create_var_decl_node("int", "x", NULL, &test_arena);
+    VarDeclNode *decl_x = create_var_decl_node("int", "x", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "x", .position = 0}, NULL, &test_arena);
     IntLiteralNode *val10 = create_int_literal_node(10, &test_arena);
-    VarDeclNode *decl_y = create_var_decl_node("int", "y", (AstNode*)val10, &test_arena);
+    VarDeclNode *decl_y = create_var_decl_node("int", "y", (Token){.type = TOKEN_IDENTIFIER, .lexeme = "y", .position = 0}, (AstNode*)val10, &test_arena);
     IdentifierNode *ident_y = create_identifier_node("y", &test_arena);
     ReturnStmtNode *ret_y = create_return_stmt_node((AstNode*)ident_y, &test_arena);
 

@@ -34,7 +34,7 @@ static void test_symbol_table_add_lookup_global(void) {
     symbol_table_init(&local_st, &local_arena);
 
     Token token_a = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "a", 1, 1);
-    bool added = symbol_table_add_symbol(&local_st, "a", token_a);
+    bool added = symbol_table_add_symbol(&local_st, "a", token_a, -1, "a_dec");
     TEST_ASSERT_TRUE(added);
     TEST_ASSERT_EQUAL(1, local_st.scopes[local_st.scope_count - 1].symbol_count);
 
@@ -62,10 +62,10 @@ static void test_symbol_table_redeclaration_current_scope(void) {
     symbol_table_init(&local_st, &local_arena);
 
     Token token_b1 = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "b", 2, 1);
-    symbol_table_add_symbol(&local_st, "b", token_b1);
+    symbol_table_add_symbol(&local_st, "b", token_b1, -1, "b1_dec");
 
     Token token_b2 = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "b", 3, 1);
-    bool added_again = symbol_table_add_symbol(&local_st, "b", token_b2);
+    bool added_again = symbol_table_add_symbol(&local_st, "b", token_b2, -1, "b2_dec");
     TEST_ASSERT_FALSE(added_again); // Should not allow re-declaration in the same scope
     TEST_ASSERT_EQUAL(1, local_st.scopes[local_st.scope_count - 1].symbol_count); // Count should remain 1
 
@@ -82,8 +82,8 @@ static void test_symbol_table_enter_exit_scopes(void) {
     symbol_table_enter_scope(&local_st);
     TEST_ASSERT_EQUAL(2, local_st.scope_count);
 
-    Token token_c = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "c_inner", 4, 1);
-    symbol_table_add_symbol(&local_st, "c_inner", token_c);
+    Token token_c = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "c_inner", 4, 5);
+    symbol_table_add_symbol(&local_st, "c_inner", token_c, -1, "c_inner_dec");
     const Symbol* found_c = symbol_table_lookup_symbol(&local_st, "c_inner");
     TEST_ASSERT_NOT_NULL(found_c);
     TEST_ASSERT_EQUAL_STRING("c_inner", found_c->name);
@@ -102,11 +102,11 @@ static void test_symbol_table_shadowing_and_lookup_order(void) {
     symbol_table_init(&local_st, &local_arena);
 
     Token token_x_global = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "x", 5, 1);
-    symbol_table_add_symbol(&local_st, "x", token_x_global);
+    symbol_table_add_symbol(&local_st, "x", token_x_global, -1, "x_global_dec");
 
     symbol_table_enter_scope(&local_st);
-    Token token_x_local = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "x", 6, 1);
-    symbol_table_add_symbol(&local_st, "x", token_x_local); // Shadowing x
+    Token token_x_local = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "x", 6, 5);
+    symbol_table_add_symbol(&local_st, "x", token_x_local, -1, "x_local_dec"); // Shadowing x
 
     const Symbol* found_x = symbol_table_lookup_symbol(&local_st, "x");
     TEST_ASSERT_NOT_NULL(found_x);
@@ -125,11 +125,11 @@ static void test_symbol_table_lookup_in_current_scope_only(void) {
     symbol_table_init(&local_st, &local_arena);
 
     Token token_g = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "g_global", 7, 1);
-    symbol_table_add_symbol(&local_st, "g_global", token_g);
+    symbol_table_add_symbol(&local_st, "g_global", token_g, -1, "g_global_dec");
 
     symbol_table_enter_scope(&local_st);
-    Token token_l = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "l_local", 8, 1);
-    symbol_table_add_symbol(&local_st, "l_local", token_l);
+    Token token_l = create_dummy_token(&local_arena, TOKEN_IDENTIFIER, "l_local", 8, 5);
+    symbol_table_add_symbol(&local_st, "l_local", token_l, -1, "l_local_dec");
 
     const Symbol* found_l_curr = symbol_table_lookup_symbol_in_current_scope(&local_st, "l_local");
     TEST_ASSERT_NOT_NULL(found_l_curr);

@@ -10,6 +10,10 @@ typedef struct {
     char *name;                // Name of the symbol
     Token declaration_token;   // Token where the symbol was declared (for error reporting)
     // Future: Add data type information here, e.g., DataType type;
+
+    // --- For TAC Generation ---
+    int tac_temp_id;           // Unique ID for the TAC temporary representing this symbol
+    char *decorated_name;      // Decorated name for TAC (e.g., "x.0"), owned by arena
 } Symbol;
 
 // Represents a single scope (e.g., a block or function body)
@@ -65,10 +69,12 @@ void symbol_table_exit_scope(SymbolTable *st);
  * @param st Pointer to the SymbolTable.
  * @param name The name of the symbol to add.
  * @param declaration_token The token corresponding to this symbol's declaration.
+ * @param tac_temp_id The unique TAC temporary ID for this symbol.
+ * @param decorated_name The decorated name for TAC output (e.g., "x.0").
  * @return true if the symbol was added successfully, false if it's a re-declaration
  *         in the current scope or if memory allocation failed.
  */
-bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaration_token);
+bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaration_token, int tac_temp_id, const char *decorated_name);
 
 /**
  * @brief Looks up a symbol by name, searching from the current scope outwards to global.

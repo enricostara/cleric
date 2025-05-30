@@ -74,7 +74,7 @@ const Symbol *symbol_table_lookup_symbol_in_current_scope(const SymbolTable *st,
     return NULL;
 }
 
-bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaration_token) {
+bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaration_token, int tac_temp_id, const char *decorated_name) {
     if (st->scope_count == 0) return false; // Should not happen if global scope is always present
 
     Scope *current_scope = &st->scopes[st->scope_count - 1];
@@ -102,6 +102,8 @@ bool symbol_table_add_symbol(SymbolTable *st, const char *name, Token declaratio
     if (!new_symbol->name) return false; // arena_strdup failed
     
     new_symbol->declaration_token = declaration_token;
+    new_symbol->tac_temp_id = tac_temp_id;
+    new_symbol->decorated_name = (char*)decorated_name; // Store the pointer, validator owns allocation via arena
 
     current_scope->symbol_count++;
     return true;

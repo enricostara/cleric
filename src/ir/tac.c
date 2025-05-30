@@ -22,10 +22,11 @@ TacOperand create_tac_operand_const(const int value) {
     return op;
 }
 
-TacOperand create_tac_operand_temp(const int temp_id) {
+TacOperand create_tac_operand_temp(const int id, const char* name_hint) {
     TacOperand op;
     op.type = TAC_OPERAND_TEMP;
-    op.value.temp_id = temp_id;
+    op.value.temp.id = id;
+    op.value.temp.name_hint = name_hint;
     return op;
 }
 
@@ -343,7 +344,11 @@ void tac_print_operand(StringBuffer *sb, const TacOperand *operand) {
             string_buffer_append(sb, "%d", operand->value.constant_value);
             break;
         case TAC_OPERAND_TEMP:
-            string_buffer_append(sb, "t%d", operand->value.temp_id);
+            if (operand->value.temp.name_hint) {
+                string_buffer_append(sb, operand->value.temp.name_hint);
+            } else {
+                string_buffer_append(sb, "_t%d", operand->value.temp.id);
+            }
             break;
         case TAC_OPERAND_LABEL:
             string_buffer_append(sb, "%s", operand->value.label_name ? operand->value.label_name : "<null_label_name>");

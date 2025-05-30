@@ -15,7 +15,7 @@ static void test_codegen_logical_not_const_false_input(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_not_const_false");
 
     // TAC: t0 = !0; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const0 = create_tac_operand_const(0);
 
     TacInstruction *instr1 = create_tac_instruction_logical_not(t0, const0, &arena); // t0 = !0
@@ -50,7 +50,7 @@ static void test_codegen_logical_not_const_true_input(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_not_const_true");
 
     // TAC: t0 = !1; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const1 = create_tac_operand_const(1); // Non-zero constant
 
     TacInstruction *instr1 = create_tac_instruction_logical_not(t0, const1, &arena); // t0 = !1
@@ -85,8 +85,8 @@ static void test_codegen_logical_not_temp_input(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_not_temp_input");
 
     // TAC: t0 = 5; t1 = !t0; RETURN t1
-    TacOperand t0 = create_tac_operand_temp(0);
-    TacOperand t1 = create_tac_operand_temp(1);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
+    TacOperand t1 = create_tac_operand_temp(1, "t1");
     TacOperand const5 = create_tac_operand_const(5);
 
     TacInstruction *instr1 = create_tac_instruction_copy(t0, const5, &arena); // t0 = 5
@@ -125,7 +125,7 @@ static void test_codegen_logical_and_consts_true_true(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_and_consts_true_true");
 
     // TAC: t0 = 1 && 1; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const1_a = create_tac_operand_const(1);
     TacOperand const1_b = create_tac_operand_const(1);
 
@@ -164,7 +164,7 @@ static void test_codegen_logical_and_consts_true_false(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_and_consts_true_false");
 
     // TAC: t0 = 1 && 0; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const1 = create_tac_operand_const(1);
     TacOperand const0 = create_tac_operand_const(0);
 
@@ -203,7 +203,7 @@ static void test_codegen_logical_and_consts_false_true(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_and_consts_false_true");
 
     // TAC: t0 = 0 && 1; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const0 = create_tac_operand_const(0);
     TacOperand const1 = create_tac_operand_const(1);
 
@@ -242,7 +242,7 @@ static void test_codegen_logical_and_consts_false_false(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_and_consts_false_false");
 
     // TAC: t0 = 0 && 0; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const0_a = create_tac_operand_const(0);
     TacOperand const0_b = create_tac_operand_const(0);
 
@@ -281,11 +281,11 @@ static void test_codegen_logical_and_temps(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_and_temps");
 
     // TAC: t0 = 1; t1 = 0; t2 = t0 && t1; RETURN t2
-    TacOperand t0_op = create_tac_operand_temp(0);
-    TacOperand t1_op = create_tac_operand_temp(1);
-    TacOperand t2_op = create_tac_operand_temp(2);
-    TacOperand const1 = create_tac_operand_const(1);
-    TacOperand const0 = create_tac_operand_const(0);
+    TacOperand t0_op = create_tac_operand_temp(0, "t0_op");
+    TacOperand t1_op = create_tac_operand_temp(1, "t1_op");
+    TacOperand t2_op = create_tac_operand_temp(2, "t2_op");
+    TacOperand const1 = create_tac_operand_const(1); // For assigning true to t0
+    TacOperand const0 = create_tac_operand_const(0); // For assigning false to t1
 
     TacInstruction *instr1 = create_tac_instruction_copy(t0_op, const1, &arena);
     TacInstruction *instr2 = create_tac_instruction_copy(t1_op, const0, &arena);
@@ -330,7 +330,7 @@ static void test_codegen_logical_or_consts_true_true(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_or_consts_true_true");
 
     // TAC: t0 = 1 || 1; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const1_a = create_tac_operand_const(1);
     TacOperand const1_b = create_tac_operand_const(1);
 
@@ -369,7 +369,7 @@ static void test_codegen_logical_or_consts_true_false(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_or_consts_true_false");
 
     // TAC: t0 = 1 || 0; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const1 = create_tac_operand_const(1);
     TacOperand const0 = create_tac_operand_const(0);
 
@@ -408,7 +408,7 @@ static void test_codegen_logical_or_consts_false_true(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_or_consts_false_true");
 
     // TAC: t0 = 0 || 1; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const0 = create_tac_operand_const(0);
     TacOperand const1 = create_tac_operand_const(1);
 
@@ -447,7 +447,7 @@ static void test_codegen_logical_or_consts_false_false(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_or_consts_false_false");
 
     // TAC: t0 = 0 || 0; RETURN t0
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const0_a = create_tac_operand_const(0);
     TacOperand const0_b = create_tac_operand_const(0);
 
@@ -486,14 +486,14 @@ static void test_codegen_logical_or_temps(void) {
     TEST_ASSERT_NOT_NULL_MESSAGE(arena.start, "Failed to create arena for logical_or_temps");
 
     // TAC: t0 = 0; t1 = 1; t2 = t0 || t1; RETURN t2
-    TacOperand t0_op = create_tac_operand_temp(0);
-    TacOperand t1_op = create_tac_operand_temp(1);
-    TacOperand t2_op = create_tac_operand_temp(2);
-    TacOperand const0 = create_tac_operand_const(0);
-    TacOperand const1 = create_tac_operand_const(1);
+    TacOperand t0_op = create_tac_operand_temp(0, "t0_op");
+    TacOperand t1_op = create_tac_operand_temp(1, "t1_op");
+    TacOperand t2_op = create_tac_operand_temp(2, "t2_op");
+    TacOperand const_0 = create_tac_operand_const(0); // For assigning false to t0
+    TacOperand const_1 = create_tac_operand_const(1); // For assigning true to t1
 
-    TacInstruction *instr1 = create_tac_instruction_copy(t0_op, const0, &arena);
-    TacInstruction *instr2 = create_tac_instruction_copy(t1_op, const1, &arena);
+    TacInstruction *instr1 = create_tac_instruction_copy(t0_op, const_0, &arena);
+    TacInstruction *instr2 = create_tac_instruction_copy(t1_op, const_1, &arena);
     TacInstruction *instr3 = create_tac_instruction_logical_or(t2_op, t0_op, t1_op, &arena);
     TacInstruction *instr4 = create_tac_instruction_return(t2_op, &arena);
 

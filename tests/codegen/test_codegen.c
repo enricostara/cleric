@@ -46,7 +46,9 @@ static void test_codegen_simple_return(void) {
 
     IntLiteralNode *return_expr = create_int_literal_node(42, &test_arena);
     ReturnStmtNode *return_stmt = create_return_stmt_node((AstNode *) return_expr, &test_arena);
-    FuncDefNode *func_def = create_func_def_node("main", (AstNode *) return_stmt, &test_arena);
+    BlockNode *body_block = create_block_node(&test_arena);
+    block_node_add_item(body_block, (AstNode *) return_stmt, &test_arena);
+    FuncDefNode *func_def = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *program = create_program_node(func_def, &test_arena);
 
     // 2. Convert AST to TAC
@@ -97,13 +99,13 @@ static void test_operand_to_assembly_string_const_ok(void) {
 static void test_operand_to_assembly_string_temp_ok(void) {
     TacOperand op;
     op.type = TAC_OPERAND_TEMP;
-    op.value.temp_id = 0; // t0
+    op.value.temp.id = 0; // t0
     char buffer[64];
     bool success = operand_to_assembly_string(&op, buffer, sizeof(buffer));
     TEST_ASSERT_TRUE(success);
     TEST_ASSERT_EQUAL_STRING("-8(%rbp)", buffer); // t0 -> -(0+1)*8 = -8
 
-    op.value.temp_id = 2; // t2
+    op.value.temp.id = 2; // t2
     success = operand_to_assembly_string(&op, buffer, sizeof(buffer));
     TEST_ASSERT_TRUE(success);
     TEST_ASSERT_EQUAL_STRING("-24(%rbp)", buffer); // t2 -> -(2+1)*8 = -24
@@ -174,7 +176,7 @@ static void test_calculate_max_temp_id_one_temporary_dst(void) {
     Arena arena = arena_create(1024); // Increased from 256
     TacFunction *func = create_tac_function("one_temp_dst_func", &arena);
 
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const_op = create_tac_operand_const(5);
     TacInstruction *copy_instr = create_tac_instruction_copy(t0, const_op, &arena);
     add_instruction_to_function(func, copy_instr, &arena);
@@ -190,8 +192,8 @@ static void test_calculate_max_temp_id_one_temporary_src(void) {
     Arena arena = arena_create(1024); // Increased from 256
     TacFunction *func = create_tac_function("one_temp_src_func", &arena);
 
-    TacOperand t0 = create_tac_operand_temp(0);
-    TacOperand t1 = create_tac_operand_temp(1);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
+    TacOperand t1 = create_tac_operand_temp(1, "t1");
     TacOperand const_op = create_tac_operand_const(5);
 
     // t0 = 5 (to have t0 defined)
@@ -213,9 +215,9 @@ static void test_calculate_max_temp_id_mixed_operands(void) {
     Arena arena = arena_create(1024);
     TacFunction *func = create_tac_function("mixed_ops_func", &arena);
 
-    TacOperand t0 = create_tac_operand_temp(0);
-    TacOperand t1 = create_tac_operand_temp(1);
-    TacOperand t2 = create_tac_operand_temp(2);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
+    TacOperand t1 = create_tac_operand_temp(1, "t1");
+    TacOperand t2 = create_tac_operand_temp(2, "t2");
     TacOperand const10 = create_tac_operand_const(10);
     TacOperand const20 = create_tac_operand_const(20);
 
@@ -236,8 +238,8 @@ static void test_calculate_max_temp_id_temp_ids_not_sequential(void) {
     Arena arena = arena_create(1024); // Increased from 256
     TacFunction *func = create_tac_function("non_seq_temps_func", &arena);
 
-    TacOperand t0 = create_tac_operand_temp(0);
-    TacOperand t3 = create_tac_operand_temp(3);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
+    TacOperand t3 = create_tac_operand_temp(3, "t3");
     TacOperand const1 = create_tac_operand_const(1);
 
     // COPY t3, $1
@@ -251,7 +253,7 @@ static void test_calculate_max_temp_id_temp_ids_not_sequential(void) {
 
 // Test for TAC_INS_COPY: const to temp, then return temp
 static void test_codegen_copy_const_to_temp_and_return(void) {
-    Arena test_arena = arena_create(1024);
+    Arena test_arena = arena_create(4096);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for copy_const_to_temp_and_return");
 
     // 1. Create TAC Program Structure
@@ -259,7 +261,7 @@ static void test_codegen_copy_const_to_temp_and_return(void) {
     TacFunction *func_main = create_tac_function("main", &test_arena);
 
     // 2. Create Operands
-    TacOperand op_dest_temp0 = create_tac_operand_temp(0); // t0
+    TacOperand op_dest_temp0 = create_tac_operand_temp(0, "op_dest_temp0"); // t0
     TacOperand op_src_const123 = create_tac_operand_const(123); // $123
 
     // 3. Create TAC Instructions
@@ -314,8 +316,8 @@ static void test_codegen_negate_temp_from_temp(void) {
     TacFunction *func = create_tac_function("main", &arena);
     add_function_to_program(prog, func, &arena);
 
-    TacOperand t0 = create_tac_operand_temp(0);
-    TacOperand t1 = create_tac_operand_temp(1);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
+    TacOperand t1 = create_tac_operand_temp(1, "t1");
     TacOperand const5 = create_tac_operand_const(5);
 
     // t0 = 5
@@ -356,7 +358,7 @@ static void test_codegen_complement_temp_in_place(void) {
     TacFunction *func = create_tac_function("main", &arena);
     add_function_to_program(prog, func, &arena);
 
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand const10 = create_tac_operand_const(10);
 
     // t0 = 10
@@ -395,9 +397,9 @@ static void test_codegen_complement_of_negated_constant(void) {
     TacFunction *func = create_tac_function("main", &arena);
     add_function_to_program(prog, func, &arena);
 
-    TacOperand t0 = create_tac_operand_temp(0); // Will hold -2
-    TacOperand t1 = create_tac_operand_temp(1); // Will hold -t0 = 2
-    TacOperand t2 = create_tac_operand_temp(2); // Will hold ~t1 = ~2 = -3
+    TacOperand t0 = create_tac_operand_temp(0, "t0"); // Will hold -2
+    TacOperand t1 = create_tac_operand_temp(1, "t1"); // Will hold -t0 = 2
+    TacOperand t2 = create_tac_operand_temp(2, "t2"); // Will hold ~t1 = ~2 = -3
     TacOperand const_neg_2 = create_tac_operand_const(-2);
 
     // 1. t0 = -2
@@ -419,7 +421,7 @@ static void test_codegen_complement_of_negated_constant(void) {
             "_main:\n"
             "    pushq %rbp\n"
             "    movq %rsp, %rbp\n"
-            "    subq $32, %rsp\n" // Stack frame for t0, t1, t2
+            "    subq $32, %rsp\n" // For t0, t1, t2
             "    movl $-2, -8(%rbp)\n" // t0 = -2
             "    movl -8(%rbp), %eax\n" // eax = t0
             "    negl %eax\n" // eax = -eax (eax = 2)
@@ -444,11 +446,11 @@ static void test_codegen_stack_allocation_for_many_temps(void) {
     add_function_to_program(prog, func, &arena);
 
     // Create 5 temporaries t0, t1, t2, t3, t4
-    TacOperand t0 = create_tac_operand_temp(0);
-    TacOperand t1 = create_tac_operand_temp(1);
-    TacOperand t2 = create_tac_operand_temp(2);
-    TacOperand t3 = create_tac_operand_temp(3);
-    TacOperand t4 = create_tac_operand_temp(4);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
+    TacOperand t1 = create_tac_operand_temp(1, "t1");
+    TacOperand t2 = create_tac_operand_temp(2, "t2");
+    TacOperand t3 = create_tac_operand_temp(3, "t3");
+    TacOperand t4 = create_tac_operand_temp(4, "t4");
 
     // Create constants
     TacOperand const0 = create_tac_operand_const(0);
@@ -507,8 +509,8 @@ static void test_codegen_return_negated_parenthesized_constant(void) {
     add_function_to_program(prog, func, &arena);
 
     // Operands
-    TacOperand t0 = create_tac_operand_temp(0); // To hold 5 + (-2)
-    TacOperand t1 = create_tac_operand_temp(1); // To hold -(t0)
+    TacOperand t0 = create_tac_operand_temp(0, "t0"); // To hold 5 + (-2)
+    TacOperand t1 = create_tac_operand_temp(1, "t1"); // To hold -(t0)
     TacOperand const5 = create_tac_operand_const(5);
     TacOperand const_neg_2 = create_tac_operand_const(-2);
 
@@ -542,7 +544,6 @@ static void test_codegen_return_negated_parenthesized_constant(void) {
     TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_asm, string_buffer_content_str(&sb), "Test for -(5 + (-2)) failed.");
     arena_destroy(&arena);
 }
-
 
 // --- Test Runner ---
 

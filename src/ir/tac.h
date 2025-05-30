@@ -22,7 +22,10 @@ typedef struct {
     TacOperandType type;
     union {
         int constant_value; // For TAC_OPERAND_CONST
-        int temp_id;        // For TAC_OPERAND_TEMP
+        struct {
+            int id;                // Unique ID for this temporary/variable slot
+            const char* name_hint; // Optional: original variable name for debugging
+        } temp;                    // For TAC_OPERAND_TEMP
         const char* label_name; // New: For TAC_OPERAND_LABEL
         // const char* var_name; // Future: For TAC_OPERAND_VAR
     } value;
@@ -125,7 +128,7 @@ typedef struct {
 
 // Operand creation
 TacOperand create_tac_operand_const(int value);
-TacOperand create_tac_operand_temp(int temp_id);
+TacOperand create_tac_operand_temp(int id, const char* name_hint);
 TacOperand create_tac_operand_label(const char* name);
 
 // Instruction creation (simplified examples)

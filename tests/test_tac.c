@@ -17,9 +17,9 @@ void test_create_operands(void) {
     TEST_ASSERT_EQUAL(123, const_op.value.constant_value);
 
     // Test Temporary Operand
-    TacOperand temp_op = create_tac_operand_temp(5);
+    TacOperand temp_op = create_tac_operand_temp(5, "temp_op");
     TEST_ASSERT_EQUAL(TAC_OPERAND_TEMP, temp_op.type);
-    TEST_ASSERT_EQUAL(5, temp_op.value.temp_id);
+    TEST_ASSERT_EQUAL(5, temp_op.value.temp.id);
 
     // Test Label Operand
     Arena label_arena = arena_create(256);
@@ -36,16 +36,16 @@ void test_create_instructions(void) {
     Arena test_arena = arena_create(1024);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for test_create_instructions");
 
-    TacOperand dst = create_tac_operand_temp(1);
+    TacOperand dst = create_tac_operand_temp(1, "dst");
     TacOperand src_const = create_tac_operand_const(42);
-    TacOperand src_temp = create_tac_operand_temp(0);
+    TacOperand src_temp = create_tac_operand_temp(0, "src_temp");
 
     // Test COPY
     TacInstruction *copy_instr = create_tac_instruction_copy(dst, src_const, &test_arena);
     TEST_ASSERT_NOT_NULL(copy_instr);
     TEST_ASSERT_EQUAL(TAC_INS_COPY, copy_instr->type);
     TEST_ASSERT_EQUAL(dst.type, copy_instr->operands.copy.dst.type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, copy_instr->operands.copy.dst.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, copy_instr->operands.copy.dst.value.temp.id);
     TEST_ASSERT_EQUAL(src_const.type, copy_instr->operands.copy.src.type);
     TEST_ASSERT_EQUAL(src_const.value.constant_value, copy_instr->operands.copy.src.value.constant_value);
 
@@ -53,15 +53,15 @@ void test_create_instructions(void) {
     TacInstruction *negate_instr = create_tac_instruction_negate(dst, src_temp, &test_arena);
     TEST_ASSERT_NOT_NULL(negate_instr);
     TEST_ASSERT_EQUAL(TAC_INS_NEGATE, negate_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, negate_instr->operands.unary_op.dst.value.temp_id);
-    TEST_ASSERT_EQUAL(src_temp.value.temp_id, negate_instr->operands.unary_op.src.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, negate_instr->operands.unary_op.dst.value.temp.id);
+    TEST_ASSERT_EQUAL(src_temp.value.temp.id, negate_instr->operands.unary_op.src.value.temp.id);
 
     // Test COMPLEMENT
     TacInstruction *comp_instr = create_tac_instruction_complement(dst, src_temp, &test_arena);
     TEST_ASSERT_NOT_NULL(comp_instr);
     TEST_ASSERT_EQUAL(TAC_INS_COMPLEMENT, comp_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, comp_instr->operands.unary_op.dst.value.temp_id);
-    TEST_ASSERT_EQUAL(src_temp.value.temp_id, comp_instr->operands.unary_op.src.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, comp_instr->operands.unary_op.dst.value.temp.id);
+    TEST_ASSERT_EQUAL(src_temp.value.temp.id, comp_instr->operands.unary_op.src.value.temp.id);
 
     // Test RETURN
     TacInstruction *ret_instr = create_tac_instruction_return(src_const, &test_arena);
@@ -78,9 +78,9 @@ void test_create_binary_instructions(void) {
     Arena test_arena = arena_create(1024);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for test_create_binary_instructions");
 
-    TacOperand dst = create_tac_operand_temp(3);
-    TacOperand src1_temp = create_tac_operand_temp(1);
-    TacOperand src2_temp = create_tac_operand_temp(2);
+    TacOperand dst = create_tac_operand_temp(3, "dst");
+    TacOperand src1_temp = create_tac_operand_temp(1, "src1_temp");
+    TacOperand src2_temp = create_tac_operand_temp(2, "src2_temp");
     TacOperand src1_const = create_tac_operand_const(100);
     TacOperand src2_const = create_tac_operand_const(50);
 
@@ -88,31 +88,31 @@ void test_create_binary_instructions(void) {
     TacInstruction *add_instr = create_tac_instruction_add(dst, src1_temp, src2_temp, &test_arena);
     TEST_ASSERT_NOT_NULL(add_instr);
     TEST_ASSERT_EQUAL(TAC_INS_ADD, add_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, add_instr->operands.binary_op.dst.value.temp_id);
-    TEST_ASSERT_EQUAL(src1_temp.value.temp_id, add_instr->operands.binary_op.src1.value.temp_id);
-    TEST_ASSERT_EQUAL(src2_temp.value.temp_id, add_instr->operands.binary_op.src2.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, add_instr->operands.binary_op.dst.value.temp.id);
+    TEST_ASSERT_EQUAL(src1_temp.value.temp.id, add_instr->operands.binary_op.src1.value.temp.id);
+    TEST_ASSERT_EQUAL(src2_temp.value.temp.id, add_instr->operands.binary_op.src2.value.temp.id);
 
     // Test SUB (const - temp)
     TacInstruction *sub_instr = create_tac_instruction_sub(dst, src1_const, src2_temp, &test_arena);
     TEST_ASSERT_NOT_NULL(sub_instr);
     TEST_ASSERT_EQUAL(TAC_INS_SUB, sub_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, sub_instr->operands.binary_op.dst.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, sub_instr->operands.binary_op.dst.value.temp.id);
     TEST_ASSERT_EQUAL(src1_const.value.constant_value, sub_instr->operands.binary_op.src1.value.constant_value);
-    TEST_ASSERT_EQUAL(src2_temp.value.temp_id, sub_instr->operands.binary_op.src2.value.temp_id);
+    TEST_ASSERT_EQUAL(src2_temp.value.temp.id, sub_instr->operands.binary_op.src2.value.temp.id);
 
     // Test MUL (temp * const)
     TacInstruction *mul_instr = create_tac_instruction_mul(dst, src1_temp, src2_const, &test_arena);
     TEST_ASSERT_NOT_NULL(mul_instr);
     TEST_ASSERT_EQUAL(TAC_INS_MUL, mul_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, mul_instr->operands.binary_op.dst.value.temp_id);
-    TEST_ASSERT_EQUAL(src1_temp.value.temp_id, mul_instr->operands.binary_op.src1.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, mul_instr->operands.binary_op.dst.value.temp.id);
+    TEST_ASSERT_EQUAL(src1_temp.value.temp.id, mul_instr->operands.binary_op.src1.value.temp.id);
     TEST_ASSERT_EQUAL(src2_const.value.constant_value, mul_instr->operands.binary_op.src2.value.constant_value);
 
     // Test DIV (const / const)
     TacInstruction *div_instr = create_tac_instruction_div(dst, src1_const, src2_const, &test_arena);
     TEST_ASSERT_NOT_NULL(div_instr);
     TEST_ASSERT_EQUAL(TAC_INS_DIV, div_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, div_instr->operands.binary_op.dst.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, div_instr->operands.binary_op.dst.value.temp.id);
     TEST_ASSERT_EQUAL(src1_const.value.constant_value, div_instr->operands.binary_op.src1.value.constant_value);
     TEST_ASSERT_EQUAL(src2_const.value.constant_value, div_instr->operands.binary_op.src2.value.constant_value);
 
@@ -120,9 +120,9 @@ void test_create_binary_instructions(void) {
     TacInstruction *mod_instr = create_tac_instruction_mod(dst, src1_temp, src2_temp, &test_arena);
     TEST_ASSERT_NOT_NULL(mod_instr);
     TEST_ASSERT_EQUAL(TAC_INS_MOD, mod_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, mod_instr->operands.binary_op.dst.value.temp_id);
-    TEST_ASSERT_EQUAL(src1_temp.value.temp_id, mod_instr->operands.binary_op.src1.value.temp_id);
-    TEST_ASSERT_EQUAL(src2_temp.value.temp_id, mod_instr->operands.binary_op.src2.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, mod_instr->operands.binary_op.dst.value.temp.id);
+    TEST_ASSERT_EQUAL(src1_temp.value.temp.id, mod_instr->operands.binary_op.src1.value.temp.id);
+    TEST_ASSERT_EQUAL(src2_temp.value.temp.id, mod_instr->operands.binary_op.src2.value.temp.id);
 
     arena_destroy(&test_arena);
 }
@@ -132,32 +132,32 @@ void test_create_new_tac_instructions(void) {
     Arena test_arena = arena_create(2048);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for test_create_new_tac_instructions");
 
-    TacOperand dst = create_tac_operand_temp(1);
-    TacOperand src1_temp = create_tac_operand_temp(0);
-    TacOperand src2_temp = create_tac_operand_temp(2);
+    TacOperand dst = create_tac_operand_temp(1, "dst");
+    TacOperand src1_temp = create_tac_operand_temp(0, "src1_temp");
+    TacOperand src2_temp = create_tac_operand_temp(2, "src2_temp");
     TacOperand const_op = create_tac_operand_const(1);
 
     // Test LOGICAL_NOT (dst = !src1_temp)
     TacInstruction *logical_not_instr = create_tac_instruction_logical_not(dst, src1_temp, &test_arena);
     TEST_ASSERT_NOT_NULL(logical_not_instr);
     TEST_ASSERT_EQUAL(TAC_INS_LOGICAL_NOT, logical_not_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, logical_not_instr->operands.unary_op.dst.value.temp_id);
-    TEST_ASSERT_EQUAL(src1_temp.value.temp_id, logical_not_instr->operands.unary_op.src.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, logical_not_instr->operands.unary_op.dst.value.temp.id);
+    TEST_ASSERT_EQUAL(src1_temp.value.temp.id, logical_not_instr->operands.unary_op.src.value.temp.id);
 
     // Test LESS (dst = src1_temp < src2_temp)
     TacInstruction *less_instr = create_tac_instruction_less(dst, src1_temp, src2_temp, &test_arena);
     TEST_ASSERT_NOT_NULL(less_instr);
     TEST_ASSERT_EQUAL(TAC_INS_LESS, less_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, less_instr->operands.relational_op.dst.value.temp_id);
-    TEST_ASSERT_EQUAL(src1_temp.value.temp_id, less_instr->operands.relational_op.src1.value.temp_id);
-    TEST_ASSERT_EQUAL(src2_temp.value.temp_id, less_instr->operands.relational_op.src2.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, less_instr->operands.relational_op.dst.value.temp.id);
+    TEST_ASSERT_EQUAL(src1_temp.value.temp.id, less_instr->operands.relational_op.src1.value.temp.id);
+    TEST_ASSERT_EQUAL(src2_temp.value.temp.id, less_instr->operands.relational_op.src2.value.temp.id);
 
     // Test GREATER_EQUAL (dst = src1_temp >= const_op)
     TacInstruction *ge_instr = create_tac_instruction_greater_equal(dst, src1_temp, const_op, &test_arena);
     TEST_ASSERT_NOT_NULL(ge_instr);
     TEST_ASSERT_EQUAL(TAC_INS_GREATER_EQUAL, ge_instr->type);
-    TEST_ASSERT_EQUAL(dst.value.temp_id, ge_instr->operands.relational_op.dst.value.temp_id);
-    TEST_ASSERT_EQUAL(src1_temp.value.temp_id, ge_instr->operands.relational_op.src1.value.temp_id);
+    TEST_ASSERT_EQUAL(dst.value.temp.id, ge_instr->operands.relational_op.dst.value.temp.id);
+    TEST_ASSERT_EQUAL(src1_temp.value.temp.id, ge_instr->operands.relational_op.src1.value.temp.id);
     TEST_ASSERT_EQUAL(const_op.value.constant_value, ge_instr->operands.relational_op.src2.value.constant_value);
 
     // Test LABEL (LBL1:)
@@ -182,8 +182,8 @@ void test_create_new_tac_instructions(void) {
     TEST_ASSERT_NOT_NULL(if_false_goto_instr);
     TEST_ASSERT_EQUAL(TAC_INS_IF_FALSE_GOTO, if_false_goto_instr->type);
     TEST_ASSERT_EQUAL(src1_temp.type, if_false_goto_instr->operands.conditional_goto.condition_src.type);
-    TEST_ASSERT_EQUAL(src1_temp.value.temp_id,
-                      if_false_goto_instr->operands.conditional_goto.condition_src.value.temp_id);
+    TEST_ASSERT_EQUAL(src1_temp.value.temp.id,
+                      if_false_goto_instr->operands.conditional_goto.condition_src.value.temp.id);
     TEST_ASSERT_EQUAL(TAC_OPERAND_LABEL, if_false_goto_instr->operands.conditional_goto.target_label.type);
     TEST_ASSERT_EQUAL_STRING(lbl_name, if_false_goto_instr->operands.conditional_goto.target_label.value.label_name);
 
@@ -224,7 +224,7 @@ void test_add_instructions(void) {
     size_t initial_capacity = func->instruction_capacity;
     TEST_ASSERT_GREATER_THAN(0, initial_capacity);
 
-    TacOperand t0 = create_tac_operand_temp(0);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
     TacOperand c10 = create_tac_operand_const(10);
 
     // Add instructions up to initial capacity
@@ -234,7 +234,7 @@ void test_add_instructions(void) {
         TEST_ASSERT_EQUAL(i + 1, func->instruction_count);
         TEST_ASSERT_EQUAL(initial_capacity, func->instruction_capacity);
         TEST_ASSERT_EQUAL(TAC_INS_COPY, func->instructions[i].type);
-        TEST_ASSERT_EQUAL(t0.value.temp_id, func->instructions[i].operands.copy.dst.value.temp_id);
+        TEST_ASSERT_EQUAL(t0.value.temp.id, func->instructions[i].operands.copy.dst.value.temp.id);
         TEST_ASSERT_EQUAL(c10.value.constant_value, func->instructions[i].operands.copy.src.value.constant_value);
     }
 
@@ -248,7 +248,7 @@ void test_add_instructions(void) {
 
     // Verify the instruction added after reallocation is correct
     TEST_ASSERT_EQUAL(TAC_INS_RETURN, func->instructions[initial_capacity].type);
-    TEST_ASSERT_EQUAL(t0.value.temp_id, func->instructions[initial_capacity].operands.ret.src.value.temp_id);
+    TEST_ASSERT_EQUAL(t0.value.temp.id, func->instructions[initial_capacity].operands.ret.src.value.temp.id);
 
     // Add more to potentially trigger another realloc (depending on growth factor)
     size_t final_capacity = func->instruction_capacity;
@@ -334,16 +334,16 @@ static void test_print_tac_program(void) {
     TEST_ASSERT_NOT_NULL(func1);
 
     // 4. Create some TacOperands
-    TacOperand t0 = create_tac_operand_temp(0);
-    TacOperand t1 = create_tac_operand_temp(1);
+    TacOperand t0 = create_tac_operand_temp(0, "t0");
+    TacOperand t1 = create_tac_operand_temp(1, "t1");
     TacOperand const_val = create_tac_operand_const(42);
     TacOperand const_val2 = create_tac_operand_const(10);
-    TacOperand t2 = create_tac_operand_temp(2);
-    TacOperand t3 = create_tac_operand_temp(3);
-    TacOperand t4 = create_tac_operand_temp(4);
-    TacOperand t5 = create_tac_operand_temp(5);
-    TacOperand t6 = create_tac_operand_temp(6);
-    TacOperand t7 = create_tac_operand_temp(7);
+    TacOperand t2 = create_tac_operand_temp(2, "t2");
+    TacOperand t3 = create_tac_operand_temp(3, "t3");
+    TacOperand t4 = create_tac_operand_temp(4, "t4");
+    TacOperand t5 = create_tac_operand_temp(5, "t5");
+    TacOperand t6 = create_tac_operand_temp(6, "t6");
+    TacOperand t7 = create_tac_operand_temp(7, "t7");
     TacOperand const_val3 = create_tac_operand_const(7);
     TacOperand const_bool_true = create_tac_operand_const(1); // For boolean true
 

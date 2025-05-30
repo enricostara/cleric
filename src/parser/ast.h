@@ -2,6 +2,7 @@
 #define AST_H
 
 #include "memory/arena.h" // Include arena header
+#include "lexer/lexer.h" // Include token header
 
 // Define the types of AST nodes we need for "int main(void) { return 2; }"
 typedef enum {
@@ -13,7 +14,8 @@ typedef enum {
     NODE_BINARY_OP, // Represents a binary operation (e.g., +, -, *, /, %)
     NODE_VAR_DECL,    // Represents a variable declaration (e.g., int x; int y = 10;)
     NODE_IDENTIFIER,   // Represents the usage of an identifier (e.g., a variable name in an expression)
-    NODE_BLOCK        // Represents a block of code { ... } containing declarations and statements
+    NODE_BLOCK,        // Represents a block of code { ... } containing declarations and statements
+    NODE_ASSIGNMENT_EXP // Represents an assignment expression (e.g., x = 5)
 } NodeType;
 
 // Define the types of Unary Operators
@@ -45,13 +47,21 @@ typedef enum {
 
     // Assignment and Sequencing
     OPERATOR_ASSIGN,        // =
-    OPERATOR_COMMA          // , (for future use)
+    OPERATOR_COMMA,          // , (for future use)
+    OPERATOR_UNKNOWN        // Placeholder for unhandled or error cases
 } BinaryOperatorType;
 
 // Base structure for all AST nodes
 typedef struct AstNode {
     NodeType type;
 } AstNode;
+
+// Structure for an assignment expression node
+typedef struct {
+    AstNode base;         // type = NODE_ASSIGNMENT_EXP
+    AstNode *target;      // The l-value (e.g., an IdentifierNode)
+    AstNode *value;       // The r-value expression
+} AssignmentExpNode;
 
 // Structure for an integer literal node
 typedef struct {
@@ -79,13 +89,23 @@ typedef struct {
     AstNode base;          // type = NODE_VAR_DECL
     char *type_name;       // For now, just the string name of the type (e.g., "int")
     char *var_name;        // Name of the variable
+    Token declaration_token; // Token for the variable name (for error reporting, etc.)
     AstNode *initializer;  // Optional expression for initialization (can be NULL)
+
+    // --- For Validator & TAC Generation ---
+    int tac_temp_id;       // Unique ID for the TAC temporary representing this variable
+    char* tac_name_hint;   // Decorated name for TAC output (e.g., "x.0"), owned by arena
 } VarDeclNode;
 
 // Structure for an identifier node (usage of a variable)
 typedef struct {
-    AstNode base;          // type = NODE_IDENTIFIER
-    char *name;            // Name of the identifier being referenced
+    AstNode base; // type = NODE_IDENTIFIER
+    char *name;   // Name of the identifier
+
+    // --- For Validator & TAC Generation ---
+    int tac_temp_id;       // Unique ID for the TAC temporary (resolved from symbol table)
+    char* tac_name_hint;   // Decorated name for TAC output (resolved from symbol table), owned by arena
+    // struct Symbol* symbol_entry; // Optional: direct pointer to symbol table entry (filled by validator)
 } IdentifierNode;
 
 // Structure for a return statement node
@@ -128,7 +148,7 @@ UnaryOpNode *create_unary_op_node(UnaryOperatorType op, AstNode *operand, Arena 
 BinaryOpNode *create_binary_op_node(BinaryOperatorType op, AstNode *left, AstNode *right, Arena* arena);
 
 // Function to create a variable declaration node (convenience constructor)
-VarDeclNode *create_var_decl_node(const char *type_name, const char *var_name, AstNode *initializer, Arena *arena);
+VarDeclNode *create_var_decl_node(const char *type_name, const char *var_name, Token declaration_token, AstNode *initializer, Arena *arena);
 
 // Function to create an identifier node (convenience constructor)
 IdentifierNode *create_identifier_node(const char *name, Arena *arena);
@@ -148,6 +168,9 @@ FuncDefNode *create_func_def_node(const char *name, BlockNode *body, Arena* aren
 
 // Function to create the program node (convenience constructor)
 ProgramNode *create_program_node(FuncDefNode *function, Arena* arena);
+
+// Function to create an assignment expression node
+AssignmentExpNode *create_assignment_exp_node(AstNode *target, AstNode *value, Arena *arena);
 
 // Function to free the entire AST (important for memory management)
 // NOTE: With arena allocation, freeing individual nodes might not be needed,
