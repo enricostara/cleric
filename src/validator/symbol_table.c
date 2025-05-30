@@ -88,8 +88,8 @@ bool symbol_table_add_symbol(const SymbolTable *st, const char *name, const Toke
 
     if (current_scope->symbol_count >= current_scope->symbol_capacity) {
         const int new_capacity = current_scope->symbol_capacity == 0
-                                     ? INITIAL_SYMBOL_CAPACITY
-                                     : current_scope->symbol_capacity * 2;
+                               ? INITIAL_SYMBOL_CAPACITY
+                               : current_scope->symbol_capacity * 2;
         Symbol *new_symbols_array = arena_alloc(st->arena, new_capacity * sizeof(Symbol));
         if (!new_symbols_array) return false; // Arena allocation failed
 
