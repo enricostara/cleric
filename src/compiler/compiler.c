@@ -158,7 +158,7 @@ static bool run_parser(Parser *parser, const bool print_ast, ProgramNode **out_p
     ProgramNode *ast_root_local = parse_program(parser);
 
     if (parser->error_flag) {
-        fprintf(stderr, "Parsing failed due to errors.\n");
+        // fprintf(stderr, "Parsing failed due to errors.\n");
         return false; // Parsing failed
     }
 

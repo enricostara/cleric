@@ -408,6 +408,27 @@ static void test_compile_complex_logical_and_short_circuit(void) {
     arena_destroy(&test_arena);
 }
 
+static void test_compiler_parse_only_invalid_lvalue(void) {
+    Arena test_arena = arena_create(1024);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena for parse_only_invalid_lvalue test");
+
+    const char *input_c = "int main(void) { int a = 2; a + 3 = 4; return a; }";
+    StringBuffer sb;
+    string_buffer_init(&sb, &test_arena, 128); // Initialize buffer, small size is fine
+
+    // Call compile with parse_only = true (second flag)
+    // compile(input, lex_only, parse_only, validate_only, tac_only, silent_mode, output_buffer, arena)
+    bool const success = compile(input_c, false, true, false, false, true, &sb, &test_arena);
+
+    // Expect compilation to fail due to parser error (invalid l-value)
+    TEST_ASSERT_FALSE_MESSAGE(success, "compile should fail for invalid l-value with parse_only flag");
+
+    // Note: We are not checking the content of sb.error_buffer here, but that could be an extension
+    // if the compile function populates it with parser errors in parse_only mode.
+
+    arena_destroy(&test_arena);
+}
+
 // --- Test Runner ---
 
 void run_compiler_tests(void) {
@@ -421,4 +442,5 @@ void run_compiler_tests(void) {
     RUN_TEST(test_compile_logical_or_false_true);
     RUN_TEST(test_compile_complex_logical_or);
     RUN_TEST(test_compile_complex_logical_and_short_circuit);
+    RUN_TEST(test_compiler_parse_only_invalid_lvalue); // Added new test
 }

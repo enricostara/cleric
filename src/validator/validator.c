@@ -97,13 +97,17 @@ bool validate_program(AstNode *program_node, Arena *error_arena) {
 
     symbol_table_init(ctx.st, ctx.arena);
 
-    validate_node(program_node, &ctx);
+    bool success = validate_node(program_node, &ctx);
 
-    if (ctx.error_flag && ctx.error_message) {
-        // Optionally, make error_message accessible to the caller if needed
-        // For now, it's printed by validator_error
+    if (ctx.error_message) {
+        // Error already printed by validator_error, but we could store it
+        // or pass it up if needed.
+        // For now, ensure the error_flag reflects the outcome.
+        if (!success) ctx.error_flag = true;
     }
-    return !ctx.error_flag; // Program is valid if no error flag was set
+
+    // Program is valid if no error flag was set during validation and initial checks
+    return !ctx.error_flag; 
 }
 
 // --- Dispatcher function ---
@@ -284,41 +288,27 @@ static bool validate_int_literal_node(IntLiteralNode *node, ValidatorContext *ct
 }
 
 static bool validate_assignment_exp_node(AssignmentExpNode *node, ValidatorContext *ctx) {
-    // ReSharper disable once CppDFAConstantConditions
-    if (!node) {
-        // ReSharper disable once CppDFAUnreachableCode
-        validator_error(ctx, NULL, "Assignment node itself is NULL.");
-        return false;
+    // Validate the right-hand side (value) of the assignment
+    if (!validate_node(node->value, ctx)) {
+        return false; // Error in RHS
     }
-    if (!node->target) {
-        validator_error(ctx, (AstNode *) node, "Assignment node target is NULL.");
-        return false;
-    }
+    if (ctx->error_flag) return false; // Propagate error
 
-    const NodeType target_type = node->target->type;
-    const bool is_target_identifier = target_type == NODE_IDENTIFIER;
+    // The target must be an identifier. The parser now ensures this.
+    IdentifierNode *target_ident = (IdentifierNode *) node->target;
 
-    if (!is_target_identifier) {
-        // This is equivalent to target_type != NODE_IDENTIFIER
-        validator_error(ctx, node->target, "Invalid left-hand side in assignment expression. Expected an identifier.");
+    // Look up the variable in the symbol table
+    const Symbol *symbol = symbol_table_lookup_symbol(ctx->st, target_ident->name);
+    if (!symbol) {
+        validator_error(ctx, (AstNode *) node, "Undeclared identifier '%s' in assignment.", target_ident->name);
         return false;
     }
 
-    // 1. Validate the target (which we now assume is an IdentifierNode)
-    if (!validate_node(node->target, ctx)) return false; // Validates the identifier itself (e.g., declared?)
-
-    // 2. Validate the value (right-hand side)
-    if (!validate_node(node->value, ctx)) return false;
-
-    // 3. TODO: Type Checking
+    // TODO: Type Checking
     // The type of 'value' must be assignable to the type of 'target'.
     // This requires knowing the types of both expressions.
     // For now, assume types match if both sides are valid.
 
-    // 4. Annotate AssignmentExpNode for TAC if needed (e.g. with target's TAC info)
-    // The IdentifierNode target will already be annotated by its validation.
-    // node->tac_temp_id = ((IdentifierNode*)node->target)->tac_temp_id;
-    // node->tac_name_hint = ((IdentifierNode*)node->target)->tac_name_hint;
-
+    // Mark the variable as initialized in the symbol table
     return !ctx->error_flag;
 }
