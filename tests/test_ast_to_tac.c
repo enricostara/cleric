@@ -698,15 +698,23 @@ static void test_return_logical_or_short_circuit(void) {
 // --- New Test Case Implementations for Variable Declarations ---
 
 static void test_var_decl_no_initializer(void) {
-    Arena test_arena = arena_create(4096);
+    Arena test_arena;
+    test_arena = arena_create(1024);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
 
-    // AST for: int main() { int x; return 0; } (return 0 to have at least one instruction)
-    // VarDeclNode for 'int x;'
-    VarDeclNode *var_x = create_var_decl_node("int", "x", NULL, &test_arena);
-    var_x->tac_temp_id = 0; // Manually set for test purposes
-    var_x->tac_name_hint = arena_strdup("x_0", &test_arena);
+    // Corresponds to: int main() { int x; return 0; }
+    // Expected TAC:
+    // RETURN 0
 
+    // Dummy token for var decl
+    Token dummy_token = {.type = TOKEN_KEYWORD_INT, .lexeme = "int"};
+
+    // int x;
+    VarDeclNode *var_x = create_var_decl_node("int", "x", dummy_token, NULL, &test_arena);
+    var_x->tac_temp_id = 0; // Assume validator assigns t0 to x
+    var_x->tac_name_hint = arena_strdup(&test_arena, "x_0");
+
+    // return 0;
     IntLiteralNode *ret_val_node = create_int_literal_node(0, &test_arena);
     ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)ret_val_node, &test_arena);
 
@@ -735,23 +743,33 @@ static void test_var_decl_no_initializer(void) {
 }
 
 static void test_var_decl_with_literal_initializer(void) {
-    Arena test_arena = arena_create(4096);
+    Arena test_arena;
+    test_arena = arena_create(1024);
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
 
-    // AST for: int main() { int x = 10; return x; }
-    IntLiteralNode *init_val_node = create_int_literal_node(10, &test_arena);
-    VarDeclNode *var_x = create_var_decl_node("int", "x", (AstNode *)init_val_node, &test_arena);
-    var_x->tac_temp_id = 0; // Manually set for test purposes
-    var_x->tac_name_hint = arena_strdup("x_0", &test_arena);
+    // Corresponds to: int main() { int x = 10; return x; }
+    // Expected TAC:
+    // t0 = 10
+    // RETURN t0
 
+    // Dummy token for var decl
+    Token dummy_token = {.type = TOKEN_KEYWORD_INT, .lexeme = "int"};
+
+    // int x = 10;
+    IntLiteralNode *init_val_node = create_int_literal_node(10, &test_arena);
+    VarDeclNode *var_x = create_var_decl_node("int", "x", dummy_token, (AstNode *)init_val_node, &test_arena);
+    var_x->tac_temp_id = 0; // Assume validator assigns t0 to x
+    var_x->tac_name_hint = arena_strdup(&test_arena, "x_0");
+
+    // return x;
     IdentifierNode *ret_id_node = create_identifier_node("x", &test_arena);
-    ret_id_node->tac_temp_id = 0; // x uses t0
-    ret_id_node->tac_name_hint = arena_strdup("x_0", &test_arena);
-    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)ret_id_node, &test_arena);
+    ret_id_node->tac_temp_id = 0; // x is t0
+    ret_id_node->tac_name_hint = arena_strdup(&test_arena, "x_0");
+    ReturnStmtNode *ret_node = create_return_stmt_node((AstNode *)ret_id_node, &test_arena);
 
     BlockNode *body_block = create_block_node(&test_arena);
     block_node_add_item(body_block, (AstNode *)var_x, &test_arena);
-    block_node_add_item(body_block, (AstNode *)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *)ret_node, &test_arena);
 
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
@@ -785,43 +803,47 @@ static void test_var_decl_with_literal_initializer(void) {
 }
 
 static void test_var_decl_with_expression_initializer(void) {
-    Arena test_arena = arena_create(8192); // Increased arena size for more complex AST
+    Arena test_arena;
+    test_arena = arena_create(8192); // Increased arena size for more complex AST
     TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
 
     // AST for: int main() { int y = 5; int x = y + 2; return x; }
 
+    // Dummy token for var decls
+    Token dummy_token_y = {.type = TOKEN_KEYWORD_INT, .lexeme = "int"};
+    Token dummy_token_x = {.type = TOKEN_KEYWORD_INT, .lexeme = "int"}; // Can be same or different
+
     // int y = 5;
     IntLiteralNode *init_y_val_node = create_int_literal_node(5, &test_arena);
-    VarDeclNode *var_y = create_var_decl_node("int", "y", (AstNode *)init_y_val_node, &test_arena);
+    VarDeclNode *var_y = create_var_decl_node("int", "y", dummy_token_y, (AstNode *)init_y_val_node, &test_arena);
     var_y->tac_temp_id = 0; // y is t0
-    var_y->tac_name_hint = arena_strdup("y_0", &test_arena);
+    var_y->tac_name_hint = arena_strdup(&test_arena, "y_0");
 
     // y + 2 (for x's initializer)
     IdentifierNode *id_y_for_expr = create_identifier_node("y", &test_arena);
     id_y_for_expr->tac_temp_id = 0; // y is t0
-    id_y_for_expr->tac_name_hint = arena_strdup("y_0", &test_arena);
+    id_y_for_expr->tac_name_hint = arena_strdup(&test_arena, "y_0");
     IntLiteralNode *const_2_node = create_int_literal_node(2, &test_arena);
     BinaryOpNode *add_expr_node = create_binary_op_node(OPERATOR_ADD, (AstNode *)id_y_for_expr, (AstNode *)const_2_node, &test_arena);
 
     // int x = y + 2;
-    VarDeclNode *var_x = create_var_decl_node("int", "x", (AstNode *)add_expr_node, &test_arena);
-    var_x->tac_temp_id = 1; // x is t1 (assuming y's init uses t0, add_expr uses t1, then x gets t1)
-                            // More precisely, x will be assigned the result of the expression, which will be in a temp.
-                            // The validator should assign distinct temp_ids for x and y.
-                            // Let's assume x is t2, and the expression y+2 results in t1.
+    VarDeclNode *var_x = create_var_decl_node("int", "x", dummy_token_x, (AstNode *)add_expr_node, &test_arena);
+    // Assuming the expression y+2 results in t1, and x is assigned t2
+    // This depends on how temporaries are assigned for expressions.
+    // For this test, let's assume: y (t0), y+2 (t1), x (t2)
     var_x->tac_temp_id = 2; // x is t2
-    var_x->tac_name_hint = arena_strdup("x_2", &test_arena);
+    var_x->tac_name_hint = arena_strdup(&test_arena, "x_2");
 
     // return x;
     IdentifierNode *ret_id_x_node = create_identifier_node("x", &test_arena);
     ret_id_x_node->tac_temp_id = 2; // x is t2
-    ret_id_x_node->tac_name_hint = arena_strdup("x_2", &test_arena);
-    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)ret_id_x_node, &test_arena);
+    ret_id_x_node->tac_name_hint = arena_strdup(&test_arena, "x_2");
+    ReturnStmtNode *ret_node = create_return_stmt_node((AstNode *)ret_id_x_node, &test_arena);
 
     BlockNode *body_block = create_block_node(&test_arena);
     block_node_add_item(body_block, (AstNode *)var_y, &test_arena);
     block_node_add_item(body_block, (AstNode *)var_x, &test_arena);
-    block_node_add_item(body_block, (AstNode *)return_node, &test_arena);
+    block_node_add_item(body_block, (AstNode *)ret_node, &test_arena);
 
     FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
     ProgramNode *ast = create_program_node(func_node, &test_arena);
