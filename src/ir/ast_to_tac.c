@@ -36,19 +36,6 @@ static bool is_valid_operand(TacOperand op) {
     return op.type != -1;
 }
 
-// Placeholder: Represents looking up a variable in a symbol table
-// In a real compiler, this would involve a symbol table lookup
-// and return the TacOperand (likely a temp) associated with the variable.
-static TacOperand lookup_variable_operand(const char* var_name, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr) {
-    // For now, let's assume every variable read creates a new temporary and
-    // would require a load from memory. This is a simplification.
-    // A proper implementation would use a symbol table to find the existing operand for 'var_name'.
-    fprintf(stdout, "lookup_variable_operand: Placeholder for '%s'. Creating a new temp.\n", var_name);
-    // This is not correct for a real compiler but serves as a placeholder
-    // to ensure a valid TacOperand is returned.
-    return create_tac_operand_temp((*next_temp_id_ptr)++, var_name);
-}
-
 // Helper to get the TacOperand for an l-value, typically an identifier.
 // This is simplified; a real version would handle memory addresses, struct fields, etc.
 static TacOperand visit_lvalue_expression(AstNode *node, TacFunction *current_function, Arena *arena, int *next_temp_id_ptr, int *label_counter_ptr) {
@@ -57,9 +44,13 @@ static TacOperand visit_lvalue_expression(AstNode *node, TacFunction *current_fu
     switch (node->type) {
         case NODE_IDENTIFIER: {
             const IdentifierNode *id_node = (IdentifierNode *) node;
-            // For an l-value, we'd typically get its address or the temp assigned to it.
-            // This is simplified: assumes we use the same operand as r-value lookup.
-            return lookup_variable_operand(id_node->name, current_function, arena, next_temp_id_ptr);
+            // Validator should have populated tac_temp_id and tac_name_hint.
+            // Ensure tac_temp_id is valid (e.g., not negative).
+            if (id_node->tac_temp_id < 0) { 
+                fprintf(stderr, "Error: L-value Identifier '%s' (in visit_lvalue_expression) does not have a valid TAC temporary ID (id: %d). Validator issue?\n", id_node->name, id_node->tac_temp_id);
+                return create_invalid_operand();
+            }
+            return create_tac_operand_temp(id_node->tac_temp_id, id_node->tac_name_hint);
         }
         // Add cases for other l-value expressions like array indexing, dereferences, etc.
         default:
@@ -186,6 +177,40 @@ static void visit_statement(AstNode *node, TacFunction *current_function, Arena 
                 // If an error occurs in a sub-statement, we might need a way to propagate it.
                 // For now, assuming sub-calls will print errors and we continue or bail if they return a specific error code/flag.
             }
+            break;
+        }
+        case NODE_VAR_DECL: {
+            const VarDeclNode *var_decl_node = (VarDeclNode *) node;
+            // The variable is now "active" in TAC. Its temp_id should have been assigned by the validator.
+            // If there's an initializer, generate TAC to assign its value to the variable's temporary.
+            if (var_decl_node->tac_temp_id < 0) {
+                 fprintf(stderr, "Error: Variable Declaration '%s' (in visit_statement) does not have a valid TAC temporary ID (id: %d). Validator issue?\n", var_decl_node->var_name, var_decl_node->tac_temp_id);
+                 // Potentially set an error flag or return an error indicator if the function signature allowed.
+                 break; // Skip TAC generation for this faulty declaration
+            }
+
+            if (var_decl_node->initializer) {
+                // 1. Create the operand for the variable being declared (LHS)
+                TacOperand lhs_operand = create_tac_operand_temp(var_decl_node->tac_temp_id, var_decl_node->tac_name_hint);
+
+                // 2. Visit the initializer expression to get its result (RHS)
+                TacOperand rhs_operand = visit_expression(var_decl_node->initializer, current_function, arena, next_temp_id_ptr, label_counter_ptr);
+
+                if (!is_valid_operand(rhs_operand)) {
+                    fprintf(stderr, "Error: Variable declaration for '%s' has an initializer that did not yield a valid TAC operand.\n", var_decl_node->var_name);
+                    break; // Skip TAC generation for this faulty initialization
+                }
+
+                // 3. Create and add the TAC_INS_COPY instruction
+                const TacInstruction *copy_instr = create_tac_instruction_copy(lhs_operand, rhs_operand, arena);
+                if (copy_instr) {
+                    add_instruction_to_function(current_function, copy_instr, arena);
+                } else {
+                    fprintf(stderr, "Error: Failed to create TAC_INS_COPY instruction for variable initialization of '%s'.\n", var_decl_node->var_name);
+                }
+            }
+            // If there's no initializer, no TAC instruction is generated at this point for the declaration itself.
+            // The variable's temporary is now available for use.
             break;
         }
         // Add cases for other statements here
@@ -509,9 +534,13 @@ static TacOperand visit_expression(AstNode *node, TacFunction *current_function,
         }
         case NODE_IDENTIFIER: { 
             const IdentifierNode *id_node = (IdentifierNode *) node;
-            // This is for r-value usage of an identifier.
-            // A proper implementation would look up id_node->name in a symbol table.
-            return lookup_variable_operand(id_node->name, current_function, arena, next_temp_id_ptr);
+            // Validator should have populated tac_temp_id and tac_name_hint.
+            // Ensure tac_temp_id is valid (e.g., not negative).
+            if (id_node->tac_temp_id < 0) { 
+                fprintf(stderr, "Error: Identifier '%s' (in visit_expression) does not have a valid TAC temporary ID (id: %d). Validator issue?\n", id_node->name, id_node->tac_temp_id);
+                return create_invalid_operand();
+            }
+            return create_tac_operand_temp(id_node->tac_temp_id, id_node->tac_name_hint);
         }
         case NODE_ASSIGNMENT_EXP: { 
             AssignmentExpNode *assign_node = (AssignmentExpNode *) node;

@@ -37,6 +37,11 @@ static void test_return_logical_or_rhs_evaluates(void);
 // Test returning the result of a logical OR operation (short-circuit)
 static void test_return_logical_or_short_circuit(void);
 
+// New test function declarations for variable declarations
+static void test_var_decl_no_initializer(void);
+static void test_var_decl_with_literal_initializer(void);
+static void test_var_decl_with_expression_initializer(void);
+
 // Add more test function declarations here...
 
 
@@ -690,6 +695,190 @@ static void test_return_logical_or_short_circuit(void) {
 }
 
 
+// --- New Test Case Implementations for Variable Declarations ---
+
+static void test_var_decl_no_initializer(void) {
+    Arena test_arena = arena_create(4096);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    // AST for: int main() { int x; return 0; } (return 0 to have at least one instruction)
+    // VarDeclNode for 'int x;'
+    VarDeclNode *var_x = create_var_decl_node("int", "x", NULL, &test_arena);
+    var_x->tac_temp_id = 0; // Manually set for test purposes
+    var_x->tac_name_hint = arena_strdup("x_0", &test_arena);
+
+    IntLiteralNode *ret_val_node = create_int_literal_node(0, &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)ret_val_node, &test_arena);
+
+    BlockNode *body_block = create_block_node(&test_arena);
+    block_node_add_item(body_block, (AstNode *)var_x, &test_arena);
+    block_node_add_item(body_block, (AstNode *)return_node, &test_arena);
+
+    FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
+    ProgramNode *ast = create_program_node(func_node, &test_arena);
+
+    TacProgram *tac_program = ast_to_tac(ast, &test_arena);
+
+    TEST_ASSERT_NOT_NULL(tac_program);
+    TEST_ASSERT_EQUAL_INT(1, tac_program->function_count);
+    TacFunction *func = tac_program->functions[0];
+    TEST_ASSERT_NOT_NULL(func);
+    // Expect 1 instruction: RETURN 0. No TAC for 'int x;' itself.
+    TEST_ASSERT_EQUAL_INT_MESSAGE(1, func->instruction_count, "Expected 1 instruction for 'int x; return 0;'"); 
+
+    const TacInstruction *instr0 = &func->instructions[0];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_RETURN, instr0->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr0->operands.ret.src.type);
+    TEST_ASSERT_EQUAL_INT(0, instr0->operands.ret.src.value.constant_value);
+
+    arena_destroy(&test_arena);
+}
+
+static void test_var_decl_with_literal_initializer(void) {
+    Arena test_arena = arena_create(4096);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    // AST for: int main() { int x = 10; return x; }
+    IntLiteralNode *init_val_node = create_int_literal_node(10, &test_arena);
+    VarDeclNode *var_x = create_var_decl_node("int", "x", (AstNode *)init_val_node, &test_arena);
+    var_x->tac_temp_id = 0; // Manually set for test purposes
+    var_x->tac_name_hint = arena_strdup("x_0", &test_arena);
+
+    IdentifierNode *ret_id_node = create_identifier_node("x", &test_arena);
+    ret_id_node->tac_temp_id = 0; // x uses t0
+    ret_id_node->tac_name_hint = arena_strdup("x_0", &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)ret_id_node, &test_arena);
+
+    BlockNode *body_block = create_block_node(&test_arena);
+    block_node_add_item(body_block, (AstNode *)var_x, &test_arena);
+    block_node_add_item(body_block, (AstNode *)return_node, &test_arena);
+
+    FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
+    ProgramNode *ast = create_program_node(func_node, &test_arena);
+
+    TacProgram *tac_program = ast_to_tac(ast, &test_arena);
+
+    TEST_ASSERT_NOT_NULL(tac_program);
+    TEST_ASSERT_EQUAL_INT(1, tac_program->function_count);
+    TacFunction *func = tac_program->functions[0];
+    TEST_ASSERT_NOT_NULL(func);
+    TEST_ASSERT_EQUAL_STRING("main", func->name);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(2, func->instruction_count, "Expected 2 instructions for 'int x = 10; return x;'");
+
+    // 1. t0 = 10 (TAC_INS_COPY for initialization)
+    const TacInstruction *instr0 = &func->instructions[0];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr0->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr0->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(0, instr0->operands.copy.dst.value.temp.id); // x (t0)
+    TEST_ASSERT_EQUAL_STRING("x_0", instr0->operands.copy.dst.value.temp.name_hint);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr0->operands.copy.src.type);
+    TEST_ASSERT_EQUAL_INT(10, instr0->operands.copy.src.value.constant_value);
+
+    // 2. RETURN t0
+    const TacInstruction *instr1 = &func->instructions[1];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_RETURN, instr1->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr1->operands.ret.src.type);
+    TEST_ASSERT_EQUAL_INT(0, instr1->operands.ret.src.value.temp.id); // return x (t0)
+    TEST_ASSERT_EQUAL_STRING("x_0", instr1->operands.ret.src.value.temp.name_hint);
+
+    arena_destroy(&test_arena);
+}
+
+static void test_var_decl_with_expression_initializer(void) {
+    Arena test_arena = arena_create(8192); // Increased arena size for more complex AST
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_arena.start, "Failed to create test arena");
+
+    // AST for: int main() { int y = 5; int x = y + 2; return x; }
+
+    // int y = 5;
+    IntLiteralNode *init_y_val_node = create_int_literal_node(5, &test_arena);
+    VarDeclNode *var_y = create_var_decl_node("int", "y", (AstNode *)init_y_val_node, &test_arena);
+    var_y->tac_temp_id = 0; // y is t0
+    var_y->tac_name_hint = arena_strdup("y_0", &test_arena);
+
+    // y + 2 (for x's initializer)
+    IdentifierNode *id_y_for_expr = create_identifier_node("y", &test_arena);
+    id_y_for_expr->tac_temp_id = 0; // y is t0
+    id_y_for_expr->tac_name_hint = arena_strdup("y_0", &test_arena);
+    IntLiteralNode *const_2_node = create_int_literal_node(2, &test_arena);
+    BinaryOpNode *add_expr_node = create_binary_op_node(OPERATOR_ADD, (AstNode *)id_y_for_expr, (AstNode *)const_2_node, &test_arena);
+
+    // int x = y + 2;
+    VarDeclNode *var_x = create_var_decl_node("int", "x", (AstNode *)add_expr_node, &test_arena);
+    var_x->tac_temp_id = 1; // x is t1 (assuming y's init uses t0, add_expr uses t1, then x gets t1)
+                            // More precisely, x will be assigned the result of the expression, which will be in a temp.
+                            // The validator should assign distinct temp_ids for x and y.
+                            // Let's assume x is t2, and the expression y+2 results in t1.
+    var_x->tac_temp_id = 2; // x is t2
+    var_x->tac_name_hint = arena_strdup("x_2", &test_arena);
+
+    // return x;
+    IdentifierNode *ret_id_x_node = create_identifier_node("x", &test_arena);
+    ret_id_x_node->tac_temp_id = 2; // x is t2
+    ret_id_x_node->tac_name_hint = arena_strdup("x_2", &test_arena);
+    ReturnStmtNode *return_node = create_return_stmt_node((AstNode *)ret_id_x_node, &test_arena);
+
+    BlockNode *body_block = create_block_node(&test_arena);
+    block_node_add_item(body_block, (AstNode *)var_y, &test_arena);
+    block_node_add_item(body_block, (AstNode *)var_x, &test_arena);
+    block_node_add_item(body_block, (AstNode *)return_node, &test_arena);
+
+    FuncDefNode *func_node = create_func_def_node("main", body_block, &test_arena);
+    ProgramNode *ast = create_program_node(func_node, &test_arena);
+
+    TacProgram *tac_program = ast_to_tac(ast, &test_arena);
+
+    TEST_ASSERT_NOT_NULL(tac_program);
+    TEST_ASSERT_EQUAL_INT(1, tac_program->function_count);
+    TacFunction *func = tac_program->functions[0];
+    TEST_ASSERT_NOT_NULL(func);
+    // Expected: 
+    // 1. t0 = 5          (y = 5)
+    // 2. t1 = t0 + 2     (y + 2)
+    // 3. t2 = t1         (x = result of y+2)
+    // 4. RETURN t2       (return x)
+    TEST_ASSERT_EQUAL_INT_MESSAGE(4, func->instruction_count, "Expected 4 instructions");
+
+    // 1. t0 = 5 (y = 5)
+    const TacInstruction *instr0 = &func->instructions[0];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr0->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr0->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(0, instr0->operands.copy.dst.value.temp.id); // y (t0)
+    TEST_ASSERT_EQUAL_STRING("y_0", instr0->operands.copy.dst.value.temp.name_hint);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr0->operands.copy.src.type);
+    TEST_ASSERT_EQUAL_INT(5, instr0->operands.copy.src.value.constant_value);
+
+    // 2. t1 = t0 + 2 (y + 2)
+    const TacInstruction *instr1 = &func->instructions[1];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_ADD, instr1->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr1->operands.binary_op.dst.type); // Result of y+2 goes into a new temp, t1
+    TEST_ASSERT_EQUAL_INT(1, instr1->operands.binary_op.dst.value.temp.id); // t1
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr1->operands.binary_op.src1.type);
+    TEST_ASSERT_EQUAL_INT(0, instr1->operands.binary_op.src1.value.temp.id); // y (t0)
+    TEST_ASSERT_EQUAL_STRING("y_0", instr1->operands.binary_op.src1.value.temp.name_hint);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_CONST, instr1->operands.binary_op.src2.type);
+    TEST_ASSERT_EQUAL_INT(2, instr1->operands.binary_op.src2.value.constant_value);
+
+    // 3. t2 = t1 (x = result of y+2)
+    const TacInstruction *instr2 = &func->instructions[2];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_COPY, instr2->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr2->operands.copy.dst.type);
+    TEST_ASSERT_EQUAL_INT(2, instr2->operands.copy.dst.value.temp.id); // x (t2)
+    TEST_ASSERT_EQUAL_STRING("x_2", instr2->operands.copy.dst.value.temp.name_hint);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr2->operands.copy.src.type);
+    TEST_ASSERT_EQUAL_INT(1, instr2->operands.copy.src.value.temp.id); // result of y+2 (t1)
+
+    // 4. RETURN t2 (return x)
+    const TacInstruction *instr3 = &func->instructions[3];
+    TEST_ASSERT_EQUAL_INT(TAC_INS_RETURN, instr3->type);
+    TEST_ASSERT_EQUAL_INT(TAC_OPERAND_TEMP, instr3->operands.ret.src.type);
+    TEST_ASSERT_EQUAL_INT(2, instr3->operands.ret.src.value.temp.id); // x (t2)
+    TEST_ASSERT_EQUAL_STRING("x_2", instr3->operands.ret.src.value.temp.name_hint);
+
+    arena_destroy(&test_arena);
+}
+
+
 // --- Test Runner ---
 
 void run_ast_to_tac_tests(void) {
@@ -704,5 +893,8 @@ void run_ast_to_tac_tests(void) {
     RUN_TEST(test_return_logical_and_short_circuit);
     RUN_TEST(test_return_logical_or_rhs_evaluates);
     RUN_TEST(test_return_logical_or_short_circuit);
-    // Add more tests here...
+    // Add new tests here
+    RUN_TEST(test_var_decl_no_initializer);
+    RUN_TEST(test_var_decl_with_literal_initializer);
+    RUN_TEST(test_var_decl_with_expression_initializer);
 }
