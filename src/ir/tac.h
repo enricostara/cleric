@@ -14,7 +14,8 @@
 typedef enum {
     TAC_OPERAND_CONST, // Integer Constant
     TAC_OPERAND_TEMP,  // Temporary variable (register/stack slot) identified by ID
-    TAC_OPERAND_LABEL // New: Label identifier for jumps
+    TAC_OPERAND_LABEL, // New: Label identifier for jumps
+    TAC_OPERAND_NONE = -1, // Represents an invalid or uninitialized operand
     // TAC_OPERAND_VAR // Future: Source variable identifier
 } TacOperandType;
 
